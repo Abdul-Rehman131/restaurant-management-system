@@ -1,0 +1,11 @@
+/* packages/ui/src/brand.css  -  the ONLY place brand values live. Replace for the real restaurant. */
+:root {
+  --brand: #C2410C;      /* ember */
+  --brand-fg: #FFFFFF;   /* text on brand */
+  --accent: #F59E0B;     /* saffron */
+}
+.dark {
+  --brand: #FB923C;
+  --brand-fg: #1C1917;
+  --accent: #FBBF24;
+}
