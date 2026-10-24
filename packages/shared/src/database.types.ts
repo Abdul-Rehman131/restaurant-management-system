@@ -5,6 +5,61 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string;
+          branch_id: string;
+          created_at: string;
+          id: number;
+          new_value: Json | null;
+          old_value: Json | null;
+          reason: string | null;
+          target_id: string;
+          target_table: string;
+          user_id: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          action: string;
+          branch_id?: string;
+          created_at?: string;
+          id?: never;
+          new_value?: Json | null;
+          old_value?: Json | null;
+          reason?: string | null;
+          target_id: string;
+          target_table: string;
+          user_id?: string | null;
+        };
+        Update: {
+          action?: string;
+          branch_id?: string;
+          created_at?: string;
+          id?: never;
+          new_value?: Json | null;
+          old_value?: Json | null;
+          reason?: string | null;
+          target_id?: string;
+          target_table?: string;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'audit_log_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'audit_log_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       branches: {
         Row: {
           created_at: string;
