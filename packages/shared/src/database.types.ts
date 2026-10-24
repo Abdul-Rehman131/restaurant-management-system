@@ -203,6 +203,39 @@ export type Database = {
           },
         ];
       };
+      order_counters: {
+        Row: {
+          branch_id: string;
+          business_date: string;
+          created_at: string;
+          last_number: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          branch_id?: string;
+          business_date: string;
+          created_at?: string;
+          last_number?: number;
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          business_date?: string;
+          created_at?: string;
+          last_number?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'order_counters_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       order_items: {
         Row: {
           batch_no: number;
