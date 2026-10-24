@@ -296,6 +296,62 @@ export type Database = {
           },
         ];
       };
+      order_status_history: {
+        Row: {
+          branch_id: string;
+          changed_at: string;
+          changed_by: string | null;
+          from_status: Database['public']['Enums']['order_status'] | null;
+          id: number;
+          order_id: string;
+          reason: string | null;
+          to_status: Database['public']['Enums']['order_status'];
+        };
+        ComputedFields: never;
+        Insert: {
+          branch_id?: string;
+          changed_at?: string;
+          changed_by?: string | null;
+          from_status?: Database['public']['Enums']['order_status'] | null;
+          id?: never;
+          order_id: string;
+          reason?: string | null;
+          to_status: Database['public']['Enums']['order_status'];
+        };
+        Update: {
+          branch_id?: string;
+          changed_at?: string;
+          changed_by?: string | null;
+          from_status?: Database['public']['Enums']['order_status'] | null;
+          id?: never;
+          order_id?: string;
+          reason?: string | null;
+          to_status?: Database['public']['Enums']['order_status'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'order_status_history_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_status_history_changed_by_fkey';
+            columns: ['changed_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_status_history_order_id_fkey';
+            columns: ['order_id'];
+            isOneToOne: false;
+            referencedRelation: 'orders';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       orders: {
         Row: {
           accepted_at: string | null;
