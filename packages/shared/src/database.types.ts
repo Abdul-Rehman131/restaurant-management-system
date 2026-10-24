@@ -30,6 +30,118 @@ export type Database = {
         };
         Relationships: [];
       };
+      categories: {
+        Row: {
+          branch_id: string;
+          created_at: string;
+          id: string;
+          image_path: string | null;
+          is_active: boolean;
+          name: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          branch_id?: string;
+          created_at?: string;
+          id?: string;
+          image_path?: string | null;
+          is_active?: boolean;
+          name: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          created_at?: string;
+          id?: string;
+          image_path?: string | null;
+          is_active?: boolean;
+          name?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'categories_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      menu_items: {
+        Row: {
+          branch_id: string;
+          category_id: string;
+          cost_price: number;
+          created_at: string;
+          description: string | null;
+          id: string;
+          image_path: string | null;
+          is_active: boolean;
+          is_available: boolean;
+          name: string;
+          needs_kitchen: boolean;
+          prep_time_min: number | null;
+          price: number;
+          sort_order: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          branch_id?: string;
+          category_id: string;
+          cost_price?: number;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          image_path?: string | null;
+          is_active?: boolean;
+          is_available?: boolean;
+          name: string;
+          needs_kitchen?: boolean;
+          prep_time_min?: number | null;
+          price: number;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          category_id?: string;
+          cost_price?: number;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          image_path?: string | null;
+          is_active?: boolean;
+          is_available?: boolean;
+          name?: string;
+          needs_kitchen?: boolean;
+          prep_time_min?: number | null;
+          price?: number;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'menu_items_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'menu_items_category_id_fkey';
+            columns: ['category_id'];
+            isOneToOne: false;
+            referencedRelation: 'categories';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profiles: {
         Row: {
           branch_id: string;
