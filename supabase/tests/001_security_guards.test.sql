@@ -120,9 +120,10 @@ select is(
   tests.public_tables_without_rls(), '{guard_probe}'::text[],
   'probe: a new table without RLS is detected (the RLS guard would fail)'
 );
-select is(
-  tests.tables_with_privilege('authenticated', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE'),
-  '{}'::text[], 'probe: a new table gets no grants for the API roles by default'
+select ok(
+  not has_table_privilege('authenticated', 'public.guard_probe', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
+  and not has_table_privilege('anon', 'public.guard_probe', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE'),
+  'probe: a new table gets no grants for the API roles by default'
 );
 create function public.guard_probe_fn()
 returns integer
