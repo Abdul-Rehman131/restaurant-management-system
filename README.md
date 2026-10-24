@@ -52,6 +52,7 @@ created only by an Admin; public sign-up is disabled.
 | `pnpm db:test`                                       | Run the pgTAP tests in `supabase/tests/`                                                                                                                                                                                                          |
 | `pnpm db:lint`                                       | Lint the database schema and functions                                                                                                                                                                                                            |
 | `pnpm db:types`                                      | Regenerate `packages/shared/src/database.types.ts` from the local DB                                                                                                                                                                              |
+| `pnpm seed:staging`                                  | Create the staging staff accounts by hand (see Deployment); `-- --local` tries it locally                                                                                                                                                         |
 | `pnpm brand:icons`                                   | Regenerate favicon and PWA icons from `packages/ui/brand/logo-mark.svg`                                                                                                                                                                           |
 | `pnpm build && pnpm size`                            | Build, then check the initial-JS bundle budgets (plan 4.10)                                                                                                                                                                                       |
 | `pnpm --filter @rms/ui test`                         | Contrast check for both themes (text 4.5:1, UI 3:1); also runs in `pnpm test`                                                                                                                                                                     |
@@ -104,11 +105,61 @@ proposes weekly updates for actions and npm packages.
 
 ## Environments
 
-|            | Backend                                                       | Front ends                     |
-| ---------- | ------------------------------------------------------------- | ------------------------------ |
-| Local      | `pnpm db:start` (Docker)                                      | `pnpm dev`                     |
-| Staging    | Supabase project ref `aqxmdmkforcucmktwmjj`, `ap-southeast-1` | Vercel, branch `develop` (T10) |
-| Production | `rms-prod`, `ap-southeast-1` (created in T10)                 | Vercel, branch `main` (T10)    |
+|            | Backend                                                                                   | Front ends                                                   |
+| ---------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Local      | `pnpm db:start` (Docker)                                                                  | `pnpm dev`                                                   |
+| Staging    | Supabase project ref `aqxmdmkforcucmktwmjj`, `ap-southeast-1`                             | Vercel Hobby, branch `develop`; PR previews also use staging |
+| Production | **Deferred** (see "Before go-live" in [docs/setup-checklist.md](docs/setup-checklist.md)) | Vercel Pro or Cloudflare Pages (D14)                         |
+
+## Deployment (staging)
+
+- **Front ends:** the Vercel Git integration builds `apps/staff-app` and `apps/customer-web`
+  (two projects). Every push to `develop` updates the staging sites; every PR gets a preview
+  that talks to the **staging** backend. `apps/*/vercel.json` holds the SPA rewrite, cache and
+  security headers, and turns off deployments from `main` until go-live. The staff-app build
+  fails if `VITE_SUPABASE_URL` or `VITE_SUPABASE_PUBLISHABLE_KEY` is missing.
+- **Database:** [`.github/workflows/db-deploy.yml`](.github/workflows/db-deploy.yml) runs on
+  every push to `develop`: link staging, drift check
+  ([`scripts/check-migration-drift.mjs`](scripts/check-migration-drift.mjs): fails if staging
+  has a migration Git does not, or if a pending migration is older than one already applied),
+  `supabase db push --dry-run`, then `supabase db push`. Migrations only: `seed.sql` never
+  runs on a cloud project. Its secrets live in the GitHub Environment `staging`, which only
+  `develop` can use; it never runs on pull requests or forks.
+- **Keep-alive:** [`.github/workflows/staging-keepalive.yml`](.github/workflows/staging-keepalive.yml)
+  pings the staging Auth health endpoint weekly (no secrets) so the free project does not
+  pause. GitHub runs schedules from `main` only, so the weekly ping starts once it is on `main`.
+- **Staging staff accounts:** `pnpm seed:staging`, run by hand on your machine with the staging
+  secret key in your shell for that one command (steps in
+  [docs/setup-checklist.md](docs/setup-checklist.md), 4.3). It creates `admin`, `cashier`,
+  `waiter` and `chef` and prints each new password once. `pnpm seed:staging -- --local` tries
+  it on the local stack.
+
+## Rollback (staging)
+
+Git is the source of truth: roll back by changing Git, then let the pipeline deploy.
+
+1. **Front end broke, database fine.** On GitHub, open the merged PR → **Revert** → merge the
+   revert PR into `develop`. Vercel redeploys the previous code. To restore service before
+   that lands: Vercel → project → **Deployments** → the last good deployment → **⋯ → Instant
+   Rollback** (staging is the Hobby projects' "Production", so this is available). The next
+   deploy from `develop` replaces it, so still merge the revert.
+2. **A migration broke something.** Never edit or delete a migration that has been deployed,
+   and never fix staging in the dashboard. Write a **forward fix**: `pnpm db:new fix_<what>`
+   that undoes or corrects the change, with pgTAP tests, in a PR to `develop`. `db-deploy`
+   applies it. Each migration runs in a transaction, so a migration that fails is not recorded
+   and changes nothing; fix it in a new commit and push again.
+3. **Front end and database changed together.** Ship migrations that old front ends can still
+   use (add first, remove later). Then step 1 alone is a safe rollback, and the database is
+   fixed forward when needed (step 2).
+4. **`db-deploy` reports drift.** Someone changed staging outside Git. Do not force it. Find
+   the change (`supabase migration list --linked`), turn it into a migration in Git (or
+   repair the history with `supabase migration repair`, only after review), then push again.
+5. **Staging data is damaged.** Staging holds demo data only. As a last resort the owner can
+   rebuild it by hand: `supabase db reset --linked` (re-runs every migration on staging and
+   **deletes all staging data**), then check the access token hook is still enabled and re-run
+   `pnpm seed:staging`. Never on production.
+
+Production rollback (Pro backups and point-in-time restore) is written at go-live.
 
 ## Troubleshooting
 
