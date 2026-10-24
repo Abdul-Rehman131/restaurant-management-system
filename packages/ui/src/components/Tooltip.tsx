@@ -6,7 +6,20 @@ import { cn } from '../lib/cn';
 // Supplementary hints only; never the only label of a control.
 
 export const TooltipProvider = TooltipPrimitive.Provider;
-export const Tooltip = TooltipPrimitive.Root;
+/**
+ * Each tooltip carries its own provider, so the tooltip code (Floating UI) loads only with the
+ * screens that use one, not with every app's first screen (plan 4.10).
+ */
+export function Tooltip({
+  delayDuration = 300,
+  ...props
+}: ComponentProps<typeof TooltipPrimitive.Root>) {
+  return (
+    <TooltipPrimitive.Provider delayDuration={delayDuration}>
+      <TooltipPrimitive.Root {...props} />
+    </TooltipPrimitive.Provider>
+  );
+}
 export const TooltipTrigger = TooltipPrimitive.Trigger;
 
 export function TooltipContent({

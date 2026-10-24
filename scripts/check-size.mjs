@@ -20,7 +20,10 @@ const staffPaths = [
 ];
 // Role chunks are measured beyond the signed-in shell.
 const staffRoles = [
-  // Added with the role layouts.
+  { name: 'role: waiter', entries: ['src/roles/waiter/WaiterApp.tsx'], budget: 120 * KB },
+  { name: 'role: kitchen', entries: ['src/roles/kitchen/KitchenApp.tsx'], budget: 120 * KB },
+  { name: 'role: cashier', entries: ['src/roles/cashier/CashierApp.tsx'], budget: 120 * KB },
+  { name: 'role: admin', entries: ['src/roles/admin/AdminApp.tsx'], budget: 250 * KB },
 ];
 
 const kb = (bytes) => `${(bytes / KB).toFixed(1)} KB`;

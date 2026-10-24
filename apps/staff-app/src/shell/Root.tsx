@@ -1,4 +1,3 @@
-import { usePublicSettings } from '@rms/shared';
 import { Outlet } from 'react-router';
 
 import { AuthProvider } from '../auth/AuthProvider';
@@ -10,10 +9,4 @@ export function Root() {
       <Outlet />
     </AuthProvider>
   );
-}
-
-// Placeholder role home until the role layouts land.
-export function RolePlaceholder() {
-  const { settings } = usePublicSettings();
-  return <main className="p-6 text-2xl font-semibold">{settings?.restaurantName}</main>;
 }

@@ -17,10 +17,10 @@ export function FullScreenLoading() {
  * A role area. Any other role is sent to its own home. Admin may open every area (spec 4:
  * full access), but lands on /admin.
  */
-export function RequireRole({ role }: { role: AppRole }) {
+export function RequireRole({ allow }: { allow: AppRole }) {
   const auth = useAuth();
   if (!auth.role) return <Navigate to={paths.notAvailable} replace />;
-  if (auth.role !== role && auth.role !== 'admin') {
+  if (auth.role !== allow && auth.role !== 'admin') {
     return <Navigate to={roleHome[auth.role]} replace />;
   }
   return <Outlet />;

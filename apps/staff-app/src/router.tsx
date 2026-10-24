@@ -3,7 +3,7 @@ import { createBrowserRouter, type RouteObject } from 'react-router';
 import { paths } from './paths';
 import { NotAvailableScreen, NotFoundScreen, RouteErrorScreen } from './screens/InfoScreens';
 import { FullScreenLoading, RequireRole, RoleHomeRedirect } from './shell/guards';
-import { RolePlaceholder, Root } from './shell/Root';
+import { Root } from './shell/Root';
 
 // The /dev/ui component gallery exists only in development builds: with import.meta.env.DEV
 // false, this route and its chunk are not built (`pnpm size` checks the marker).
@@ -31,11 +31,27 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <RoleHomeRedirect /> },
           { path: paths.notAvailable, element: <NotAvailableScreen /> },
-          ...(['waiter', 'kitchen', 'cashier', 'admin'] as const).map((area) => ({
-            path: `/${area}/*`,
-            element: <RequireRole role={area === 'kitchen' ? 'chef' : area} />,
-            children: [{ path: '*', element: <RolePlaceholder /> }],
-          })),
+          // One lazy chunk per role: a waiter never downloads the cashier or admin screens.
+          {
+            path: `${paths.waiter}/*`,
+            element: <RequireRole allow="waiter" />,
+            children: [{ path: '*', lazy: () => import('./roles/waiter/WaiterApp') }],
+          },
+          {
+            path: `${paths.kitchen}/*`,
+            element: <RequireRole allow="chef" />,
+            children: [{ path: '*', lazy: () => import('./roles/kitchen/KitchenApp') }],
+          },
+          {
+            path: `${paths.cashier}/*`,
+            element: <RequireRole allow="cashier" />,
+            children: [{ path: '*', lazy: () => import('./roles/cashier/CashierApp') }],
+          },
+          {
+            path: `${paths.admin}/*`,
+            element: <RequireRole allow="admin" />,
+            children: [{ path: '*', lazy: () => import('./roles/admin/AdminApp') }],
+          },
           { path: '*', element: <NotFoundScreen /> },
         ],
       },

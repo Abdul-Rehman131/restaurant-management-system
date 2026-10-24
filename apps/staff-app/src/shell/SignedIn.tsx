@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router';
 import { needsMfaStep, useAuth } from '../auth/auth-context';
 import { paths } from '../paths';
 import { SettingsProvider } from '../settings/SettingsProvider';
+import { ConnectionProvider } from './ConnectionProvider';
 import { FullScreenLoading } from './guards';
 
 // Lazy route: the data and Realtime clients load here, after sign-in, not with the login
@@ -27,7 +28,9 @@ export function RequireAuth() {
 
   return (
     <SettingsProvider>
-      <Outlet />
+      <ConnectionProvider>
+        <Outlet />
+      </ConnectionProvider>
     </SettingsProvider>
   );
 }

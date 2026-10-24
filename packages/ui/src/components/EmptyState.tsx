@@ -7,9 +7,9 @@ export interface EmptyStateProps {
   icon: LucideIcon;
   /** One line: what is empty ("No open bills"). */
   title: string;
-  description?: string;
+  description?: string | undefined;
   /** At most one action ("New counter order"). */
-  action?: ReactNode;
+  action?: ReactNode | undefined;
   className?: string;
 }
 
