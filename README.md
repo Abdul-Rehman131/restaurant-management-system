@@ -33,7 +33,7 @@ must be refused. Local only.
 **Staff app env:** copy `.env.example` to `apps/staff-app/.env.local` and fill in
 `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` from `pnpm db:status` (the local API
 URL and the `sb_publishable_...` key). The file is git-ignored. Never use a secret key there:
-the app refuses to start with one.
+the app refuses to start with one. `pnpm build` fails when either value is missing.
 
 Staff log in with a **username**. The app maps it to the internal login email
 `<username>@staff.invalid` (`public.staff_login_email()` in SQL, `staffLoginEmail()` in
@@ -76,6 +76,31 @@ Rules:
 - Never change staging or production in the Supabase dashboard. Migrations are deployed from Git (T10).
 - `supabase db diff` is only a helper for drafting SQL. Always review its output by hand.
 - `supabase/seed.sql` is local-only demo data. It never runs on cloud projects.
+
+## CI
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and on pull
+requests to `main` and `develop`. It uses **no secrets**: the database jobs start a local
+Supabase stack inside the runner. A new push cancels the older run of the same branch. Actions
+are pinned to commit SHAs and Dependabot ([`.github/dependabot.yml`](.github/dependabot.yml))
+proposes weekly updates for actions and npm packages.
+
+| Job              | What it checks                                                                                                                               | Same check locally                                                                                                             |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `quality`        | ESLint, TypeScript, Prettier, Vitest, contrast of both themes                                                                                | `pnpm lint && pnpm typecheck && pnpm format:check && pnpm test`                                                                |
+| `database`       | Supabase (database container only), every migration from zero plus seed, pgTAP, schema lint, and that `database.types.ts` matches the schema | `pnpm db:reset && pnpm db:test && pnpm db:lint && pnpm db:types && git diff --exit-code packages/shared/src/database.types.ts` |
+| `build-and-size` | Production build of both apps, then the bundle budgets (plan 4.10); a budget exceeded fails the job                                          | `pnpm build && pnpm size`                                                                                                      |
+| `e2e`            | Supabase (auth, REST, Realtime), Chromium, the Playwright suite on phone and desktop, then the PWA update test on a production preview       | `pnpm db:start`, then `pnpm e2e`, then `pnpm --filter @rms/staff-app build && pnpm --filter @rms/staff-app e2e:pwa`            |
+| `secrets`        | gitleaks over the **full** git history                                                                                                       | [gitleaks](https://github.com/gitleaks/gitleaks) installed: `gitleaks git --redact -v .`                                       |
+| `ci`             | Passes only when every job above passed (or was skipped). **This is the one required status check.**                                         |                                                                                                                                |
+
+- Changes that touch only `docs/` or Markdown files skip `database`, `build-and-size` and `e2e`;
+  `quality` and `secrets` always run.
+- When `e2e` fails, the Playwright HTML report and traces are attached to the run as the
+  `playwright-report` artifact (open a trace with `pnpm --filter @rms/staff-app exec playwright show-trace <zip>`).
+- In CI, a failed Playwright test is retried once; a pass on retry shows as "flaky" in the summary.
+- Never add a `pull_request_target` trigger or a repository secret to this workflow. Deployment
+  secrets (T10) live only in GitHub Environments used by the deploy workflows.
 
 ## Environments
 

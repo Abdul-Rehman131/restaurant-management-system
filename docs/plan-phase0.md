@@ -236,6 +236,13 @@ record_payment(request_id uuid, order_id uuid,
 6. Bundle budget with `size-limit`: customer-web ≤ 200 KB gzip initial JS, staff-app limits from 4.10.
 7. Upload the Playwright smoke results (login per role against local).
 - **AC:** a PR with a lint error, a failing pgTAP test, stale types or an oversized bundle is blocked. Run time is under 10 minutes.
+- **As built (T9):** `.github/workflows/ci.yml`, described job by job in the README ("CI").
+  - **No secrets anywhere.** Every database check runs against a local Supabase stack started in the runner: the database container only for pgTAP, lint and type drift; auth, REST and Realtime for e2e. Triggers are `push` and `pull_request` only (never `pull_request_target`), default `permissions: contents: read`, `persist-credentials: false` on every checkout, and the final `ci` job has no permissions at all.
+  - **Jobs, in parallel:** `quality` (lint, typecheck, Prettier, Vitest, contrast), `database` (start, reset, pgTAP, `db lint`, type drift with `git diff --exit-code`), `build-and-size`, `e2e` (Playwright on phone and desktop, then the PWA update test; report and traces uploaded only on failure), `secrets` (gitleaks over the full history, pinned release with a SHA-256 check rather than a third-party action), and `ci`, which needs all of them and is the one required status check. Docs-only changes skip `database`, `build-and-size` and `e2e`; skipped jobs count as passed in `ci`.
+  - **Supply chain:** third-party actions pinned to full commit SHAs with a version comment; Dependabot proposes weekly updates for actions and npm (7-day cooldown on npm).
+  - **Bundle budgets:** still the existing `scripts/check-size.mjs` instead of `size-limit`. It already measures each path through the app from Vite's manifest, which `size-limit` cannot do without a config per chunk.
+  - **Found by CI:** without `VITE_SUPABASE_*` values, `src/lib/env.ts` always throws and the bundler dropped the Supabase client, so the first CI run measured login at 141.7 KB instead of 166.0 KB. The staff-app build now fails without those values, and CI builds with non-secret placeholders. Vercel (T10) must set both, or the deploy fails at build time instead of shipping a dead app.
+  - **Gates proven red** on throwaway branches (one defect each, deleted afterwards): a lint error, a failing pgTAP test, a migration without regenerated types, an oversized login bundle and a fake secret-like string.
 
 ### T10. CD (0.5 d)
 - Vercel: 2 projects (`rms-staff`, `rms-web`). Production branch is `main`, and `develop` gets a fixed staging domain. Each PR gets a preview, which uses the **staging** backend.

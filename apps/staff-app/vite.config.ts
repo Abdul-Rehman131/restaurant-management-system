@@ -7,10 +7,18 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 const brand = brandTokens();
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, import.meta.dirname, 'VITE_');
+  // Without these, src/lib/env.ts always throws and the bundler drops the whole Supabase client:
+  // the build would "succeed", ship a dead app and pass the bundle budgets. Fail it instead.
+  if (command === 'build' && (!env['VITE_SUPABASE_URL'] || !env['VITE_SUPABASE_PUBLISHABLE_KEY'])) {
+    throw new Error(
+      'VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY must be set to build the staff app (apps/staff-app/.env.local, or the environment).',
+    );
+  }
   // Install label for the home screen, set per deployment. The in-app header name still comes
   // from the settings table.
-  const appName = loadEnv(mode, import.meta.dirname, 'VITE_').VITE_APP_NAME?.trim() || 'Staff App';
+  const appName = env['VITE_APP_NAME']?.trim() || 'Staff App';
 
   return {
     plugins: [
