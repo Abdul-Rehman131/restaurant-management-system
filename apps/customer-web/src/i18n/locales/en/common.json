@@ -1,0 +1,10 @@
+{
+  "app": {
+    "title": "Menu",
+    "logoLabel": "Restaurant logo"
+  },
+  "placeholder": {
+    "heading": "Online ordering is coming soon",
+    "body": "Our website is being prepared. Please visit us in the restaurant."
+  }
+}

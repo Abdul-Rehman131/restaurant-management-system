@@ -33,7 +33,7 @@ Each item has a proposed resolution. Items marked **(Q)** need the owner and are
 ## 1. Assumptions
 
 1. Team: 2 developers full time, A for backend and database, B for frontend and design system. Both do CI. A third developer shortens P1, not P0 (D11).
-2. Supabase is approved (D1). There are 2 cloud projects, staging and production, plus the local Docker stack. Region: closest to the restaurant (for example Mumbai `ap-south-1`) **(Q2)**.
+2. Supabase is approved (D1). There are 2 cloud projects, staging and production, plus the local Docker stack. Region: **`ap-southeast-1` (Singapore)** for both.
 3. GitHub (one repo), Vercel and Sentry accounts are owned by the client, and developers are invited **(Q2)**.
 4. Currency is PKR, stored in paisa (×100) so that a later switch to a currency with decimals needs no schema change **(Q1)**.
 5. English UI first. The Urdu and RTL structure is in place from P0, and translations are added when requested (D9).
@@ -63,7 +63,8 @@ Estimates are in developer-days (d). Total is about **10.5 d**, so about **1 cal
 
 ### T1. Accounts, access and repository (0.5 d)
 - Create the GitHub repo, the `main` and `develop` branches, and branch protection (PR required, CI green, 1 review, no force push).
-- Create the Supabase projects `rms-staging` and `rms-prod`. Enable Auth email provider, disable public sign-ups, enable TOTP MFA.
+- Supabase staging: the existing project `restaurant management system` (ref `aqxmdmkforcucmktwmjj`, `ap-southeast-1` Singapore). Enable Auth email provider, disable public sign-ups, enable TOTP MFA. Production (`rms-prod`, same region and settings) is created in T10.
+- The repo is **public**: GitHub secret scanning and push protection are enabled, and no secret, key, `.env` file or private owner or business data is ever committed.
 - Create the Vercel team and Sentry org. Set up a password manager vault for shared secrets.
 - **AC:** both developers can open all four services. No secret sits in any chat or file in Git. The project refs are recorded in the README.
 
@@ -175,6 +176,7 @@ record_payment(request_id uuid, order_id uuid,
 - Domain primitives: `MoneyText`, `StatusBadge`, `QtyStepper`, `StickyActionBar`, `OfflineBanner`, `ConnectionDot`, `EmptyState`, `ErrorState`, `Skeleton` presets.
 - i18n: react-i18next with namespaces, `en` complete and an `ur` stub. `dir` is set on `<html>`. An ESLint rule (`i18next/no-literal-string`) blocks literal JSX strings in apps.
 - A `/dev/ui` gallery route (dev builds only) showing every component in light, dark, LTR and RTL.
+- Brand files: make `packages/ui` the single source for `logo.svg` and `logo-mark.svg`, and copy them into each app's `public/brand/` at build time. Until then the two app copies are kept in sync by hand (decision of 24 Oct 2026).
 - **AC:** the gallery renders in all 4 combinations. An axe check on the gallery reports 0 serious violations. Changing `--brand` in one place re-themes the whole app.
 
 ### T8. Staff app shell (1.5 d)
@@ -257,7 +259,7 @@ restaurant-system/
 ### 3.2 Environments
 | | Local | Staging | Production |
 |---|---|---|---|
-| Backend | `supabase start` (Docker) | Supabase project `rms-staging` (Free until UAT) | `rms-prod` (**Pro before go-live**) |
+| Backend | `supabase start` (Docker) | Supabase project `restaurant management system`, `ap-southeast-1` (Free until UAT) | `rms-prod`, `ap-southeast-1`, created in T10 (**Pro before go-live**) |
 | Front ends | Vite dev servers | Vercel, `develop` branch, plus PR previews | Vercel `main` (**Pro before go-live**, D14) |
 | Data | `seed.sql` | `seed-staging.ts` demo data and UAT real menu | Real data only |
 | Migrations | `db reset` | Auto on merge to `develop` | On merge to `main` + manual approval |

@@ -1,0 +1,36 @@
+{
+  "name": "ember-kitchen-rms",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.29.3",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "brand:icons": "pnpm --filter \"./apps/*\" run brand:icons",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:new": "supabase migration new",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:lint": "supabase db lint --level warning --fail-on warning",
+    "db:types": "node scripts/db-types.mjs"
+  },
+  "devDependencies": {
+    "@rms/config": "workspace:*",
+    "eslint": "9.39.5",
+    "prettier": "3.9.10",
+    "prettier-plugin-tailwindcss": "0.8.1",
+    "supabase": "2.122.0",
+    "turbo": "2.11.10",
+    "typescript": "6.0.3"
+  }
+}
