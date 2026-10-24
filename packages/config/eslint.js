@@ -1,0 +1,57 @@
+// Shared ESLint flat config for the whole monorepo (re-exported by /eslint.config.js).
+import js from '@eslint/js';
+import i18next from 'eslint-plugin-i18next';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
+
+export default tseslint.config(
+  {
+    ignores: [
+      '**/dist/**',
+      '**/dev-dist/**',
+      '**/.turbo/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+    ],
+  },
+  js.configs.recommended,
+  tseslint.configs.strictTypeChecked,
+  {
+    languageOptions: {
+      parserOptions: { projectService: true },
+    },
+    rules: {
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+    },
+  },
+  {
+    files: ['**/*.{js,mjs,cjs}'],
+    extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['**/*.config.{ts,js,mjs}'],
+    languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['apps/*/src/**/*.{ts,tsx}', 'packages/*/src/**/*.{ts,tsx}'],
+    extends: [jsxA11y.flatConfigs.recommended, reactHooks.configs.flat.recommended],
+    languageOptions: { globals: globals.browser },
+  },
+  {
+    files: ['apps/*/src/**/*.tsx'],
+    extends: [reactRefresh.configs.vite],
+  },
+  {
+    // Every user-facing string goes through i18n (CLAUDE.md rule 10).
+    files: ['apps/*/src/**/*.tsx', 'packages/ui/src/**/*.tsx'],
+    plugins: { i18next },
+    rules: {
+      'i18next/no-literal-string': ['error', { mode: 'jsx-only' }],
+    },
+  },
+);

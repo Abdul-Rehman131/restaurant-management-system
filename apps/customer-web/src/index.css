@@ -1,0 +1,5 @@
+@import 'tailwindcss';
+@import '@rms/ui/tokens.css';
+
+/* Tailwind scans this app by default; also scan shared UI components. */
+@source '../../../packages/ui/src';

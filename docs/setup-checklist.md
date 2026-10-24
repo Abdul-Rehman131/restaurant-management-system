@@ -31,24 +31,34 @@ project **ref** (the `xxxx` in `https://xxxx.supabase.co`), region, Vercel and S
 - [ ] Invite the developers as collaborators.
 
 ## 3. Supabase
-- [ ] Create an organisation (client-owned).
-- [ ] Create the project `rms-staging`, choosing the region closest to the restaurant (for example `ap-south-1` Mumbai). Generate a strong DB password and save it in the vault.
-- [ ] Create the project `rms-prod` the same way, with a **different** password.
-- [ ] In **both** projects:
-  - [ ] Authentication → Sign In / Providers: **turn off "Allow new users to sign up"**. Keep Email enabled.
-  - [ ] Authentication → Multi-Factor: enable **TOTP**.
-  - [ ] Authentication → URL Configuration: leave as is for now (set in T10 once the Vercel domains exist).
+**Staging** is your existing project, **`restaurant management system`**, in region
+**`ap-southeast-2` (Sydney)**. Keep its name and region as they are, and don't create another
+staging project.
+
+- [ ] Make sure the staging DB password is in the vault. If it isn't known, reset it in Project
+      Settings → Database and store the new one in the vault only.
+- [ ] Staging → Authentication → Sign In / Providers: **turn off "Allow new users to sign up"**. Keep Email enabled.
+- [ ] Staging → Authentication → Multi-Factor: enable **TOTP**.
+- [ ] Staging → Authentication → URL Configuration: leave as is for now (set in T10 once the Vercel domains exist).
 - [ ] Invite the developers to the org with the Developer role.
-- [ ] Note the two **project refs** (not secret) for the README.
+- [ ] Note the staging **project ref** (not secret) for the README.
+
+**Production (`rms-prod`) is created in T10, not now.** At that point: same org, a region
+decision (staying in `ap-southeast-2`, the same region as staging, keeps behaviour identical), a **different** DB
+password, then the same three Authentication settings as staging.
 
 ## 4. Vercel
 - [ ] Create a team (client-owned). Hobby is fine for development; Pro is needed before go-live (D14).
 - [ ] Invite the developers. **Don't import the repo yet**; the projects are created in T10.
+- [ ] At T10, set **`VITE_APP_NAME`** on each staff-app deployment (Vercel → Project →
+      Environment Variables). It is the install label on the home screen, and defaults to
+      "Staff App". It is not a secret. The name shown inside the app always comes from the
+      settings table.
 
-## 5. Sentry
-- [ ] Create an organisation and two projects, platform *React*: `rms-staff` and `rms-web`.
-- [ ] Invite the developers. The DSNs are not highly sensitive, but they still go into env vars only (T11).
+## 5. Sentry (postponed to T11)
+Nothing to do now. In T11: create an organisation and two React projects (`rms-staff`,
+`rms-web`), invite the developers, and put the DSNs into env vars only.
 
 ## 6. Tell me when done
-Just reply with: the GitHub repo URL, the two Supabase project refs and the region, and the
-Vercel and Sentry org slugs. **No keys or passwords.**
+Before T3, I need **Docker running** and the **GitHub repo** created. Reply with the GitHub repo
+URL, the staging project ref and the Vercel org slug. **No keys or passwords.**
