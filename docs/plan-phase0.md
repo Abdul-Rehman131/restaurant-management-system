@@ -195,6 +195,15 @@ record_payment(request_id uuid, order_id uuid,
 - A `/dev/ui` gallery route (dev builds only) showing every component in light, dark, LTR and RTL.
 - Brand files: `packages/ui/brand/` is the single source for the logo, logo mark and icons. They are copied into each app's `public/brand/` (gitignored) when Vite starts (`packages/ui/vite-plugin.mjs`).
 - **AC:** the gallery renders in all 4 combinations. An axe check on the gallery reports 0 serious violations. Changing `--brand` in one place re-themes the whole app.
+- **As built (T7):**
+  - **Components:** every 4.4 "shadcn base" component and every T7 domain primitive, in `packages/ui/src/components/` (one per file). Patterns and other domain components (DataTable, ReasonDialog, KitchenTicket, PaymentPad, ...) are P1, as planned.
+  - **Tokens added for contrast:** `--input` (field borders, 3:1), `--accent-fg`, `--danger-fg`, `--surface-raised` (popovers; lighter surfaces in dark mode), `--overlay`. `--border` stays a soft divider only.
+  - **Checks:** `pnpm test` runs the contrast check for both themes (66 pairs, reads `brand.css` and `tokens.css`). `pnpm size` checks the initial-JS budgets and fails if gallery code reaches a production bundle. `pnpm e2e` runs the gallery in light, dark, LTR and RTL on phone and desktop with axe, and opens every overlay (axe plus focus return).
+  - **Overlays:** `UiProvider` makes the page behind an open Radix overlay `inert` while Radix hides it, because Radix sets `aria-hidden` but leaves the content focusable (axe `aria-hidden-focus`).
+  - **Skeletons are static** (no pulse), following 4.3. Only the P1 late-ticket pulse will animate.
+  - **Money:** `formatMoney` in `@rms/shared` formats integer minor units without floats, using `currency_code` and `currency_minor_units` from settings. `MoneyText` is always LTR, so amounts stay intact in RTL.
+  - **i18n:** `setupI18n` in `@rms/ui/i18n` (English bundled, other languages lazy-loaded, `ui` namespace for the components). Zod messages are `ui:validation.*` keys. The literal-string ESLint rule exempts only `data-*`, `htmlFor` and `autoComplete`.
+  - **Gallery:** the staff app's `main.tsx` mounts `/dev/ui` only when `import.meta.env.DEV`; it moves into the router in T8. Options also come from the URL: `?theme=dark&dir=rtl&density=desk`.
 
 ### T8. Staff app shell (1.5 d)
 - Vite, React Router with lazy role routes (`/waiter`, `/kitchen`, `/cashier`, `/admin`; `/rider` is P3). Providers: Supabase client, TanStack Query, i18n, theme.
