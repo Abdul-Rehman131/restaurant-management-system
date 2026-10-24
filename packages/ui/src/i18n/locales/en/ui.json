@@ -8,5 +8,15 @@
     "invalid": "Check this value.",
     "tooLong": "This is too long.",
     "chooseOne": "Choose an option."
+  },
+  "combobox": {
+    "search": "Search",
+    "empty": "No results"
+  },
+  "toast": {
+    "region": "Notifications"
+  },
+  "command": {
+    "results": "Results"
   }
 }

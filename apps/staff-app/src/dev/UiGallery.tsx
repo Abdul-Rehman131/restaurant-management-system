@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import devEn from './locales/en/dev.json';
 import { ButtonsSection, FieldsSection } from './sections/FormControls';
+import { OverlaysSection } from './sections/Overlays';
 
 // Development-only screen (/dev/ui). main.tsx loads it only when import.meta.env.DEV, and
 // `pnpm size` fails the build if this marker ever reaches a production bundle.
@@ -106,6 +107,7 @@ export default function UiGallery() {
           <p className="text-fg-muted">{t('intro')}</p>
           <ButtonsSection />
           <FieldsSection />
+          <OverlaysSection />
         </main>
       </div>
     </UiProvider>
