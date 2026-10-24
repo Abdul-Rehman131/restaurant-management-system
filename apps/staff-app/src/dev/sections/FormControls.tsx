@@ -64,6 +64,12 @@ export function ButtonsSection() {
       </GalleryRow>
       <GalleryRow label={t('buttons.states')}>
         <Button loading>{t('buttons.loading')}</Button>
+        <Button loading variant="destructive">
+          {t('buttons.loading')}
+        </Button>
+        <Button loading variant="outline">
+          {t('buttons.loading')}
+        </Button>
         <Button disabled variant="outline">
           {t('buttons.disabled')}
         </Button>

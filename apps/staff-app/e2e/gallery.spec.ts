@@ -29,6 +29,11 @@ for (const { theme, dir } of combinations) {
       fullPage: true,
     });
 
+    // Loading keeps full colour (opacity 1); only disabled fades.
+    const loading = page.locator('button[aria-busy="true"]').first();
+    await expect(loading).toHaveCSS('opacity', '1');
+    await expect(page.locator('button:disabled').first()).toHaveCSS('opacity', '0.5');
+
     const summaries: string[] = [];
     // Inactive tab panels are not rendered, so check each tab of the Display section too.
     for (const tab of [null, 'Cards and badges', 'Loading']) {
