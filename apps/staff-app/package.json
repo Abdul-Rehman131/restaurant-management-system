@@ -8,17 +8,24 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "e2e": "playwright test"
   },
   "dependencies": {
+    "@hookform/resolvers": "5.9.1",
     "@rms/shared": "workspace:*",
     "@rms/ui": "workspace:*",
     "i18next": "26.5.7",
+    "lucide-react": "1.55.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "react-i18next": "17.1.5"
+    "react-hook-form": "7.89.0",
+    "react-i18next": "17.1.5",
+    "zod": "4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.64.0",
     "@rms/config": "workspace:*",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "26.6.5",

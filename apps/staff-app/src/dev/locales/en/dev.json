@@ -1,0 +1,53 @@
+{
+  "title": "UI gallery",
+  "intro": "Every shared component, for design review and the axe check. Development builds only.",
+  "toolbar": {
+    "label": "Preview options",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "direction": "Direction",
+    "ltr": "Left to right",
+    "rtl": "Right to left",
+    "density": "Density",
+    "touch": "Touch",
+    "display": "Display",
+    "desk": "Desk"
+  },
+  "sections": {
+    "buttons": "Buttons",
+    "fields": "Fields and form"
+  },
+  "buttons": {
+    "primary": "Send to kitchen",
+    "secondary": "Add more items",
+    "outline": "Print receipt",
+    "ghost": "Skip",
+    "destructive": "Cancel order",
+    "sizes": "Sizes",
+    "small": "Small",
+    "medium": "Medium",
+    "large": "Large",
+    "extraLarge": "Extra large",
+    "states": "States",
+    "loading": "Saving",
+    "disabled": "Disabled",
+    "iconOnly": "Add item",
+    "withIcon": "Request bill"
+  },
+  "form": {
+    "customerName": "Customer name",
+    "customerNameHelp": "Printed on the take-away ticket.",
+    "table": "Table",
+    "tablePlaceholder": "Choose a table",
+    "notes": "Kitchen notes",
+    "notesPlaceholder": "For example: no onions",
+    "payment": "Payment method",
+    "cash": "Cash",
+    "card": "Card",
+    "printReceipt": "Print the receipt after payment",
+    "sound": "Sound alerts",
+    "submit": "Check form",
+    "valid": "The form is valid."
+  }
+}

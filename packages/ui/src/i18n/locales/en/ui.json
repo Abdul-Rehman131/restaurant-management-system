@@ -2,5 +2,11 @@
   "common": {
     "loading": "Loading",
     "close": "Close"
+  },
+  "validation": {
+    "required": "Fill in this field.",
+    "invalid": "Check this value.",
+    "tooLong": "This is too long.",
+    "chooseOne": "Choose an option."
   }
 }
