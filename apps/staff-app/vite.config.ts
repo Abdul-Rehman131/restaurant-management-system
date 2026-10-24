@@ -44,6 +44,8 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
+    // The manifest lets `pnpm size` measure each route's chunks (scripts/check-size.mjs).
+    build: { manifest: true },
     server: { port: 5173, strictPort: true },
     preview: { port: 4173, strictPort: true },
   };

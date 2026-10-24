@@ -1,9 +1,8 @@
 import { Direction } from 'radix-ui';
-import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { createContext, lazy, Suspense, useContext, useEffect, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { syncInertWithAriaHidden } from '../lib/inert-hidden';
-import { Toaster } from './Toaster';
 import { TooltipProvider } from './Tooltip';
 
 export interface UiProviderProps {
@@ -13,6 +12,9 @@ export interface UiProviderProps {
 }
 
 const NestedContext = createContext(false);
+
+// Sonner loads after first paint: toasts are never needed to show a screen (plan 4.10).
+const Toaster = lazy(async () => ({ default: (await import('./Toaster')).Toaster }));
 
 /**
  * Wrap each app once. Radix menus, tabs and sliders read the direction from here (not from
@@ -31,7 +33,9 @@ export function UiProvider({ dir, children }: UiProviderProps) {
       <Direction.Provider dir={direction}>
         <TooltipProvider delayDuration={300}>
           {children}
-          <Toaster dir={direction} />
+          <Suspense fallback={null}>
+            <Toaster dir={direction} />
+          </Suspense>
         </TooltipProvider>
       </Direction.Provider>
     </NestedContext.Provider>

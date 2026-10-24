@@ -1,40 +1,25 @@
-import type { Database } from '@rms/shared';
-import { createClient } from '@supabase/supabase-js';
+import { AuthClient } from '@supabase/auth-js';
 
-// Browser-safe settings only (CLAUDE.md rule 4). Locally they come from apps/staff-app/.env.local
-// (copied from `pnpm db:status`); deployments set them in Vercel.
-const url = import.meta.env.VITE_SUPABASE_URL;
-const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+import { supabaseKey, supabaseUrl } from './env';
 
-if (!url || !key) {
-  throw new Error(
-    'VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are missing. Copy .env.example to apps/staff-app/.env.local and fill them in from `pnpm db:status`.',
-  );
-}
-
-// A secret or service-role key must never reach the browser: refuse to start with one.
-function isPrivilegedKey(value: string): boolean {
-  if (value.startsWith('sb_secret_')) return true;
-  const payload = value.split('.')[1];
-  if (!payload) return false;
-  try {
-    const claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))) as {
-      role?: unknown;
-    };
-    return claims.role === 'service_role';
-  } catch {
-    return false;
-  }
-}
-if (isPrivilegedKey(key)) {
-  throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY is a secret key. Use the publishable key.');
-}
-
-export const supabase = createClient<Database>(url, key, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    // Staff sign in with a password; there are no magic links or OAuth redirects.
-    detectSessionInUrl: false,
-  },
+/**
+ * Supabase Auth, the only Supabase piece the login screen needs. The data and Realtime clients
+ * live in ./db and load with the signed-in shell, so the login bundle stays small (plan 4.10).
+ * Together they are what @supabase/supabase-js wires up, minus Storage and Functions (unused
+ * by staff screens until P1).
+ */
+export const auth = new AuthClient({
+  url: `${supabaseUrl}/auth/v1`,
+  headers: { apikey: supabaseKey },
+  storageKey: 'rms-staff-auth',
+  persistSession: true,
+  autoRefreshToken: true,
+  // Staff sign in with a password; there are no magic links or OAuth redirects.
+  detectSessionInUrl: false,
 });
+
+/** The current access token for data and Realtime requests (refreshed by auth). */
+export async function accessToken(): Promise<string | null> {
+  const { data } = await auth.getSession();
+  return data.session?.access_token ?? null;
+}

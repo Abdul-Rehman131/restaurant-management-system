@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 import type { PublicSettings } from '../settings';
 
@@ -7,41 +7,43 @@ import type { PublicSettings } from '../settings';
  * returns jsonb, so the generated types only say `Json`: this schema is the contract.
  * Groups beyond "display" and "operations" depend on the caller's role, so they are optional.
  */
-const minorInt = z.number().int();
-const bps = z.number().int().min(0).max(10_000);
+// zod/mini: the tree-shakable build, so the shell bundle stays within budget (plan 4.10).
+const nonEmpty = z.string().check(z.minLength(1));
+const positiveInt = z.int().check(z.positive());
+const bps = z.int().check(z.minimum(0), z.maximum(10_000));
 
 export const getSettingsResponse = z.object({
   // display: every staff role
-  restaurant_name: z.string().min(1),
-  currency_code: z.string().regex(/^[A-Z]{3}$/),
-  currency_minor_units: z.number().int().min(0).max(3),
-  timezone: z.string().min(1),
+  restaurant_name: nonEmpty,
+  currency_code: z.string().check(z.regex(/^[A-Z]{3}$/)),
+  currency_minor_units: z.int().check(z.minimum(0), z.maximum(3)),
+  timezone: nonEmpty,
   // operations: every staff role
-  day_cutoff_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
-  kitchen_warn_min: z.number().int().positive(),
-  kitchen_late_min: z.number().int().positive(),
+  day_cutoff_time: z.string().check(z.regex(/^\d{2}:\d{2}(:\d{2})?$/)),
+  kitchen_warn_min: positiveInt,
+  kitchen_late_min: positiveInt,
   // contact: admin, cashier, waiter
-  address: z.string().nullable().optional(),
-  phone: z.string().nullable().optional(),
-  receipt_footer: z.string().nullable().optional(),
+  address: z.optional(z.nullable(z.string())),
+  phone: z.optional(z.nullable(z.string())),
+  receipt_footer: z.optional(z.nullable(z.string())),
   // pricing: admin, cashier
-  tax_bps: bps.optional(),
-  service_charge_bps: bps.optional(),
-  prices_include_tax: z.boolean().optional(),
-  discount_reduces_charges: z.boolean().optional(),
-  service_charge_on_dine_in: z.boolean().optional(),
-  service_charge_on_take_away: z.boolean().optional(),
-  service_charge_on_delivery: z.boolean().optional(),
-  tax_on_service_charge: z.boolean().optional(),
-  rounding_mode: z.enum(['half_up', 'half_even', 'up', 'down']).optional(),
-  rounding_unit_minor: minorInt.positive().optional(),
+  tax_bps: z.optional(bps),
+  service_charge_bps: z.optional(bps),
+  prices_include_tax: z.optional(z.boolean()),
+  discount_reduces_charges: z.optional(z.boolean()),
+  service_charge_on_dine_in: z.optional(z.boolean()),
+  service_charge_on_take_away: z.optional(z.boolean()),
+  service_charge_on_delivery: z.optional(z.boolean()),
+  tax_on_service_charge: z.optional(z.boolean()),
+  rounding_mode: z.optional(z.enum(['half_up', 'half_even', 'up', 'down'])),
+  rounding_unit_minor: z.optional(positiveInt),
 });
 
 export type GetSettingsResponse = z.infer<typeof getSettingsResponse>;
 
 /** Validates the RPC result and maps it to the camelCase shape the UI uses. Throws on mismatch. */
 export function parseSettings(data: unknown): PublicSettings {
-  const s = getSettingsResponse.parse(data);
+  const s = z.parse(getSettingsResponse, data);
   const settings: PublicSettings = {
     restaurantName: s.restaurant_name,
     currencyCode: s.currency_code,

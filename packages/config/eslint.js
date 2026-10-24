@@ -58,7 +58,7 @@ export default tseslint.config(
         {
           mode: 'jsx-only',
           // Attributes nobody sees or hears (plugin defaults, plus data-* hooks, htmlFor and
-          // autoComplete). aria-label, title, alt and placeholder stay checked.
+          // input behaviour such as autoComplete and inputMode). aria-label, title, alt and placeholder stay checked.
           'jsx-attributes': {
             exclude: [
               'className',
@@ -71,6 +71,12 @@ export default tseslint.config(
               'height',
               'htmlFor',
               'autoComplete',
+              'autoCapitalize',
+              'autoCorrect',
+              'inputMode',
+              'enterKeyHint',
+              'pattern',
+              'name',
               'data-.*',
             ],
           },
