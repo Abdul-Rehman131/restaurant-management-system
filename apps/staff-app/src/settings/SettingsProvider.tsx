@@ -25,7 +25,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     queryKey: settingsQueryKey,
     queryFn: fetchSettings,
     staleTime: 5 * 60_000,
-    retry: (count, err) => !isNotAuthorized(err) && count < 1,
+    // A weak connection gets a few tries; a NOT_AUTHORIZED answer never changes, so no retry.
+    retry: (count, err) => !isNotAuthorized(err) && count < 3,
   });
 
   useEffect(() => {
