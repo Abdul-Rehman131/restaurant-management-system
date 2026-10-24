@@ -142,6 +142,302 @@ export type Database = {
           },
         ];
       };
+      order_batches: {
+        Row: {
+          batch_no: number;
+          branch_id: string;
+          cancelled_at: string | null;
+          created_at: string;
+          id: string;
+          order_id: string;
+          preparing_at: string | null;
+          ready_at: string | null;
+          sent_at: string;
+          served_at: string | null;
+          status: Database['public']['Enums']['batch_status'];
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          batch_no: number;
+          branch_id?: string;
+          cancelled_at?: string | null;
+          created_at?: string;
+          id?: string;
+          order_id: string;
+          preparing_at?: string | null;
+          ready_at?: string | null;
+          sent_at?: string;
+          served_at?: string | null;
+          status?: Database['public']['Enums']['batch_status'];
+          updated_at?: string;
+        };
+        Update: {
+          batch_no?: number;
+          branch_id?: string;
+          cancelled_at?: string | null;
+          created_at?: string;
+          id?: string;
+          order_id?: string;
+          preparing_at?: string | null;
+          ready_at?: string | null;
+          sent_at?: string;
+          served_at?: string | null;
+          status?: Database['public']['Enums']['batch_status'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'order_batches_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_batches_order_id_fkey';
+            columns: ['order_id'];
+            isOneToOne: false;
+            referencedRelation: 'orders';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      order_items: {
+        Row: {
+          batch_no: number;
+          branch_id: string;
+          cancel_reason: string | null;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          cost_snapshot: number;
+          created_at: string;
+          id: string;
+          is_cancelled: boolean;
+          line_total: number | null;
+          menu_item_id: string;
+          name_snapshot: string;
+          needs_kitchen: boolean;
+          notes: string | null;
+          order_id: string;
+          price_snapshot: number;
+          quantity: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          batch_no: number;
+          branch_id?: string;
+          cancel_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          cost_snapshot?: number;
+          created_at?: string;
+          id?: string;
+          is_cancelled?: boolean;
+          line_total?: never;
+          menu_item_id: string;
+          name_snapshot: string;
+          needs_kitchen: boolean;
+          notes?: string | null;
+          order_id: string;
+          price_snapshot: number;
+          quantity: number;
+          updated_at?: string;
+        };
+        Update: {
+          batch_no?: number;
+          branch_id?: string;
+          cancel_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          cost_snapshot?: number;
+          created_at?: string;
+          id?: string;
+          is_cancelled?: boolean;
+          line_total?: never;
+          menu_item_id?: string;
+          name_snapshot?: string;
+          needs_kitchen?: boolean;
+          notes?: string | null;
+          order_id?: string;
+          price_snapshot?: number;
+          quantity?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'order_items_batch_fkey';
+            columns: ['order_id', 'batch_no'];
+            isOneToOne: false;
+            referencedRelation: 'order_batches';
+            referencedColumns: ['order_id', 'batch_no'];
+          },
+          {
+            foreignKeyName: 'order_items_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_items_cancelled_by_fkey';
+            columns: ['cancelled_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_items_menu_item_id_fkey';
+            columns: ['menu_item_id'];
+            isOneToOne: false;
+            referencedRelation: 'menu_items';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      orders: {
+        Row: {
+          accepted_at: string | null;
+          bill_requested: boolean;
+          bill_requested_at: string | null;
+          branch_id: string;
+          business_date: string;
+          cancel_reason: string | null;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          completed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          customer_name: string | null;
+          customer_phone: string | null;
+          discount: number;
+          discount_reason: string | null;
+          id: string;
+          order_number: string;
+          payment_status: Database['public']['Enums']['payment_status'];
+          preparing_at: string | null;
+          ready_at: string | null;
+          request_id: string;
+          served_at: string | null;
+          service_charge: number;
+          source: Database['public']['Enums']['order_source'];
+          status: Database['public']['Enums']['order_status'];
+          subtotal: number;
+          table_id: string | null;
+          tax: number;
+          total: number;
+          type: Database['public']['Enums']['order_type'];
+          updated_at: string;
+          waiter_id: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          accepted_at?: string | null;
+          bill_requested?: boolean;
+          bill_requested_at?: string | null;
+          branch_id?: string;
+          business_date: string;
+          cancel_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_name?: string | null;
+          customer_phone?: string | null;
+          discount?: number;
+          discount_reason?: string | null;
+          id?: string;
+          order_number: string;
+          payment_status?: Database['public']['Enums']['payment_status'];
+          preparing_at?: string | null;
+          ready_at?: string | null;
+          request_id: string;
+          served_at?: string | null;
+          service_charge?: number;
+          source?: Database['public']['Enums']['order_source'];
+          status?: Database['public']['Enums']['order_status'];
+          subtotal?: number;
+          table_id?: string | null;
+          tax?: number;
+          total?: number;
+          type: Database['public']['Enums']['order_type'];
+          updated_at?: string;
+          waiter_id?: string | null;
+        };
+        Update: {
+          accepted_at?: string | null;
+          bill_requested?: boolean;
+          bill_requested_at?: string | null;
+          branch_id?: string;
+          business_date?: string;
+          cancel_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_name?: string | null;
+          customer_phone?: string | null;
+          discount?: number;
+          discount_reason?: string | null;
+          id?: string;
+          order_number?: string;
+          payment_status?: Database['public']['Enums']['payment_status'];
+          preparing_at?: string | null;
+          ready_at?: string | null;
+          request_id?: string;
+          served_at?: string | null;
+          service_charge?: number;
+          source?: Database['public']['Enums']['order_source'];
+          status?: Database['public']['Enums']['order_status'];
+          subtotal?: number;
+          table_id?: string | null;
+          tax?: number;
+          total?: number;
+          type?: Database['public']['Enums']['order_type'];
+          updated_at?: string;
+          waiter_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'orders_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'orders_cancelled_by_fkey';
+            columns: ['cancelled_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'orders_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'orders_table_id_fkey';
+            columns: ['table_id'];
+            isOneToOne: false;
+            referencedRelation: 'restaurant_tables';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'orders_waiter_id_fkey';
+            columns: ['waiter_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profiles: {
         Row: {
           branch_id: string;
