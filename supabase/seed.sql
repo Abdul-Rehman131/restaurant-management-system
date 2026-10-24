@@ -1,0 +1,2 @@
+-- Local-only demo data, run by `pnpm db:reset` after the migrations.
+-- Never runs on staging or production. Demo menu, tables and staff arrive in T4.

@@ -23,8 +23,10 @@ The current phase plan is in docs/plan-phase0.md. If the spec and a request conf
    Every new table or function ships with pgTAP tests for every role.
 3. **Migrations only.** Every schema change is a new file in supabase/migrations. Never edit
    an applied migration. Never change staging or production through the dashboard.
-4. **No secrets in code.** Use `.env.local` (gitignored) and `.env.example`. The service-role key
-   never reaches a browser bundle; only Edge Functions and CI use it.
+4. **No secrets in code. The repo is PUBLIC** (GitHub secret scanning and push protection are on).
+   Never commit secrets, keys or `.env` files; use `.env.local` (gitignored) and `.env.example`.
+   Docs must not contain private owner or business data. The service-role key never reaches a
+   browser bundle; only Edge Functions and CI use it.
 5. **Money is integers** in the smallest currency unit (`bigint`). Percentages are basis
    points (`int`, 1600 = 16%). No floats for money, in SQL or TS.
 6. **Archive, never delete.** Use `is_active = false` for menu, categories, tables and staff. No
