@@ -181,8 +181,11 @@ jobs:
           curl -fsSLO "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}"
           echo "${GITLEAKS_SHA256}  ${tarball}" | sha256sum -c -
           tar -xzf "$tarball" -C "$RUNNER_TEMP" gitleaks
+      # Every commit reachable from the commit under test, back to the first one. Not --all: the
+      # full-depth checkout also fetches every other branch, and one branch's finding would turn
+      # every branch red. Each branch is scanned when it is pushed.
       - name: Scan the full git history
-        run: '"$RUNNER_TEMP/gitleaks" git --redact --verbose --exit-code 1 .'
+        run: '"$RUNNER_TEMP/gitleaks" git --redact --verbose --exit-code 1 --log-opts=HEAD .'
 
   # The one status check to require in the branch ruleset. Skipped jobs (docs-only changes)
   # count as passed; a failed or cancelled job fails it.
