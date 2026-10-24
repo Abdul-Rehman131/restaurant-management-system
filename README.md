@@ -128,9 +128,12 @@ proposes weekly updates for actions and npm packages.
 - **Keep-alive:** [`.github/workflows/staging-keepalive.yml`](.github/workflows/staging-keepalive.yml)
   pings the staging Auth health endpoint weekly (no secrets) so the free project does not
   pause. GitHub runs schedules from `main` only, so the weekly ping starts once it is on `main`.
+- **Off switch:** both workflows run only when the repository variable `STAGING_DEPLOY_ENABLED`
+  is `true`; otherwise their jobs are skipped (not failed). Set it last, once the staging
+  secrets and variables exist ([docs/setup-checklist.md](docs/setup-checklist.md), 4.5).
 - **Staging staff accounts:** `pnpm seed:staging`, run by hand on your machine with the staging
   secret key in your shell for that one command (steps in
-  [docs/setup-checklist.md](docs/setup-checklist.md), 4.3). It creates `admin`, `cashier`,
+  [docs/setup-checklist.md](docs/setup-checklist.md), 4.6). It creates `admin`, `cashier`,
   `waiter` and `chef` and prints each new password once. `pnpm seed:staging -- --local` tries
   it on the local stack.
 

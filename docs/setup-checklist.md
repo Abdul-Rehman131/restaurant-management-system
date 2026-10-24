@@ -41,6 +41,11 @@ region **`ap-southeast-1` (Singapore)**.
 
 ## 4. T10: staging deployment (in this order)
 
+Both staging workflows (**DB deploy (staging)** and **Staging keep-alive**) stay **off** until
+the repository variable `STAGING_DEPLOY_ENABLED` is `true`. Until then they show as *skipped*,
+never failed, and nothing touches the staging project. Setting that variable is the **last**
+setup step (4.5), after every secret and variable below exists.
+
 ### 4.1 GitHub: secrets and variables for the staging migrations
 1. Supabase → your avatar → **Account preferences → Access Tokens → Generate new token**. Name
    it `github-actions-staging`, and pick an expiry (for example 90 days; note the date). Copy it
@@ -59,29 +64,14 @@ region **`ap-southeast-1` (Singapore)**.
    - `STAGING_SUPABASE_URL` = `https://aqxmdmkforcucmktwmjj.supabase.co`
    - `STAGING_SUPABASE_PUBLISHABLE_KEY` = the staging **publishable** key (Supabase → Project
      Settings → API Keys → Publishable key, `sb_publishable_...`).
+   - Do **not** add `STAGING_DEPLOY_ENABLED` yet (step 19).
 4. Leave the `production` environment empty: no secrets, no variables.
 
 ### 4.2 Merge the T10 PR
-5. Merge the T10 PR into `develop`. That push runs **DB deploy (staging)** (drift check, dry
-   run, then the migrations) and **Staging keep-alive** once. Both must be green.
+5. The T10 PR can be merged into `develop` at any time. While `STAGING_DEPLOY_ENABLED` is not
+   set, both staging workflows are skipped on that push.
 
-### 4.3 Supabase staging: after the migrations are deployed
-6. Authentication → **Hooks** → **Customize Access Token (JWT) Claims** → enable → type
-   **Postgres**, schema `public`, function **`custom_access_token_hook`** → Save. Without it,
-   logins work but every user lands on "not available", and inactive staff are not refused at
-   sign-in. (It is enabled locally in `supabase/config.toml`.)
-7. Create the staging staff accounts on **your** machine, in PowerShell from the repo folder:
-   ```powershell
-   $env:SUPABASE_SECRET_KEY = Read-Host -MaskInput 'Staging secret key'
-   pnpm seed:staging
-   Remove-Item Env:SUPABASE_SECRET_KEY
-   ```
-   Paste the staging **secret** key (Project Settings → API Keys → Secret keys) at the prompt.
-   It is not echoed and not saved in the shell history. The script creates `admin`, `cashier`,
-   `waiter` and `chef` with confirmed `@staff.invalid` logins and prints each new password
-   **once**: put them in the vault, then `Clear-Host`. Running it again skips existing accounts.
-
-### 4.4 Vercel (personal Hobby account, two projects)
+### 4.3 Vercel (personal Hobby account, two projects)
 Do this for each app. Values:
 
 | | Staff app | Customer web |
@@ -90,39 +80,67 @@ Do this for each app. Values:
 | Root Directory | `apps/staff-app` | `apps/customer-web` |
 | `VITE_APP_NAME` | `Staff App (Staging)` | not used |
 
-8. https://vercel.com/new → **Import Git Repository** → pick
+6. https://vercel.com/new → **Import Git Repository** → pick
    `Abdul-Rehman131/restaurant-management-system` (install the Vercel GitHub app for this repo
    only if asked).
-9. **Project Name**: from the table. **Framework Preset**: Vite. **Root Directory** → Edit →
+7. **Project Name**: from the table. **Framework Preset**: Vite. **Root Directory** → Edit →
    pick the folder from the table → Continue.
-10. **Build and Output Settings**: leave the defaults (Build Command `vite build` or
-    `pnpm run build`, Output Directory `dist`, Install Command automatic: Vercel installs the
-    pnpm workspace from the repo root).
-11. **Environment Variables** (add each one):
-    - `VITE_SUPABASE_URL` = `https://aqxmdmkforcucmktwmjj.supabase.co`
-    - `VITE_SUPABASE_PUBLISHABLE_KEY` = the staging **publishable** key. **Never** a secret or
-      service-role key: the staff app refuses to start with one.
-    - `VITE_APP_NAME` (staff app only) = `Staff App (Staging)`
-    - `ENABLE_EXPERIMENTAL_COREPACK` = `1` (uses the exact pnpm version from `package.json`)
-12. **Deploy**. The first build uses `main`, which is far behind; ignore that result.
-13. Project → **Settings → Environments → Production → Branch Tracking**: change the branch to
+8. **Build and Output Settings**: leave the defaults (Build Command `vite build` or
+   `pnpm run build`, Output Directory `dist`, Install Command automatic: Vercel installs the
+   pnpm workspace from the repo root).
+9. **Environment Variables** (add each one):
+   - `VITE_SUPABASE_URL` = `https://aqxmdmkforcucmktwmjj.supabase.co`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY` = the staging **publishable** key. **Never** a secret or
+     service-role key: the staff app refuses to start with one.
+   - `VITE_APP_NAME` (staff app only) = `Staff App (Staging)`
+   - `ENABLE_EXPERIMENTAL_COREPACK` = `1` (uses the exact pnpm version from `package.json`)
+10. **Deploy**. The first build uses `main`, which is far behind; ignore that result.
+11. Project → **Settings → Environments → Production → Branch Tracking**: change the branch to
     **`develop`** → Save. These Hobby projects are staging only, so their "Production" is the
     staging site and follows `develop`. Then **Deployments → Create Deployment** → `develop` → Create.
-14. **Settings → Environment Variables**: check that each variable is ticked for **Production**
+12. **Settings → Environment Variables**: check that each variable is ticked for **Production**
     and **Preview** (both point at staging; untick **Development**). PR previews use Preview, so
     they also use the staging backend.
-15. **Settings → Build and Deployment → Node.js Version**: **24.x**.
-16. **Settings → Git**: keep **Git Fork Protection** on (PRs from forks need your approval
+13. **Settings → Build and Deployment → Node.js Version**: **24.x**.
+14. **Settings → Git**: keep **Git Fork Protection** on (PRs from forks need your approval
     before they build).
-17. **Settings → Deployment Protection**: leave **Vercel Authentication** on Standard
+15. **Settings → Deployment Protection**: leave **Vercel Authentication** on Standard
     Protection: PR previews need a Vercel login, while the staging domain itself stays open so
     staff phones can reach it (the app still requires a staff login).
-18. Note the staging domains (Settings → Domains, for example `rms-staff-xxxx.vercel.app`) and
+16. Note the staging domains (Settings → Domains, for example `rms-staff-xxxx.vercel.app`) and
     send them to me. They are not secret.
 
-### 4.5 Supabase staging: URL configuration
-19. Authentication → **URL Configuration** → **Site URL** = the staff app staging domain from
-    step 18. Nothing else is needed (staff log in with a password; there are no email links).
+### 4.4 Supabase staging: URL configuration
+17. Authentication → **URL Configuration** → **Site URL** = the staff app staging domain from
+    step 16. Nothing else is needed (staff log in with a password; there are no email links).
+
+### 4.5 Turn on staging deploys (LAST setup step)
+18. Check that steps 1–4 are done: the `staging` environment has its branch rule, both secrets
+    and `SUPABASE_PROJECT_REF`, and both `STAGING_SUPABASE_*` repository variables exist.
+19. GitHub → repo → **Settings → Secrets and variables → Actions → Variables** →
+    **New repository variable**: `STAGING_DEPLOY_ENABLED` = `true` (exactly, lower case).
+    Any other value, or deleting the variable, turns both workflows off again.
+20. The next push to `develop` (for example the next merged PR) runs **DB deploy (staging)**:
+    drift check, dry run, then the migrations. Both it and the next keep-alive run must be
+    green. Changing a variable does not start a run by itself.
+
+### 4.6 Supabase staging: after the first migration deploy
+These need the database functions from the migrations, so they come after step 20.
+
+21. Authentication → **Hooks** → **Customize Access Token (JWT) Claims** → enable → type
+    **Postgres**, schema `public`, function **`custom_access_token_hook`** → Save. Without it,
+    logins work but every user lands on "not available", and inactive staff are not refused at
+    sign-in. (It is enabled locally in `supabase/config.toml`.)
+22. Create the staging staff accounts on **your** machine, in PowerShell from the repo folder:
+    ```powershell
+    $env:SUPABASE_SECRET_KEY = Read-Host -MaskInput 'Staging secret key'
+    pnpm seed:staging
+    Remove-Item Env:SUPABASE_SECRET_KEY
+    ```
+    Paste the staging **secret** key (Project Settings → API Keys → Secret keys) at the prompt.
+    It is not echoed and not saved in the shell history. The script creates `admin`, `cashier`,
+    `waiter` and `chef` with confirmed `@staff.invalid` logins and prints each new password
+    **once**: put them in the vault, then `Clear-Host`. Running it again skips existing accounts.
 
 ## 5. Sentry (postponed to T11)
 Nothing to do now. In T11: create an organisation and two React projects (`rms-staff`,
