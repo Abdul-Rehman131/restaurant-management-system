@@ -14,7 +14,25 @@ export type Database = {
       [_ in never]: never;
     };
     Enums: {
-      [_ in never]: never;
+      app_role: 'admin' | 'cashier' | 'waiter' | 'chef' | 'rider';
+      batch_status: 'sent' | 'preparing' | 'ready' | 'served' | 'cancelled';
+      order_source: 'staff' | 'website';
+      order_status:
+        | 'pending'
+        | 'accepted'
+        | 'preparing'
+        | 'ready'
+        | 'served'
+        | 'out_for_delivery'
+        | 'delivered'
+        | 'delivery_failed'
+        | 'completed'
+        | 'cancelled';
+      order_type: 'dine_in' | 'take_away' | 'delivery';
+      payment_method: 'cash' | 'card';
+      payment_status: 'unpaid' | 'paid';
+      rounding_mode: 'half_up' | 'half_even' | 'up' | 'down';
+      table_status: 'available' | 'occupied' | 'bill_requested';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -125,6 +143,27 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ['admin', 'cashier', 'waiter', 'chef', 'rider'],
+      batch_status: ['sent', 'preparing', 'ready', 'served', 'cancelled'],
+      order_source: ['staff', 'website'],
+      order_status: [
+        'pending',
+        'accepted',
+        'preparing',
+        'ready',
+        'served',
+        'out_for_delivery',
+        'delivered',
+        'delivery_failed',
+        'completed',
+        'cancelled',
+      ],
+      order_type: ['dine_in', 'take_away', 'delivery'],
+      payment_method: ['cash', 'card'],
+      payment_status: ['unpaid', 'paid'],
+      rounding_mode: ['half_up', 'half_even', 'up', 'down'],
+      table_status: ['available', 'occupied', 'bill_requested'],
+    },
   },
 } as const;
