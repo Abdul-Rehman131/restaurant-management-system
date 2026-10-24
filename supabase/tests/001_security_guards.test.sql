@@ -12,7 +12,13 @@ create function tests.authenticated_rpc_allowlist()
 returns text[]
 language sql
 as $$
-  select array['public.my_role()']::text[]
+  select array[
+    'public.admin_menu_item_costs()',
+    'public.admin_order_item_costs(p_order_id uuid)',
+    'public.admin_staff_directory()',
+    'public.get_settings()',
+    'public.my_role()'
+  ]::text[]
 $$;
 
 create function tests.public_tables_without_rls()
@@ -29,7 +35,8 @@ create function tests.functions_without_fixed_search_path(p_definer_only boolean
 returns text[]
 language sql
 as $$
-  select coalesce(array_agg(n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' order by 1), '{}')
+  select coalesce(array_agg(n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')'
+                 order by n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)), '{}')
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in ('public', 'private')
@@ -41,7 +48,8 @@ create function tests.functions_executable_by(p_role text)
 returns text[]
 language sql
 as $$
-  select coalesce(array_agg(n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' order by 1), '{}')
+  select coalesce(array_agg(n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')'
+                 order by n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)), '{}')
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in ('public', 'private')
