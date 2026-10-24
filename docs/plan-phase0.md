@@ -193,7 +193,7 @@ record_payment(request_id uuid, order_id uuid,
 - Domain primitives: `MoneyText`, `StatusBadge`, `QtyStepper`, `StickyActionBar`, `OfflineBanner`, `ConnectionDot`, `EmptyState`, `ErrorState`, `Skeleton` presets.
 - i18n: react-i18next with namespaces, `en` complete and an `ur` stub. `dir` is set on `<html>`. An ESLint rule (`i18next/no-literal-string`) blocks literal JSX strings in apps.
 - A `/dev/ui` gallery route (dev builds only) showing every component in light, dark, LTR and RTL.
-- Brand files: make `packages/ui` the single source for `logo.svg` and `logo-mark.svg`, and copy them into each app's `public/brand/` at build time. Until then the two app copies are kept in sync by hand (decision of 24 Oct 2026).
+- Brand files: `packages/ui/brand/` is the single source for the logo, logo mark and icons. They are copied into each app's `public/brand/` (gitignored) when Vite starts (`packages/ui/vite-plugin.mjs`).
 - **AC:** the gallery renders in all 4 combinations. An axe check on the gallery reports 0 serious violations. Changing `--brand` in one place re-themes the whole app.
 
 ### T8. Staff app shell (1.5 d)

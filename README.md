@@ -36,17 +36,19 @@ created only by an Admin; public sign-up is disabled.
 
 ## Commands
 
-| Command                                              | What it does                                                           |
-| ---------------------------------------------------- | ---------------------------------------------------------------------- |
-| `pnpm dev` / `pnpm build`                            | Run or build all apps                                                  |
-| `pnpm lint` / `pnpm typecheck` / `pnpm format:check` | Quality gate (CI runs the same)                                        |
-| `pnpm db:start` / `db:stop` / `db:status`            | Start, stop or inspect the local Supabase stack                        |
-| `pnpm db:new <name>`                                 | Create `supabase/migrations/<timestamp>_<name>.sql`                    |
-| `pnpm db:reset`                                      | Rebuild the local DB from all migrations, then run `supabase/seed.sql` |
-| `pnpm db:test`                                       | Run the pgTAP tests in `supabase/tests/`                               |
-| `pnpm db:lint`                                       | Lint the database schema and functions                                 |
-| `pnpm db:types`                                      | Regenerate `packages/shared/src/database.types.ts` from the local DB   |
-| `pnpm brand:icons`                                   | Regenerate favicon and PWA icons from `public/brand/logo-mark.svg`     |
+| Command                                              | What it does                                                                  |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `pnpm dev` / `pnpm build`                            | Run or build all apps                                                         |
+| `pnpm lint` / `pnpm typecheck` / `pnpm format:check` | Quality gate (CI runs the same)                                               |
+| `pnpm db:start` / `db:stop` / `db:status`            | Start, stop or inspect the local Supabase stack                               |
+| `pnpm db:new <name>`                                 | Create `supabase/migrations/<timestamp>_<name>.sql`                           |
+| `pnpm db:reset`                                      | Rebuild the local DB from all migrations, then run `supabase/seed.sql`        |
+| `pnpm db:test`                                       | Run the pgTAP tests in `supabase/tests/`                                      |
+| `pnpm db:lint`                                       | Lint the database schema and functions                                        |
+| `pnpm db:types`                                      | Regenerate `packages/shared/src/database.types.ts` from the local DB          |
+| `pnpm brand:icons`                                   | Regenerate favicon and PWA icons from `packages/ui/brand/logo-mark.svg`       |
+| `pnpm build && pnpm size`                            | Build, then check the initial-JS bundle budgets (plan 4.10)                   |
+| `pnpm --filter @rms/ui test`                         | Contrast check for both themes (text 4.5:1, UI 3:1); also runs in `pnpm test` |
 
 ## Database change workflow
 

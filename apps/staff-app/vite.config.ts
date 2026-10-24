@@ -1,4 +1,5 @@
-import { brandHtml, brandTokens } from '@rms/ui/brand-tokens';
+import { brandTokens } from '@rms/ui/brand-tokens';
+import { rmsUi } from '@rms/ui/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
@@ -15,7 +16,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
-      brandHtml(),
+      rmsUi(),
       VitePWA({
         registerType: 'prompt',
         includeAssets: ['brand/*.svg', 'brand/*.ico', 'brand/apple-touch-icon-180x180.png'],

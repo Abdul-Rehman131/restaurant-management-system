@@ -6,5 +6,6 @@ export interface BrandTokens {
   background: string;
 }
 
+export function readTokens(theme?: 'light' | 'dark'): Record<string, string>;
 export function brandTokens(): BrandTokens;
 export function brandHtml(): Plugin;
