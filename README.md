@@ -24,6 +24,11 @@ Local Supabase: API `http://127.0.0.1:54321`, Studio `http://127.0.0.1:54323`, e
 inbox (Mailpit) `http://127.0.0.1:54324`. `pnpm db:status` prints the local URLs and the
 local-only demo keys. Those keys are the same on every machine and are not secrets.
 
+**Local demo data** (`supabase/seed.sql`, loaded by `pnpm db:reset`, never on cloud projects):
+the fake "Ember Kitchen (Demo)" restaurant with demo rates (16% tax, 5% service charge), 30
+menu items, 12 tables, and six demo logins `<username>@example.com` / `demo-password-123`
+for `admin`, `cashier`, `waiter1`, `waiter2`, `chef` and `rider`. Local only.
+
 ## Commands
 
 | Command                                              | What it does                                                           |
