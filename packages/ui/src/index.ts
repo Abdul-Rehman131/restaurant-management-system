@@ -99,3 +99,36 @@ export {
 export { Toaster } from './components/Toaster';
 export { toast } from 'sonner';
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './components/Tooltip';
+
+// Display
+export { Avatar, AvatarFallback, AvatarImage, initials } from './components/Avatar';
+export { Badge, badgeVariants, type BadgeProps } from './components/Badge';
+export {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from './components/Card';
+export { ScrollArea, ScrollBar } from './components/ScrollArea';
+export { Separator } from './components/Separator';
+export {
+  Skeleton,
+  SkeletonCard,
+  SkeletonGroup,
+  SkeletonList,
+  SkeletonText,
+  SkeletonTiles,
+} from './components/Skeleton';
+export {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './components/Table';
+export { Tabs, TabsContent, TabsList, TabsTrigger } from './components/Tabs';

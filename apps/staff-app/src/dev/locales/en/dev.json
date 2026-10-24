@@ -17,7 +17,8 @@
   "sections": {
     "buttons": "Buttons",
     "fields": "Fields and form",
-    "overlays": "Overlays"
+    "overlays": "Overlays",
+    "display": "Display"
   },
   "buttons": {
     "primary": "Send to kitchen",
@@ -97,5 +98,26 @@
     "notSaved": "Not saved. Check the connection and try again.",
     "newBill": "Table 4 requested the bill",
     "printShortcut": "Ctrl+P"
+  },
+  "display": {
+    "tabsLabel": "Display components",
+    "tabTable": "Table",
+    "tabCards": "Cards and badges",
+    "tabLoading": "Loading",
+    "tableCaption": "Lines of a demo order",
+    "item": "Item",
+    "qty": "Qty",
+    "batch": "Batch",
+    "firstBatch": "First",
+    "addOn": "ADD-ON",
+    "cardTitle": "Table 7",
+    "cardDescription": "4 guests · Waiter One",
+    "cardBody": "Cards group one thing: a table, a bill or a kitchen ticket.",
+    "openOrder": "Open order",
+    "newLabel": "New",
+    "cartCount": "{{count}} items",
+    "staff": "Staff on shift",
+    "scrollTitle": "Scroll area",
+    "scrollItem": "Ticket {{n}}"
   }
 }

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import devEn from './locales/en/dev.json';
 import { ButtonsSection, FieldsSection } from './sections/FormControls';
+import { DisplaySection } from './sections/Display';
 import { OverlaysSection } from './sections/Overlays';
 
 // Development-only screen (/dev/ui). main.tsx loads it only when import.meta.env.DEV, and
@@ -108,6 +109,7 @@ export default function UiGallery() {
           <ButtonsSection />
           <FieldsSection />
           <OverlaysSection />
+          <DisplaySection />
         </main>
       </div>
     </UiProvider>

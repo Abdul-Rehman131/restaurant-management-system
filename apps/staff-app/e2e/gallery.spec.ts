@@ -29,16 +29,26 @@ for (const { theme, dir } of combinations) {
       fullPage: true,
     });
 
-    const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'])
-      .analyze();
-    const serious = results.violations.filter(
-      (violation) => violation.impact === 'serious' || violation.impact === 'critical',
-    );
-    const summary = results.violations.map(
-      (v) => `${v.impact ?? 'unknown'}: ${v.id} (${String(v.nodes.length)}) ${v.help}`,
-    );
-    testInfo.annotations.push({ type: 'axe', description: summary.join('\n') || 'no violations' });
-    expect(serious, summary.join('\n')).toEqual([]);
+    const summaries: string[] = [];
+    // Inactive tab panels are not rendered, so check each tab of the Display section too.
+    for (const tab of [null, 'Cards and badges', 'Loading']) {
+      if (tab) await page.getByRole('tab', { name: tab }).click();
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'])
+        .analyze();
+      const serious = results.violations.filter(
+        (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+      );
+      const summary = results.violations.map(
+        (v) =>
+          `${tab ?? 'page'}: ${v.impact ?? 'unknown'} ${v.id} (${String(v.nodes.length)}) ${v.help}`,
+      );
+      summaries.push(...summary);
+      expect(serious, summary.join('\n')).toEqual([]);
+    }
+    testInfo.annotations.push({
+      type: 'axe',
+      description: summaries.join('\n') || 'no violations',
+    });
   });
 }
