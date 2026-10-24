@@ -7,7 +7,10 @@ import { accessToken, auth } from './supabase';
 // the first screen (plan 4.10).
 
 /** Realtime: private broadcast channels, authorised per topic with my_role() in the database. */
-export const realtime = new RealtimeClient(`${supabaseUrl}/realtime/v1`, {
+// WebSocket URL: http(s) becomes ws(s), as @supabase/supabase-js does.
+const realtimeUrl = `${supabaseUrl.replace(/^http/, 'ws')}/realtime/v1`;
+
+export const realtime = new RealtimeClient(realtimeUrl, {
   params: { apikey: supabaseKey },
   accessToken,
 });

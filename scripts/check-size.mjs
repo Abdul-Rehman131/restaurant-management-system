@@ -4,6 +4,7 @@
 //     login      entry + everything the login screen imports        <= 180 KB
 //     signed-in  entry + the signed-in shell (data, Realtime, header) <= 180 KB
 //     each role  its own chunks beyond the two above                 <= 120 KB (admin 250)
+//     realtime   loaded after the signed-in shell's first render     <= 30 KB
 //   customer-web: the JS index.html loads before first render         <= 200 KB
 // Also fails if development-only code (the /dev/ui gallery) reaches any production chunk.
 // Exits 1 on failure. Run: pnpm build && pnpm size
@@ -24,6 +25,8 @@ const staffRoles = [
   { name: 'role: kitchen', entries: ['src/roles/kitchen/KitchenApp.tsx'], budget: 120 * KB },
   { name: 'role: cashier', entries: ['src/roles/cashier/CashierApp.tsx'], budget: 120 * KB },
   { name: 'role: admin', entries: ['src/roles/admin/AdminApp.tsx'], budget: 250 * KB },
+  // Not a role: Realtime, loaded right after the signed-in shell's first render.
+  { name: 'realtime (after first paint)', entries: ['src/lib/realtime.ts'], budget: 30 * KB },
 ];
 
 const kb = (bytes) => `${(bytes / KB).toFixed(1)} KB`;
