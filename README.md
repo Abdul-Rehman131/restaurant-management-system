@@ -26,8 +26,13 @@ local-only demo keys. Those keys are the same on every machine and are not secre
 
 **Local demo data** (`supabase/seed.sql`, loaded by `pnpm db:reset`, never on cloud projects):
 the fake "Ember Kitchen (Demo)" restaurant with demo rates (16% tax, 5% service charge), 30
-menu items, 12 tables, and six demo logins `<username>@example.com` / `demo-password-123`
-for `admin`, `cashier`, `waiter1`, `waiter2`, `chef` and `rider`. Local only.
+menu items, 12 tables, and six demo staff logins (username / `demo-password-123`): `admin`,
+`cashier`, `waiter1`, `waiter2`, `chef` and `rider`. Local only.
+
+Staff log in with a **username**. The app maps it to the internal login email
+`<username>@staff.invalid` (`public.staff_login_email()` in SQL, `staffLoginEmail()` in
+`packages/shared`). That domain is reserved and can never receive mail. Staff accounts are
+created only by an Admin; public sign-up is disabled.
 
 ## Commands
 

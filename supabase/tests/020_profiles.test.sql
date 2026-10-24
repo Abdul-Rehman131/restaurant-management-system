@@ -13,11 +13,11 @@ select throws_ok(
 );
 select throws_ok(
   $$ select tests.create_staff('Bad Name', 'chef') $$,
-  '23514', null, 'usernames must be lower-case without spaces'
+  'P0001', 'USERNAME_INVALID', 'usernames must be lower-case without spaces'
 );
 select throws_ok(
   $$ select tests.create_staff('ab', 'chef') $$,
-  '23514', null, 'usernames need at least 3 characters'
+  'P0001', 'USERNAME_INVALID', 'usernames need at least 3 characters'
 );
 
 select is(
@@ -27,7 +27,7 @@ select is(
 );
 
 select throws_ok(
-  $$ delete from auth.users where email = 'waiter.one@example.com' $$,
+  $$ delete from auth.users where email = 'waiter.one@staff.invalid' $$,
   '23503', null, 'a login with a profile cannot be deleted (archive with is_active instead)'
 );
 

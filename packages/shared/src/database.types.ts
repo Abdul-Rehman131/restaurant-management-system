@@ -851,7 +851,11 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      my_role: {
+        Args: Record<PropertyKey, never>;
+        Returns: Database['public']['Enums']['app_role'];
+      };
+      staff_login_email: { Args: { p_username: string }; Returns: string };
     };
     Enums: {
       app_role: 'admin' | 'cashier' | 'waiter' | 'chef' | 'rider';

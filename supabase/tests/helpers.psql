@@ -23,7 +23,7 @@ declare
   v_id uuid := gen_random_uuid();
 begin
   insert into auth.users (id, email, aud, role)
-  values (v_id, p_username || '@example.com', 'authenticated', 'authenticated');
+  values (v_id, public.staff_login_email(p_username), 'authenticated', 'authenticated');
 
   insert into public.profiles (id, username, full_name, role)
   values (v_id, p_username, 'Test ' || p_username, p_role);

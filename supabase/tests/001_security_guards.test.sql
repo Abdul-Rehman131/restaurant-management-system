@@ -12,7 +12,7 @@ create function tests.authenticated_rpc_allowlist()
 returns text[]
 language sql
 as $$
-  select array[]::text[]
+  select array['public.my_role()']::text[]
 $$;
 
 create function tests.public_tables_without_rls()
@@ -29,7 +29,7 @@ create function tests.functions_without_fixed_search_path(p_definer_only boolean
 returns text[]
 language sql
 as $$
-  select coalesce(array_agg(p.oid::regprocedure::text order by 1), '{}')
+  select coalesce(array_agg(n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' order by 1), '{}')
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in ('public', 'private')
@@ -41,7 +41,7 @@ create function tests.functions_executable_by(p_role text)
 returns text[]
 language sql
 as $$
-  select coalesce(array_agg(p.oid::regprocedure::text order by 1), '{}')
+  select coalesce(array_agg(n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' order by 1), '{}')
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in ('public', 'private')
@@ -130,7 +130,7 @@ language sql
 security definer
 as $$ select 1 $$;
 select is(
-  tests.functions_without_fixed_search_path(true), '{"guard_probe_fn()"}'::text[],
+  tests.functions_without_fixed_search_path(true), '{"public.guard_probe_fn()"}'::text[],
   'probe: a SECURITY DEFINER function without search_path is detected'
 );
 select is(
