@@ -1,0 +1,18 @@
+{
+  "app": {
+    "title": "Staff",
+    "logoLabel": "Restaurant logo"
+  },
+  "scaffold": {
+    "heading": "Foundation build",
+    "body": "This is the Phase 0 shell. Sign-in and role screens arrive in T8.",
+    "tokens": "Design tokens",
+    "brand": "Brand",
+    "accent": "Accent",
+    "success": "Success",
+    "warning": "Warning",
+    "danger": "Danger",
+    "info": "Info",
+    "primaryAction": "Primary action"
+  }
+}

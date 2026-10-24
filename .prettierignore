@@ -1,0 +1,11 @@
+pnpm-lock.yaml
+dist/
+dev-dist/
+.turbo/
+coverage/
+docs/
+*.svg
+# Hand-maintained: the owner swaps this file per restaurant
+packages/ui/src/brand.css
+# Kept under 60 lines; formatting would add blank lines
+CLAUDE.md

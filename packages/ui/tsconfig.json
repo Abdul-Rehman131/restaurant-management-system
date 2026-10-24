@@ -1,0 +1,4 @@
+{
+  "extends": "@rms/config/tsconfig.react.json",
+  "include": ["src", "brand-tokens.d.mts"]
+}
