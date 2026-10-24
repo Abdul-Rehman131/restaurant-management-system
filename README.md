@@ -27,7 +27,13 @@ local-only demo keys. Those keys are the same on every machine and are not secre
 **Local demo data** (`supabase/seed.sql`, loaded by `pnpm db:reset`, never on cloud projects):
 the fake "Ember Kitchen (Demo)" restaurant with demo rates (16% tax, 5% service charge), 30
 menu items, 12 tables, and six demo staff logins (username / `demo-password-123`): `admin`,
-`cashier`, `waiter1`, `waiter2`, `chef` and `rider`. Local only.
+`cashier`, `waiter1`, `waiter2`, `chef` and `rider`, plus `former`, a deactivated account that
+must be refused. Local only.
+
+**Staff app env:** copy `.env.example` to `apps/staff-app/.env.local` and fill in
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` from `pnpm db:status` (the local API
+URL and the `sb_publishable_...` key). The file is git-ignored. Never use a secret key there:
+the app refuses to start with one.
 
 Staff log in with a **username**. The app maps it to the internal login email
 `<username>@staff.invalid` (`public.staff_login_email()` in SQL, `staffLoginEmail()` in
@@ -36,22 +42,23 @@ created only by an Admin; public sign-up is disabled.
 
 ## Commands
 
-| Command                                              | What it does                                                                                                                                      |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm dev` / `pnpm build`                            | Run or build all apps                                                                                                                             |
-| `pnpm lint` / `pnpm typecheck` / `pnpm format:check` | Quality gate (CI runs the same)                                                                                                                   |
-| `pnpm db:start` / `db:stop` / `db:status`            | Start, stop or inspect the local Supabase stack                                                                                                   |
-| `pnpm db:new <name>`                                 | Create `supabase/migrations/<timestamp>_<name>.sql`                                                                                               |
-| `pnpm db:reset`                                      | Rebuild the local DB from all migrations, then run `supabase/seed.sql`                                                                            |
-| `pnpm db:test`                                       | Run the pgTAP tests in `supabase/tests/`                                                                                                          |
-| `pnpm db:lint`                                       | Lint the database schema and functions                                                                                                            |
-| `pnpm db:types`                                      | Regenerate `packages/shared/src/database.types.ts` from the local DB                                                                              |
-| `pnpm brand:icons`                                   | Regenerate favicon and PWA icons from `packages/ui/brand/logo-mark.svg`                                                                           |
-| `pnpm build && pnpm size`                            | Build, then check the initial-JS bundle budgets (plan 4.10)                                                                                       |
-| `pnpm --filter @rms/ui test`                         | Contrast check for both themes (text 4.5:1, UI 3:1); also runs in `pnpm test`                                                                     |
-| `pnpm test`                                          | Unit tests (Vitest, money helpers) and the contrast check                                                                                         |
-| `pnpm e2e`                                           | Playwright: the /dev/ui gallery with axe in light, dark, LTR and RTL (first run: `pnpm --filter @rms/staff-app exec playwright install chromium`) |
-| `pnpm dev`, then open http://localhost:5173/dev/ui   | Component gallery (development builds only); `?theme=dark&dir=rtl&density=desk`                                                                   |
+| Command                                              | What it does                                                                                                                                                                                                                                      |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev` / `pnpm build`                            | Run or build all apps                                                                                                                                                                                                                             |
+| `pnpm lint` / `pnpm typecheck` / `pnpm format:check` | Quality gate (CI runs the same)                                                                                                                                                                                                                   |
+| `pnpm db:start` / `db:stop` / `db:status`            | Start, stop or inspect the local Supabase stack                                                                                                                                                                                                   |
+| `pnpm db:new <name>`                                 | Create `supabase/migrations/<timestamp>_<name>.sql`                                                                                                                                                                                               |
+| `pnpm db:reset`                                      | Rebuild the local DB from all migrations, then run `supabase/seed.sql`                                                                                                                                                                            |
+| `pnpm db:test`                                       | Run the pgTAP tests in `supabase/tests/`                                                                                                                                                                                                          |
+| `pnpm db:lint`                                       | Lint the database schema and functions                                                                                                                                                                                                            |
+| `pnpm db:types`                                      | Regenerate `packages/shared/src/database.types.ts` from the local DB                                                                                                                                                                              |
+| `pnpm brand:icons`                                   | Regenerate favicon and PWA icons from `packages/ui/brand/logo-mark.svg`                                                                                                                                                                           |
+| `pnpm build && pnpm size`                            | Build, then check the initial-JS bundle budgets (plan 4.10)                                                                                                                                                                                       |
+| `pnpm --filter @rms/ui test`                         | Contrast check for both themes (text 4.5:1, UI 3:1); also runs in `pnpm test`                                                                                                                                                                     |
+| `pnpm test`                                          | Unit tests (Vitest, money helpers) and the contrast check                                                                                                                                                                                         |
+| `pnpm e2e`                                           | Playwright on the dev server: sign-in and role routing against local Supabase (`pnpm db:start` first), plus the /dev/ui gallery with axe in light, dark, LTR and RTL (first run: `pnpm --filter @rms/staff-app exec playwright install chromium`) |
+| `pnpm --filter @rms/staff-app e2e:pwa`               | After `pnpm build`: PWA update toast on a production preview                                                                                                                                                                                      |
+| `pnpm dev`, then open http://localhost:5173/dev/ui   | Component gallery (development builds only); `?theme=dark&dir=rtl&density=desk`                                                                                                                                                                   |
 
 ## Database change workflow
 
