@@ -5,7 +5,118 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never;
+      branches: {
+        Row: {
+          created_at: string;
+          id: string;
+          is_active: boolean;
+          name: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          id?: string;
+          is_active?: boolean;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          is_active?: boolean;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      settings: {
+        Row: {
+          address: string | null;
+          branch_id: string;
+          created_at: string;
+          currency_code: string;
+          currency_minor_units: number;
+          day_cutoff_time: string;
+          discount_reduces_charges: boolean;
+          kitchen_late_min: number;
+          kitchen_warn_min: number;
+          phone: string | null;
+          prices_include_tax: boolean;
+          receipt_footer: string | null;
+          restaurant_name: string;
+          rounding_mode: Database['public']['Enums']['rounding_mode'];
+          rounding_unit_minor: number;
+          service_charge_bps: number;
+          service_charge_on_delivery: boolean;
+          service_charge_on_dine_in: boolean;
+          service_charge_on_take_away: boolean;
+          tax_bps: number;
+          tax_on_service_charge: boolean;
+          timezone: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          address?: string | null;
+          branch_id?: string;
+          created_at?: string;
+          currency_code?: string;
+          currency_minor_units?: number;
+          day_cutoff_time?: string;
+          discount_reduces_charges?: boolean;
+          kitchen_late_min?: number;
+          kitchen_warn_min?: number;
+          phone?: string | null;
+          prices_include_tax?: boolean;
+          receipt_footer?: string | null;
+          restaurant_name: string;
+          rounding_mode?: Database['public']['Enums']['rounding_mode'];
+          rounding_unit_minor?: number;
+          service_charge_bps?: number;
+          service_charge_on_delivery?: boolean;
+          service_charge_on_dine_in?: boolean;
+          service_charge_on_take_away?: boolean;
+          tax_bps?: number;
+          tax_on_service_charge?: boolean;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Update: {
+          address?: string | null;
+          branch_id?: string;
+          created_at?: string;
+          currency_code?: string;
+          currency_minor_units?: number;
+          day_cutoff_time?: string;
+          discount_reduces_charges?: boolean;
+          kitchen_late_min?: number;
+          kitchen_warn_min?: number;
+          phone?: string | null;
+          prices_include_tax?: boolean;
+          receipt_footer?: string | null;
+          restaurant_name?: string;
+          rounding_mode?: Database['public']['Enums']['rounding_mode'];
+          rounding_unit_minor?: number;
+          service_charge_bps?: number;
+          service_charge_on_delivery?: boolean;
+          service_charge_on_dine_in?: boolean;
+          service_charge_on_take_away?: boolean;
+          tax_bps?: number;
+          tax_on_service_charge?: boolean;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'settings_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: true;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
