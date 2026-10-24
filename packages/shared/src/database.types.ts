@@ -187,6 +187,51 @@ export type Database = {
           },
         ];
       };
+      restaurant_tables: {
+        Row: {
+          branch_id: string;
+          capacity: number;
+          created_at: string;
+          id: string;
+          is_active: boolean;
+          number: number;
+          section: string;
+          status: Database['public']['Enums']['table_status'];
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          branch_id?: string;
+          capacity?: number;
+          created_at?: string;
+          id?: string;
+          is_active?: boolean;
+          number: number;
+          section?: string;
+          status?: Database['public']['Enums']['table_status'];
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          capacity?: number;
+          created_at?: string;
+          id?: string;
+          is_active?: boolean;
+          number?: number;
+          section?: string;
+          status?: Database['public']['Enums']['table_status'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'restaurant_tables_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       settings: {
         Row: {
           address: string | null;
