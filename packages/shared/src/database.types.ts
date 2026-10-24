@@ -494,6 +494,93 @@ export type Database = {
           },
         ];
       };
+      payments: {
+        Row: {
+          amount: number;
+          branch_id: string;
+          created_at: string;
+          id: string;
+          method: Database['public']['Enums']['payment_method'];
+          order_id: string;
+          received_at: string;
+          received_by: string;
+          reference: string | null;
+          request_id: string;
+          tender_no: number;
+          tendered: number | null;
+          updated_at: string;
+          void_reason: string | null;
+          voided_at: string | null;
+          voided_by: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount: number;
+          branch_id?: string;
+          created_at?: string;
+          id?: string;
+          method: Database['public']['Enums']['payment_method'];
+          order_id: string;
+          received_at?: string;
+          received_by: string;
+          reference?: string | null;
+          request_id: string;
+          tender_no: number;
+          tendered?: number | null;
+          updated_at?: string;
+          void_reason?: string | null;
+          voided_at?: string | null;
+          voided_by?: string | null;
+        };
+        Update: {
+          amount?: number;
+          branch_id?: string;
+          created_at?: string;
+          id?: string;
+          method?: Database['public']['Enums']['payment_method'];
+          order_id?: string;
+          received_at?: string;
+          received_by?: string;
+          reference?: string | null;
+          request_id?: string;
+          tender_no?: number;
+          tendered?: number | null;
+          updated_at?: string;
+          void_reason?: string | null;
+          voided_at?: string | null;
+          voided_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payments_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'payments_order_id_fkey';
+            columns: ['order_id'];
+            isOneToOne: false;
+            referencedRelation: 'orders';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'payments_received_by_fkey';
+            columns: ['received_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'payments_voided_by_fkey';
+            columns: ['voided_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profiles: {
         Row: {
           branch_id: string;
