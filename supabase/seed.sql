@@ -5,6 +5,7 @@
 -- Demo logins (local only): username / demo-password-123 (login email <username>@staff.invalid,
 -- see public.staff_login_email)
 --   admin, cashier, waiter1, waiter2, chef, rider
+--   former: a DEACTIVATED waiter, for the "deactivated user is denied" e2e test
 
 -- Settings: demo brand and DEMO rates only (the real rates are open question Q1/D2).
 update public.settings
@@ -25,7 +26,8 @@ with staff (id, username, full_name, role) as (
     ('a0000000-0000-0000-0000-000000000003'::uuid, 'waiter1', 'Demo Waiter One', 'waiter'),
     ('a0000000-0000-0000-0000-000000000004'::uuid, 'waiter2', 'Demo Waiter Two', 'waiter'),
     ('a0000000-0000-0000-0000-000000000005'::uuid, 'chef',    'Demo Chef',       'chef'),
-    ('a0000000-0000-0000-0000-000000000006'::uuid, 'rider',   'Demo Rider',      'rider')
+    ('a0000000-0000-0000-0000-000000000006'::uuid, 'rider',   'Demo Rider',      'rider'),
+    ('a0000000-0000-0000-0000-000000000007'::uuid, 'former',  'Demo Former Waiter', 'waiter')
 ),
 new_users as (
   insert into auth.users (
@@ -57,6 +59,9 @@ insert into public.profiles (id, username, full_name, role)
 select s.id, s.username, s.full_name, s.role
 from staff s
 join new_identities i on i.user_id = s.id;
+
+-- A former staff member: the account exists but is archived (rule 6), so sign-in is refused.
+update public.profiles set is_active = false where username = 'former';
 
 -- Menu categories
 insert into public.categories (id, name, sort_order) values
