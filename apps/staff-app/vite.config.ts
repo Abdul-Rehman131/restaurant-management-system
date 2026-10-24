@@ -19,6 +19,12 @@ export default defineConfig(({ mode }) => {
       rmsUi(),
       VitePWA({
         registerType: 'prompt',
+        // Registered by src/shell/pwa.ts, which shows the "update available" toast.
+        injectRegister: false,
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,woff2,svg,png,ico}'],
+          cleanupOutdatedCaches: true,
+        },
         includeAssets: ['brand/*.svg', 'brand/*.ico', 'brand/apple-touch-icon-180x180.png'],
         manifest: {
           name: appName,

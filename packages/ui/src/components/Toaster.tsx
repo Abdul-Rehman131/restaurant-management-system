@@ -6,8 +6,8 @@ const toastClassNames = {
   toast:
     'w-full gap-3 rounded-lg border border-border bg-surface-raised p-4 font-sans text-base text-fg shadow-lg',
   description: 'text-sm text-fg-muted',
-  actionButton: 'bg-brand! text-brand-fg! font-semibold! rounded-md! min-h-10!',
-  cancelButton: 'bg-surface-2! text-fg! rounded-md! min-h-10!',
+  actionButton: 'bg-brand! text-brand-fg! font-semibold! rounded-md! min-h-11! px-4! text-sm!',
+  cancelButton: 'bg-surface-2! text-fg! rounded-md! min-h-11! px-4! text-sm!',
 };
 
 /**

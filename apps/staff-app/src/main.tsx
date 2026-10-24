@@ -25,3 +25,9 @@ createRoot(root).render(
     </QueryClientProvider>
   </StrictMode>,
 );
+
+// Service worker and "update available" toast, after the first screen (production only).
+if (import.meta.env.PROD)
+  void import('./shell/pwa').then(({ registerPwa }) => {
+    registerPwa();
+  });
