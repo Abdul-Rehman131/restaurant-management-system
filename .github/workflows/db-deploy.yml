@@ -5,6 +5,9 @@
 # (deployment branch: develop only) and are passed only to the steps that need them. It never
 # runs on pull_request, on forks, or on any other branch, and nothing here prints a secret.
 # Migrations only: seed.sql never runs on cloud projects (no --include-seed).
+#
+# Off until the repository variable STAGING_DEPLOY_ENABLED is 'true' (the last step of the
+# staging setup, docs/setup-checklist.md). Until then the job is skipped, not failed.
 name: DB deploy (staging)
 
 on:
@@ -21,8 +24,8 @@ concurrency:
 
 jobs:
   staging:
-    # Forks never have these secrets; skip them explicitly anyway.
-    if: github.repository == 'Abdul-Rehman131/restaurant-management-system'
+    # Forks never have these secrets; skip them explicitly anyway. Skipped until staging is set up.
+    if: github.repository == 'Abdul-Rehman131/restaurant-management-system' && vars.STAGING_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: staging
