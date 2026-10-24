@@ -16,8 +16,10 @@ as $$
     'public.admin_menu_item_costs()',
     'public.admin_order_item_costs(p_order_id uuid)',
     'public.admin_staff_directory()',
+    'public.create_order(p_request_id uuid, p_type order_type, p_table_id uuid, p_customer_name text, p_customer_phone text, p_items jsonb)',
     'public.get_settings()',
-    'public.my_role()'
+    'public.my_role()',
+    'public.record_payment(p_request_id uuid, p_order_id uuid, p_tenders jsonb)'
   ]::text[]
 $$;
 

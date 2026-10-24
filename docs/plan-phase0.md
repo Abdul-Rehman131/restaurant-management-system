@@ -134,6 +134,11 @@ Migrations, in order:
   - **Settings:** RPC only (`get_settings()`, fields per role). Admin reads costs and staff phones through `admin_*` RPCs.
   - **Probe tests:** the "new table without RLS fails" check is a pgTAP probe that runs on every test run, not a one-off branch demo. It is confirmed in CI at T9.
   - **Chef kitchen RPCs** (`get_kitchen_queue`, Sold Out list) are P1, as planned.
+  - **Hook is on locally:** `supabase/config.toml` enables it (`[auth.hook.custom_access_token]`, `enabled = true`, `uri = "pg-functions://postgres/public/custom_access_token_hook"`), so every local sign-in and refresh goes through it.
+    - **What the tests cover:** `026_access_token_hook.test.sql` calls the function directly (claim added, inactive or unknown staff refused, only `supabase_auth_admin` may execute it). That does **not** go through the Auth server.
+    - **Checked by hand:** the Auth path was verified manually in T5 with real logins against the local stack (`app_role` present for all 6 demo roles, 403 for a deactivated user).
+    - **Automated end-to-end coverage** (log in, then read `app_role` from the session) arrives with the Playwright login smoke test in T8/T9.
+    - Staging and production enable the hook at T10 (setup checklist).
 
 ### T6. Early proof: `create_order` and `record_payment` (1.5 d)
 Both are `SECURITY DEFINER`, `set search_path = ''`, check the role first, run in one transaction, raise stable error codes, and are idempotent by `request_id`.
@@ -513,6 +518,13 @@ Oldest first; age bar colour on the left edge + text label; no prices.
 | 5 | Production setup (Pro plans, backups and a tested restore). | Per-role one-page guides, UAT on staging, fixes, go-live checklist (spec 12). |
 
 The exit gate is the 10 P1 done criteria in spec section 11. Each one maps to a Playwright or pgTAP test, or a written UAT step.
+
+**P1 requirements carried over from T5:**
+1. **`staff-admin` Edge Function: create.**
+   - Creates the Auth user with the internal login email `public.staff_login_email(username)` (`<username>@staff.invalid`) and **`email_confirm: true`**. These addresses can never receive mail, so an unconfirmed account could never sign in.
+   - Creates the profile in the same request. The profile trigger rejects any username and email mismatch.
+2. **`staff-admin` Edge Function: deactivate.** Sets `profiles.is_active = false` **and bans the Auth user** (`ban_duration`, for example `876000h`), so no new session or refresh can be issued even if the token hook is misconfigured. Reactivation reverses both. `my_role()` already denies the deactivated user's current JWT on the next request.
+3. **Realtime channel authorization.** Policies on `realtime.messages` (private broadcast channels) must decide access with `public.my_role()` (profiles, by `auth.uid()`), **never** the JWT `app_role` claim. The claim is for UI routing only and stays stale until the token expires. Add pgTAP tests per topic and role, including a deactivated user.
 
 ---
 

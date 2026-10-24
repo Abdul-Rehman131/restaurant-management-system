@@ -876,11 +876,26 @@ export type Database = {
           username: string;
         }[];
       };
+      create_order: {
+        Args: {
+          p_customer_name: string;
+          p_customer_phone: string;
+          p_items: Json;
+          p_request_id: string;
+          p_table_id: string;
+          p_type: Database['public']['Enums']['order_type'];
+        };
+        Returns: Json;
+      };
       custom_access_token_hook: { Args: { event: Json }; Returns: Json };
       get_settings: { Args: Record<PropertyKey, never>; Returns: Json };
       my_role: {
         Args: Record<PropertyKey, never>;
         Returns: Database['public']['Enums']['app_role'];
+      };
+      record_payment: {
+        Args: { p_order_id: string; p_request_id: string; p_tenders: Json };
+        Returns: Json;
       };
       staff_login_email: { Args: { p_username: string }; Returns: string };
     };

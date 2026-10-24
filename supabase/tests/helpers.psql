@@ -6,6 +6,7 @@
 --   tests.create_table(number)                    restaurant table
 --   tests.create_item(name, price, needs_kitchen) menu item in a test category
 --   tests.create_order(type, table_id, number)    order with batch 1, no lines, zero totals
+--   tests.line(menu_item_id, quantity, notes)     one create_order item as jsonb
 --
 -- Session helpers (RLS tests):
 --   tests.login_as(user_id)   act as that user: role authenticated + JWT claims (auth.uid())
@@ -122,6 +123,20 @@ begin
   execute 'reset role';
   perform set_config('request.jwt.claims', '', true);
 end;
+$$;
+
+-- One create_order item: {"menu_item_id", "quantity", "notes"} (the only accepted keys).
+create or replace function tests.line(
+  p_menu_item_id uuid,
+  p_quantity integer default 1,
+  p_notes text default null
+)
+returns jsonb
+language sql
+immutable
+as $$
+  select jsonb_strip_nulls(jsonb_build_object(
+    'menu_item_id', p_menu_item_id, 'quantity', p_quantity, 'notes', p_notes))
 $$;
 
 -- The API roles must be able to call the session helpers (test schema only, rolled back).
