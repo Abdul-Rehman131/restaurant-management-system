@@ -291,7 +291,7 @@ restaurant-system/
 | Migrations | `db reset` | Auto on merge to `develop` | On merge to `main` + manual approval |
 | Env vars | `.env.local` | Vercel and GitHub Environment `staging` | Vercel and GitHub Environment `production` |
 
-Front-end env vars are only `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (public by design, and safe because of RLS) and `VITE_SENTRY_DSN`. `scripts/check-env.ts` fails the build if a variable named `*SERVICE_ROLE*` is visible to Vite.
+Front-end env vars are only `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (the `sb_publishable_...` key: public by design, and safe because of RLS) and `VITE_SENTRY_DSN`. `scripts/check-env.ts` fails the build if a variable named `*SERVICE_ROLE*` is visible to Vite.
 
 The Free plan pauses after 7 days of inactivity (R2). The staging project gets a weekly CI keep-alive ping until it moves to Pro.
 

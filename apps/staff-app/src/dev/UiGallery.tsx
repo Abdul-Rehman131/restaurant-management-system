@@ -1,16 +1,17 @@
 import { PublicSettingsProvider, type PublicSettings } from '@rms/shared';
-import { applyDensity, applyTheme, Button, UiProvider, type Density } from '@rms/ui';
+import { Button, UiProvider, type Density } from '@rms/ui';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import i18n from '../i18n';
+import { useScreenAppearance } from '../shell/theme-context';
 import devEn from './locales/en/dev.json';
 import { ButtonsSection, FieldsSection } from './sections/FormControls';
 import { DisplaySection } from './sections/Display';
 import { DomainSection } from './sections/Domain';
 import { OverlaysSection } from './sections/Overlays';
 
-// Development-only screen (/dev/ui). main.tsx loads it only when import.meta.env.DEV, and
+// Development-only screen (/dev/ui). The router adds it only when import.meta.env.DEV, and
 // `pnpm size` fails the build if this marker ever reaches a production bundle.
 const DEV_ONLY_MARKER = 'rms-dev-only';
 
@@ -80,12 +81,15 @@ export default function UiGallery() {
     readOption('density', ['touch', 'display', 'desk'], 'touch'),
   );
 
+  useScreenAppearance({ theme, density });
+
   useEffect(() => {
-    applyTheme(theme, { persist: false });
     document.documentElement.dir = dir;
-    applyDensity(density);
     const params = new URLSearchParams({ theme, dir, density });
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+    return () => {
+      document.documentElement.dir = i18n.dir(i18n.language);
+    };
   }, [theme, dir, density]);
 
   return (
