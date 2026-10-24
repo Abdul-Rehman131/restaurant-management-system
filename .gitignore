@@ -25,7 +25,7 @@ supabase/.temp/
 apps/*/public/brand/
 
 # test output
-playwright-report/
+playwright-report*/
 test-results/
 
 # editors and OS

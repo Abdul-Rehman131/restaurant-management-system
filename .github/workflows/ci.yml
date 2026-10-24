@@ -1,0 +1,196 @@
+# CI for a PUBLIC repository: no secrets are used anywhere. Every database check runs against a
+# local Supabase stack started inside the runner (local demo keys only).
+# Never add pull_request_target: it would run fork code with write access and secrets.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main, develop]
+
+# Read-only by default; jobs ask for more only when they need it.
+permissions:
+  contents: read
+
+# A new push cancels the older run of the same branch or PR.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TURBO_TELEMETRY_DISABLED: '1'
+  # Services the database job does not need (`supabase start -x`).
+  SUPABASE_DB_ONLY: gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+  # The e2e job needs auth, REST, Realtime and the gateway; not storage, studio or functions.
+  SUPABASE_E2E_SKIP: storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+
+jobs:
+  # Docs-only changes skip the heavy jobs (database, build-and-size, e2e).
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Prettier check
+        run: pnpm format:check
+      - name: Unit tests (Vitest)
+        run: pnpm turbo run test --filter=!@rms/ui
+      - name: Contrast check (both themes)
+        run: pnpm --filter @rms/ui test
+
+  database:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      # Output goes to /dev/null: it lists the local demo keys, which are not secrets but would
+      # look like leaks in a public log. Errors still go to stderr.
+      - name: Start Supabase (database only)
+        run: pnpm exec supabase start -x "$SUPABASE_DB_ONLY" > /dev/null
+      - name: Reset (all migrations from zero, then seed.sql)
+        run: pnpm db:reset
+      - name: pgTAP tests
+        run: pnpm db:test
+      - name: Database lint
+        run: pnpm db:lint
+      - name: Generated types are up to date
+        run: |
+          pnpm db:types
+          git diff --exit-code -- packages/shared/src/database.types.ts \
+            || { echo "::error file=packages/shared/src/database.types.ts::Generated types are stale. Run pnpm db:types and commit the result."; exit 1; }
+
+  build-and-size:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Build
+        run: pnpm build
+      - name: Bundle budgets (fails when exceeded)
+        run: pnpm size
+
+  e2e:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Start Supabase
+        run: pnpm exec supabase start -x "$SUPABASE_E2E_SKIP" > /dev/null
+      - name: Staff app env from the local stack
+        # Local demo URL and publishable key only (identical on every machine, not secrets).
+        run: |
+          eval "$(pnpm exec supabase status -o env | grep -E '^(API_URL|PUBLISHABLE_KEY)=')"
+          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" \
+            > apps/staff-app/.env.local
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(pnpm --filter @rms/staff-app exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium
+      - name: Install Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @rms/staff-app exec playwright install --with-deps chromium
+      - name: Install Chromium system packages
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @rms/staff-app exec playwright install-deps chromium
+      - name: Playwright suite (dev server, local Supabase)
+        run: pnpm e2e
+      - name: Build the staff app (production preview for the PWA test)
+        run: pnpm --filter @rms/staff-app build
+      - name: PWA update test
+        run: pnpm --filter @rms/staff-app e2e:pwa
+      - name: Upload report and traces
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report
+          path: |
+            apps/staff-app/playwright-report/
+            apps/staff-app/playwright-report-pwa/
+            apps/staff-app/test-results/
+          retention-days: 14
+
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the full history, not just the last commit
+          persist-credentials: false
+      - name: Install gitleaks (pinned release, checksum verified)
+        run: |
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLO "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}"
+          echo "${GITLEAKS_SHA256}  ${tarball}" | sha256sum -c -
+          tar -xzf "$tarball" -C "$RUNNER_TEMP" gitleaks
+      - name: Scan the full git history
+        run: '"$RUNNER_TEMP/gitleaks" git --redact --verbose --exit-code 1 .'
+
+  # The one status check to require in the branch ruleset. Skipped jobs (docs-only changes)
+  # count as passed; a failed or cancelled job fails it.
+  ci:
+    if: always()
+    needs: [changes, quality, database, build-and-size, e2e, secrets]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: All jobs passed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "One or more jobs failed or were cancelled: ${{ join(needs.*.result, ', ') }}"
+          exit 1
+      - run: echo "All jobs passed or were skipped for a docs-only change."
