@@ -1,7 +1,9 @@
 // `pnpm brand:icons` generates favicon, PWA (64/192/512), maskable and Apple icons from the
-// logo mark. Re-run after replacing public/brand/logo-mark.svg, then commit the PNGs.
-import { brandTokens } from '@rms/ui/brand-tokens';
+// logo mark into ./brand. Re-run after replacing brand/logo-mark.svg, then commit the PNGs.
+// The apps receive ./brand at build time (vite-plugin.mjs), so there is one copy only.
 import { defineConfig, minimal2023Preset as preset } from '@vite-pwa/assets-generator/config';
+
+import { brandTokens } from './brand-tokens.mjs';
 
 const { brand } = brandTokens();
 
@@ -13,5 +15,5 @@ export default defineConfig({
     maskable: { ...preset.maskable, resizeOptions: { background: brand } },
     apple: { ...preset.apple, resizeOptions: { background: brand } },
   },
-  images: ['public/brand/logo-mark.svg'],
+  images: ['brand/logo-mark.svg'],
 });

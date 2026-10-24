@@ -14,7 +14,7 @@
     "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "brand:icons": "pnpm --filter \"./apps/*\" run brand:icons",
+    "brand:icons": "pnpm --filter @rms/ui run brand:icons",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:status": "supabase status",
@@ -22,7 +22,9 @@
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
     "db:lint": "supabase db lint --level warning --fail-on warning",
-    "db:types": "node scripts/db-types.mjs"
+    "db:types": "node scripts/db-types.mjs",
+    "size": "node scripts/check-size.mjs",
+    "e2e": "pnpm --filter @rms/staff-app e2e"
   },
   "devDependencies": {
     "@rms/config": "workspace:*",

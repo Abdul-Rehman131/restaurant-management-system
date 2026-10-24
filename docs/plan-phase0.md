@@ -193,8 +193,17 @@ record_payment(request_id uuid, order_id uuid,
 - Domain primitives: `MoneyText`, `StatusBadge`, `QtyStepper`, `StickyActionBar`, `OfflineBanner`, `ConnectionDot`, `EmptyState`, `ErrorState`, `Skeleton` presets.
 - i18n: react-i18next with namespaces, `en` complete and an `ur` stub. `dir` is set on `<html>`. An ESLint rule (`i18next/no-literal-string`) blocks literal JSX strings in apps.
 - A `/dev/ui` gallery route (dev builds only) showing every component in light, dark, LTR and RTL.
-- Brand files: make `packages/ui` the single source for `logo.svg` and `logo-mark.svg`, and copy them into each app's `public/brand/` at build time. Until then the two app copies are kept in sync by hand (decision of 24 Oct 2026).
+- Brand files: `packages/ui/brand/` is the single source for the logo, logo mark and icons. They are copied into each app's `public/brand/` (gitignored) when Vite starts (`packages/ui/vite-plugin.mjs`).
 - **AC:** the gallery renders in all 4 combinations. An axe check on the gallery reports 0 serious violations. Changing `--brand` in one place re-themes the whole app.
+- **As built (T7):**
+  - **Components:** every 4.4 "shadcn base" component and every T7 domain primitive, in `packages/ui/src/components/` (one per file). Patterns and other domain components (DataTable, ReasonDialog, KitchenTicket, PaymentPad, ...) are P1, as planned.
+  - **Tokens added for contrast:** `--input` (field borders, 3:1), `--accent-fg`, `--danger-fg`, `--surface-raised` (popovers; lighter surfaces in dark mode), `--overlay`. `--border` stays a soft divider only.
+  - **Checks:** `pnpm test` runs the contrast check for both themes (66 pairs, reads `brand.css` and `tokens.css`). `pnpm size` checks the initial-JS budgets and fails if gallery code reaches a production bundle. `pnpm e2e` runs the gallery in light, dark, LTR and RTL on phone and desktop with axe, and opens every overlay (axe plus focus return).
+  - **Overlays:** `UiProvider` makes the page behind an open Radix overlay `inert` while Radix hides it, because Radix sets `aria-hidden` but leaves the content focusable (axe `aria-hidden-focus`).
+  - **Skeletons are static** (no pulse), following 4.3. Only the P1 late-ticket pulse will animate.
+  - **Money:** `formatMoney` in `@rms/shared` formats integer minor units without floats, using `currency_code` and `currency_minor_units` from settings. `MoneyText` is always LTR, so amounts stay intact in RTL.
+  - **i18n:** `setupI18n` in `@rms/ui/i18n` (English bundled, other languages lazy-loaded, `ui` namespace for the components). Zod messages are `ui:validation.*` keys. The literal-string ESLint rule exempts only `data-*`, `htmlFor` and `autoComplete`.
+  - **Gallery:** the staff app's `main.tsx` mounts `/dev/ui` only when `import.meta.env.DEV`; it moves into the router in T8. Options also come from the URL: `?theme=dark&dir=rtl&density=desk`.
 
 ### T8. Staff app shell (1.5 d)
 - Vite, React Router with lazy role routes (`/waiter`, `/kitchen`, `/cashier`, `/admin`; `/rider` is P3). Providers: Supabase client, TanStack Query, i18n, theme.
@@ -525,6 +534,11 @@ The exit gate is the 10 P1 done criteria in spec section 11. Each one maps to a 
    - Creates the profile in the same request. The profile trigger rejects any username and email mismatch.
 2. **`staff-admin` Edge Function: deactivate.** Sets `profiles.is_active = false` **and bans the Auth user** (`ban_duration`, for example `876000h`), so no new session or refresh can be issued even if the token hook is misconfigured. Reactivation reverses both. `my_role()` already denies the deactivated user's current JWT on the next request.
 3. **Realtime channel authorization.** Policies on `realtime.messages` (private broadcast channels) must decide access with `public.my_role()` (profiles, by `auth.uid()`), **never** the JWT `app_role` claim. The claim is for UI routing only and stays stale until the token expires. Add pgTAP tests per topic and role, including a deactivated user.
+
+**P1 requirements from the T6 decision gate ([ADR 002](adr/002-supabase-confirmed.md)):**
+1. **Week 1 conditions.** A Zod response schema per RPC in `packages/shared`, and a shared SQL validation helper in `private` for the repeated JSON checks.
+2. **`create_order`: optional `waiter_id` for Cashier and Admin.** Today a Dine-In order created by a Cashier or Admin has no waiter, so no waiter sees it. Add an optional parameter that only Cashier and Admin may set; it must name an active waiter. A waiter's own call keeps `waiter_id = auth.uid()` and cannot name another waiter.
+3. **`move_order_table`: change the waiter as well.** Cashier and Admin can move an order to another table and hand it to another active waiter in the same call (both optional, at least one given). The change is written to the audit log.
 
 ---
 

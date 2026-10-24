@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { cn } from '../lib/cn';
+import { Skeleton } from './Skeleton';
 
 export interface AppHeaderProps {
   /** From the settings table. Never pass a hardcoded name. */
@@ -38,7 +39,7 @@ export function AppHeader({
         alt={restaurantName ? '' : logoLabel}
       />
       {loading ? (
-        <span className="h-4 w-32 animate-pulse rounded-sm bg-surface-2 motion-reduce:animate-none" />
+        <Skeleton className="h-4 w-32" />
       ) : (
         restaurantName && (
           <span className="truncate text-lg font-semibold tracking-tight text-fg">

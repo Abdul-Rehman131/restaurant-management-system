@@ -21,6 +21,9 @@ coverage/
 supabase/.branches/
 supabase/.temp/
 
+# brand assets, copied from packages/ui/brand at build time (vite-plugin.mjs)
+apps/*/public/brand/
+
 # test output
 playwright-report/
 test-results/

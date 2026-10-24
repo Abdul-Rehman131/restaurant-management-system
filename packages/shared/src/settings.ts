@@ -1,12 +1,14 @@
-import { useEffect } from 'react';
+import { createContext, createElement, useContext, useEffect, type ReactNode } from 'react';
 
 /**
- * Business values shown in the UI. They come ONLY from the `settings` table, never from
- * constants in code. Replaced by the generated database types in T4.
+ * Business values shown in the UI. They come ONLY from the `settings` table (via the
+ * get_settings RPC), never from constants in code.
  */
 export interface PublicSettings {
   restaurantName: string;
   currencyCode: string;
+  /** Digits after the decimal point for currencyCode (settings.currency_minor_units). */
+  currencyMinorUnits: number;
   /** Basis points: 1600 = 16%. */
   taxBps: number;
   serviceChargeBps: number;
@@ -18,12 +20,24 @@ export interface PublicSettingsState {
   loading: boolean;
 }
 
+const SettingsContext = createContext<PublicSettingsState>({ settings: null, loading: false });
+
 /**
- * Reads the public settings row. The Supabase query is connected in T8, once the table (T4)
- * and the client exist. Until then it returns no settings, and screens show no name.
+ * Supplies settings to every screen. T8 feeds it from the get_settings query; until then, and
+ * outside the provider, there are no settings and screens show no name or amounts.
  */
+export function PublicSettingsProvider({
+  value,
+  children,
+}: {
+  value: PublicSettingsState;
+  children: ReactNode;
+}) {
+  return createElement(SettingsContext.Provider, { value }, children);
+}
+
 export function usePublicSettings(): PublicSettingsState {
-  return { settings: null, loading: false };
+  return useContext(SettingsContext);
 }
 
 /** Sets document.title to "<restaurant> · <screen>", or just "<screen>" before settings load. */

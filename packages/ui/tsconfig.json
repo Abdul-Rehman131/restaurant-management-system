@@ -1,4 +1,7 @@
 {
   "extends": "@rms/config/tsconfig.react.json",
-  "include": ["src", "brand-tokens.d.mts"]
+  "compilerOptions": {
+    "types": ["vite/client"]
+  },
+  "include": ["src", "brand-tokens.d.mts", "vite-plugin.d.mts"]
 }
