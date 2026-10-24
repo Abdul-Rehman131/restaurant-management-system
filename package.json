@@ -23,6 +23,7 @@
     "db:test": "supabase test db",
     "db:lint": "supabase db lint --level warning --fail-on warning",
     "db:types": "node scripts/db-types.mjs",
+    "seed:staging": "node scripts/seed-staging.ts",
     "size": "node scripts/check-size.mjs",
     "e2e": "pnpm --filter @rms/staff-app e2e"
   },

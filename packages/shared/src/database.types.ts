@@ -887,6 +887,15 @@ export type Database = {
         };
         Returns: Json;
       };
+      create_staff_profile: {
+        Args: {
+          p_full_name: string;
+          p_role: Database['public']['Enums']['app_role'];
+          p_user_id: string;
+          p_username: string;
+        };
+        Returns: string;
+      };
       custom_access_token_hook: { Args: { event: Json }; Returns: Json };
       get_settings: { Args: Record<PropertyKey, never>; Returns: Json };
       my_role: {

@@ -1,0 +1,77 @@
+# Deploys database migrations to STAGING on every push to develop. Production is deferred (no
+# rms-prod project yet; see docs/setup-checklist.md, "Before go-live").
+#
+# This is the only workflow that uses secrets. They live in the GitHub Environment `staging`
+# (deployment branch: develop only) and are passed only to the steps that need them. It never
+# runs on pull_request, on forks, or on any other branch, and nothing here prints a secret.
+# Migrations only: seed.sql never runs on cloud projects (no --include-seed).
+#
+# Off until the repository variable STAGING_DEPLOY_ENABLED is 'true' (the last step of the
+# staging setup, docs/setup-checklist.md). Until then the job is skipped, not failed.
+name: DB deploy (staging)
+
+on:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+# Never cancel a migration half-way; queue the next push instead.
+concurrency:
+  group: db-deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    # Forks never have these secrets; skip them explicitly anyway. Skipped until staging is set up.
+    if: github.repository == 'Abdul-Rehman131/restaurant-management-system' && vars.STAGING_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging
+    env:
+      # The staging project ref is public (it is in every staging URL). Environment variable.
+      PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Installs the Supabase CLI version pinned in package.json (no secrets in this step).
+      - uses: ./.github/actions/setup
+
+      - name: Link the staging project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          test -n "$PROJECT_REF" || { echo "::error::Set the SUPABASE_PROJECT_REF variable on the staging environment."; exit 1; }
+          pnpm exec supabase link --project-ref "$PROJECT_REF" > /dev/null
+
+      - name: Drift check (migration history)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          pnpm exec supabase migration list --linked --agent no --output-format json > "$RUNNER_TEMP/migrations.json"
+          node scripts/check-migration-drift.mjs < "$RUNNER_TEMP/migrations.json"
+
+      - name: Dry run
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: pnpm exec supabase db push --linked --dry-run
+
+      - name: Push migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: pnpm exec supabase db push --linked --yes
+
+      - name: Every migration is applied
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          pnpm exec supabase migration list --linked --agent no --output-format json > "$RUNNER_TEMP/migrations.json"
+          node scripts/check-migration-drift.mjs < "$RUNNER_TEMP/migrations.json"
+          node -e "const m=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).migrations; const p=m.filter(x=>x.local&&!x.remote); if(p.length){console.log('::error::Still pending: '+p.map(x=>x.local).join(', ')); process.exit(1)}" "$RUNNER_TEMP/migrations.json"
