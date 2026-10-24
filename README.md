@@ -33,7 +33,7 @@ must be refused. Local only.
 **Staff app env:** copy `.env.example` to `apps/staff-app/.env.local` and fill in
 `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` from `pnpm db:status` (the local API
 URL and the `sb_publishable_...` key). The file is git-ignored. Never use a secret key there:
-the app refuses to start with one.
+the app refuses to start with one. `pnpm build` fails when either value is missing.
 
 Staff log in with a **username**. The app maps it to the internal login email
 `<username>@staff.invalid` (`public.staff_login_email()` in SQL, `staffLoginEmail()` in
