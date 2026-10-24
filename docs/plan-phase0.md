@@ -526,6 +526,11 @@ The exit gate is the 10 P1 done criteria in spec section 11. Each one maps to a 
 2. **`staff-admin` Edge Function: deactivate.** Sets `profiles.is_active = false` **and bans the Auth user** (`ban_duration`, for example `876000h`), so no new session or refresh can be issued even if the token hook is misconfigured. Reactivation reverses both. `my_role()` already denies the deactivated user's current JWT on the next request.
 3. **Realtime channel authorization.** Policies on `realtime.messages` (private broadcast channels) must decide access with `public.my_role()` (profiles, by `auth.uid()`), **never** the JWT `app_role` claim. The claim is for UI routing only and stays stale until the token expires. Add pgTAP tests per topic and role, including a deactivated user.
 
+**P1 requirements from the T6 decision gate ([ADR 002](adr/002-supabase-confirmed.md)):**
+1. **Week 1 conditions.** A Zod response schema per RPC in `packages/shared`, and a shared SQL validation helper in `private` for the repeated JSON checks.
+2. **`create_order`: optional `waiter_id` for Cashier and Admin.** Today a Dine-In order created by a Cashier or Admin has no waiter, so no waiter sees it. Add an optional parameter that only Cashier and Admin may set; it must name an active waiter. A waiter's own call keeps `waiter_id = auth.uid()` and cannot name another waiter.
+3. **`move_order_table`: change the waiter as well.** Cashier and Admin can move an order to another table and hand it to another active waiter in the same call (both optional, at least one given). The change is written to the audit log.
+
 ---
 
 ## 6. Risks (beyond spec section 13)
