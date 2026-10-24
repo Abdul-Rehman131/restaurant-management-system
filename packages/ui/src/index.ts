@@ -132,3 +132,21 @@ export {
   TableRow,
 } from './components/Table';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './components/Tabs';
+
+// Domain primitives
+export {
+  ConnectionDot,
+  type ConnectionDotProps,
+  type ConnectionState,
+} from './components/ConnectionDot';
+export { EmptyState, type EmptyStateProps } from './components/EmptyState';
+export { ErrorState, type ErrorStateProps } from './components/ErrorState';
+export { MoneyText, type MoneyTextProps } from './components/MoneyText';
+export {
+  OfflineBanner,
+  useOnlineStatus,
+  type OfflineBannerProps,
+} from './components/OfflineBanner';
+export { QtyStepper, type QtyStepperProps } from './components/QtyStepper';
+export { StatusBadge, type StatusBadgeProps } from './components/StatusBadge';
+export { StickyActionBar, type StickyActionBarProps } from './components/StickyActionBar';

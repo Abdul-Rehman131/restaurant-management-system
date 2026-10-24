@@ -18,5 +18,43 @@
   },
   "command": {
     "results": "Results"
+  },
+  "status": {
+    "order": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "served": "Served",
+      "out_for_delivery": "Out for delivery",
+      "delivered": "Delivered",
+      "delivery_failed": "Delivery failed",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "table": {
+      "available": "Available",
+      "occupied": "Occupied",
+      "bill_requested": "Bill requested"
+    },
+    "payment": {
+      "unpaid": "Unpaid",
+      "paid": "Paid"
+    }
+  },
+  "qty": {
+    "label": "Quantity of {{item}}",
+    "decrease": "Decrease quantity",
+    "increase": "Increase quantity",
+    "remove": "Remove {{item}}"
+  },
+  "connection": {
+    "online": "Live",
+    "connecting": "Reconnecting",
+    "offline": "Offline",
+    "offlineBanner": "Offline: orders can't be sent. Keep this screen open; it will reconnect."
+  },
+  "error": {
+    "retry": "Try again"
   }
 }

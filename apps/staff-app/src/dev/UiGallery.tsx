@@ -1,3 +1,4 @@
+import { PublicSettingsProvider, type PublicSettings } from '@rms/shared';
 import { applyDensity, applyTheme, Button, UiProvider, type Density } from '@rms/ui';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +7,7 @@ import i18n from '../i18n';
 import devEn from './locales/en/dev.json';
 import { ButtonsSection, FieldsSection } from './sections/FormControls';
 import { DisplaySection } from './sections/Display';
+import { DomainSection } from './sections/Domain';
 import { OverlaysSection } from './sections/Overlays';
 
 // Development-only screen (/dev/ui). main.tsx loads it only when import.meta.env.DEV, and
@@ -13,6 +15,17 @@ import { OverlaysSection } from './sections/Overlays';
 const DEV_ONLY_MARKER = 'rms-dev-only';
 
 i18n.addResourceBundle('en', 'dev', devEn);
+
+// Demo settings for the gallery only (fake values, as in seed.sql). Real screens get settings
+// from the get_settings RPC through the same provider (T8).
+const demoSettings: PublicSettings = {
+  restaurantName: 'Ember Kitchen (Demo)',
+  currencyCode: 'PKR',
+  currencyMinorUnits: 2,
+  taxBps: 1600,
+  serviceChargeBps: 500,
+  receiptFooter: null,
+};
 
 type ThemeOption = 'light' | 'dark';
 type DirOption = 'ltr' | 'rtl';
@@ -76,42 +89,45 @@ export default function UiGallery() {
   }, [theme, dir, density]);
 
   return (
-    <UiProvider dir={dir}>
-      <div data-dev-only={DEV_ONLY_MARKER} className="min-h-dvh bg-bg text-fg">
-        <header className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
-            <h1 className="me-auto text-lg font-semibold tracking-tight">{t('title')}</h1>
-            <Toggle<ThemeOption>
-              label={t('toolbar.theme')}
-              options={['light', 'dark']}
-              value={theme}
-              onChange={setTheme}
-              optionLabel={(value) => t(`toolbar.${value}`)}
-            />
-            <Toggle<DirOption>
-              label={t('toolbar.direction')}
-              options={['ltr', 'rtl']}
-              value={dir}
-              onChange={setDir}
-              optionLabel={(value) => t(`toolbar.${value}`)}
-            />
-            <Toggle<Density>
-              label={t('toolbar.density')}
-              options={['touch', 'display', 'desk']}
-              value={density}
-              onChange={setDensity}
-              optionLabel={(value) => t(`toolbar.${value}`)}
-            />
-          </div>
-        </header>
-        <main className="mx-auto max-w-5xl space-y-10 px-4 py-8">
-          <p className="text-fg-muted">{t('intro')}</p>
-          <ButtonsSection />
-          <FieldsSection />
-          <OverlaysSection />
-          <DisplaySection />
-        </main>
-      </div>
-    </UiProvider>
+    <PublicSettingsProvider value={{ settings: demoSettings, loading: false }}>
+      <UiProvider dir={dir}>
+        <div data-dev-only={DEV_ONLY_MARKER} className="min-h-dvh bg-bg text-fg">
+          <header className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur">
+            <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
+              <h1 className="me-auto text-lg font-semibold tracking-tight">{t('title')}</h1>
+              <Toggle<ThemeOption>
+                label={t('toolbar.theme')}
+                options={['light', 'dark']}
+                value={theme}
+                onChange={setTheme}
+                optionLabel={(value) => t(`toolbar.${value}`)}
+              />
+              <Toggle<DirOption>
+                label={t('toolbar.direction')}
+                options={['ltr', 'rtl']}
+                value={dir}
+                onChange={setDir}
+                optionLabel={(value) => t(`toolbar.${value}`)}
+              />
+              <Toggle<Density>
+                label={t('toolbar.density')}
+                options={['touch', 'display', 'desk']}
+                value={density}
+                onChange={setDensity}
+                optionLabel={(value) => t(`toolbar.${value}`)}
+              />
+            </div>
+          </header>
+          <main className="mx-auto max-w-5xl space-y-10 px-4 py-8">
+            <p className="text-fg-muted">{t('intro')}</p>
+            <ButtonsSection />
+            <FieldsSection />
+            <OverlaysSection />
+            <DisplaySection />
+            <DomainSection />
+          </main>
+        </div>
+      </UiProvider>
+    </PublicSettingsProvider>
   );
 }

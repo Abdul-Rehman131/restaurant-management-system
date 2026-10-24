@@ -18,7 +18,8 @@
     "buttons": "Buttons",
     "fields": "Fields and form",
     "overlays": "Overlays",
-    "display": "Display"
+    "display": "Display",
+    "domain": "Domain primitives"
   },
   "buttons": {
     "primary": "Send to kitchen",
@@ -119,5 +120,27 @@
     "staff": "Staff on shift",
     "scrollTitle": "Scroll area",
     "scrollItem": "Ticket {{n}}"
+  },
+  "domain": {
+    "money": "MoneyText (integer minor units, currency from settings)",
+    "moneyLoading": "Before settings load",
+    "moneyReceipt": "Receipt style (fraction always)",
+    "orderStatus": "StatusBadge: order",
+    "tableStatus": "StatusBadge: table",
+    "paymentStatus": "StatusBadge: payment",
+    "qty": "QtyStepper",
+    "qtyRemove": "At 1, minus becomes Remove",
+    "removed": "{{item}} removed",
+    "connection": "ConnectionDot",
+    "connectionCompact": "Compact (label for screen readers and tooltip)",
+    "offline": "OfflineBanner (forced offline here)",
+    "emptyTitle": "No open bills",
+    "emptyBody": "New bills appear here as soon as a waiter sends an order.",
+    "newOrder": "New counter order",
+    "errorTitle": "The bills could not be loaded",
+    "errorBody": "Check the connection, then try again. Nothing was changed.",
+    "stickyBar": "StickyActionBar",
+    "cartSummary": "{{count}} items",
+    "sendToKitchen": "Send to kitchen"
   }
 }
