@@ -5,6 +5,7 @@ import { paths } from '../paths';
 import { SettingsProvider } from '../settings/SettingsProvider';
 import { ConnectionProvider } from './ConnectionProvider';
 import { FullScreenLoading } from './guards';
+import { useStaffStatus } from './useStaffStatus';
 
 // Lazy route: the data and Realtime clients load here, after sign-in, not with the login
 // screen (plan 4.10 budgets).
@@ -26,6 +27,12 @@ export function RequireAuth() {
   }
   if (needsMfaStep(auth)) return <Navigate to={paths.mfa} replace />;
 
+  return <SignedInShell />;
+}
+
+/** Providers for every signed-in screen, plus the account-still-active check. */
+function SignedInShell() {
+  useStaffStatus();
   return (
     <SettingsProvider>
       <ConnectionProvider>

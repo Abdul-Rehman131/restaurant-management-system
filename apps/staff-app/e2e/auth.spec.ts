@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -142,6 +144,41 @@ test('a deactivated user is denied', async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
 });
 
+// Deactivation while signed in: the token is still valid, but my_role() turns NULL at once.
+// Changes the local demo DB through the Supabase CLI container (local stack only).
+function setActive(username: string, active: boolean) {
+  execFileSync('docker', [
+    'exec',
+    'supabase_db_rms',
+    'psql',
+    '-U',
+    'postgres',
+    '-qc',
+    `update public.profiles set is_active = ${String(active)} where username = '${username}'`,
+  ]);
+}
+
+test.describe('deactivated while signed in', () => {
+  // One account is switched off and on again: never run this in parallel with itself.
+  test.describe.configure({ mode: 'serial' });
+
+  test('the next check signs the user out with "not active"', async ({ page }, info) => {
+    test.skip(info.project.name !== 'desktop', 'one run is enough');
+    await signInAs(page, 'waiter2');
+    await expect(page).toHaveURL(/\/waiter$/);
+    try {
+      setActive('waiter2', false);
+      await page.reload();
+      await expect(page).toHaveURL(/\/login$/, { timeout: 10_000 });
+      await expect(
+        page.getByText('This account is not active any more. Ask your manager.'),
+      ).toBeVisible();
+    } finally {
+      setActive('waiter2', true);
+    }
+  });
+});
+
 test('sign out from the account menu', async ({ page }) => {
   await signInAs(page, 'cashier');
   await expect(page).toHaveURL(/\/cashier$/);
@@ -166,8 +203,13 @@ test('a session ended elsewhere shows "session ended"', async ({ page, context }
   await expect(page.getByText('Your session ended. Sign in again to continue.')).toBeVisible();
 });
 
-test('rider has no screens yet (P3)', async ({ page }) => {
+test('rider has no screens yet (P3) and stays signed in', async ({ page }) => {
+  // The account-status check (my_role) must not mistake "no screens yet" for "not active":
+  // wait for its answer, then the rider must still be on the notice, not back at login.
+  const status = page.waitForResponse((r) => r.url().includes('/rest/v1/rpc/my_role'));
   await signInAs(page, 'rider');
   await expect(page).toHaveURL(/\/not-available$/);
+  expect((await status).ok()).toBe(true);
   await expect(page.getByText('No screens for this role yet')).toBeVisible();
+  await expect(page).toHaveURL(/\/not-available$/);
 });
