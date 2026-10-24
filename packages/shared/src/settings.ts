@@ -9,10 +9,18 @@ export interface PublicSettings {
   currencyCode: string;
   /** Digits after the decimal point for currencyCode (settings.currency_minor_units). */
   currencyMinorUnits: number;
-  /** Basis points: 1600 = 16%. */
-  taxBps: number;
-  serviceChargeBps: number;
+  timezone: string;
+  /** Business-day cut-off, "HH:MM:SS" (BR-04). */
+  dayCutoffTime: string;
+  kitchenWarnMin: number;
+  kitchenLateMin: number;
   receiptFooter: string | null;
+  /** Contact group: admin, cashier and waiter only. */
+  address?: string | null;
+  phone?: string | null;
+  /** Pricing group, in basis points (1600 = 16%): admin and cashier only. */
+  taxBps?: number;
+  serviceChargeBps?: number;
 }
 
 export interface PublicSettingsState {
