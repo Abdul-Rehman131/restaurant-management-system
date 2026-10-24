@@ -42,6 +42,9 @@ jobs:
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
+          # Pull requests use the PR's own files. Pushes: feature branches compare with develop
+          # (where they branch from); develop and main compare with the previous push.
+          base: ${{ github.ref_name == 'main' && 'main' || 'develop' }}
           predicate-quantifier: every
           filters: |
             code:
