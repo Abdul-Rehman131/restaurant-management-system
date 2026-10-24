@@ -6,6 +6,11 @@
 --   tests.create_table(number)                    restaurant table
 --   tests.create_item(name, price, needs_kitchen) menu item in a test category
 --   tests.create_order(type, table_id, number)    order with batch 1, no lines, zero totals
+--
+-- Session helpers (RLS tests):
+--   tests.login_as(user_id)   act as that user: role authenticated + JWT claims (auth.uid())
+--   tests.login_as_anon()     act as an anonymous API caller
+--   tests.logout()            back to the test owner (postgres) to build fixtures or inspect
 -- Everything runs inside the test's transaction and is rolled back.
 
 create schema if not exists tests;
@@ -18,7 +23,7 @@ declare
   v_id uuid := gen_random_uuid();
 begin
   insert into auth.users (id, email, aud, role)
-  values (v_id, p_username || '@example.com', 'authenticated', 'authenticated');
+  values (v_id, public.staff_login_email(p_username), 'authenticated', 'authenticated');
 
   insert into public.profiles (id, username, full_name, role)
   values (v_id, p_username, 'Test ' || p_username, p_role);
@@ -84,3 +89,41 @@ begin
   return v_id;
 end;
 $$;
+
+create or replace function tests.login_as(p_user_id uuid)
+returns void
+language plpgsql
+as $$
+begin
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', p_user_id, 'role', 'authenticated', 'aud', 'authenticated')::text,
+    true
+  );
+  execute 'set local role authenticated';
+end;
+$$;
+
+create or replace function tests.login_as_anon()
+returns void
+language plpgsql
+as $$
+begin
+  perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+  execute 'set local role anon';
+end;
+$$;
+
+create or replace function tests.logout()
+returns void
+language plpgsql
+as $$
+begin
+  execute 'reset role';
+  perform set_config('request.jwt.claims', '', true);
+end;
+$$;
+
+-- The API roles must be able to call the session helpers (test schema only, rolled back).
+grant usage on schema tests to anon, authenticated;
+grant execute on all functions in schema tests to anon, authenticated;

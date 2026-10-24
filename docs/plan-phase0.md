@@ -126,6 +126,14 @@ Migrations, in order:
   - (c) Fail if `anon` can execute any function.
   - (d) A per-role SELECT test for every row of the matrix.
 - **AC:** all guard tests pass. A deactivated user's next request is denied. Creating a new table without RLS makes CI red (demonstrated once on a branch).
+- **As built (T5):**
+  - **5 migrations:** revoke default grants, auth helpers, access token hook, SELECT policies, role-scoped RPCs.
+  - **Role helper:** the plan's `app_role()` / `is_active_staff()` became `public.my_role()`, which returns NULL for inactive staff (one helper instead of two), plus `private.require_role()`.
+  - **Username login:** `public.staff_login_email()` maps `<username>` to `<username>@staff.invalid` (mirrored in `packages/shared`), and a trigger keeps each profile's username and login email in sync.
+  - **Token hook:** also refuses tokens for inactive staff.
+  - **Settings:** RPC only (`get_settings()`, fields per role). Admin reads costs and staff phones through `admin_*` RPCs.
+  - **Probe tests:** the "new table without RLS fails" check is a pgTAP probe that runs on every test run, not a one-off branch demo. It is confirmed in CI at T9.
+  - **Chef kitchen RPCs** (`get_kitchen_queue`, Sold Out list) are P1, as planned.
 
 ### T6. Early proof: `create_order` and `record_payment` (1.5 d)
 Both are `SECURITY DEFINER`, `set search_path = ''`, check the role first, run in one transaction, raise stable error codes, and are idempotent by `request_id`.

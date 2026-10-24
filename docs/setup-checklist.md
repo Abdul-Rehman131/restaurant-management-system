@@ -36,6 +36,10 @@ region **`ap-southeast-1` (Singapore)**. The old Sydney project is deleted.
 - [x] Staging → Authentication → Sign In / Providers: "Allow new users to sign up" is off. Email stays enabled.
 - [ ] Staging → Authentication → Multi-Factor: enable **TOTP**.
 - [ ] Staging → Authentication → URL Configuration: leave as is for now (set in T10 once the Vercel domains exist).
+- [ ] **At T10, after the migrations are deployed:** Staging → Authentication → Hooks → enable
+      **Customize Access Token (JWT) Claims** with the Postgres function
+      `public.custom_access_token_hook`. It is enabled locally in `supabase/config.toml`. Without
+      it, logins work but the app cannot route staff to their screen.
 - [ ] Invite the developers to the org with the Developer role.
 
 **Production (`rms-prod`) is created in T10, not now.** Same org, same region

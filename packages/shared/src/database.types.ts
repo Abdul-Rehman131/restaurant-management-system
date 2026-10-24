@@ -851,7 +851,38 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      admin_menu_item_costs: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          cost_price: number;
+          menu_item_id: string;
+        }[];
+      };
+      admin_order_item_costs: {
+        Args: { p_order_id: string };
+        Returns: {
+          cost_snapshot: number;
+          order_item_id: string;
+        }[];
+      };
+      admin_staff_directory: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          full_name: string;
+          id: string;
+          is_active: boolean;
+          phone: string;
+          role: Database['public']['Enums']['app_role'];
+          username: string;
+        }[];
+      };
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json };
+      get_settings: { Args: Record<PropertyKey, never>; Returns: Json };
+      my_role: {
+        Args: Record<PropertyKey, never>;
+        Returns: Database['public']['Enums']['app_role'];
+      };
+      staff_login_email: { Args: { p_username: string }; Returns: string };
     };
     Enums: {
       app_role: 'admin' | 'cashier' | 'waiter' | 'chef' | 'rider';

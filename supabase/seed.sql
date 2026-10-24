@@ -1,8 +1,9 @@
 -- LOCAL-ONLY DEMO DATA. Runs after the migrations on `pnpm db:reset`, and NEVER on staging or
--- production. Every value here is fake: the demo brand "Ember Kitchen", example.com logins,
+-- production. Every value here is fake: the demo brand "Ember Kitchen", demo staff logins,
 -- placeholder contact details and made-up prices. No real owner or business data.
 --
--- Demo logins (local only): username@example.com / demo-password-123
+-- Demo logins (local only): username / demo-password-123 (login email <username>@staff.invalid,
+-- see public.staff_login_email)
 --   admin, cashier, waiter1, waiter2, chef, rider
 
 -- Settings: demo brand and DEMO rates only (the real rates are open question Q1/D2).
@@ -34,7 +35,7 @@ new_users as (
   )
   select
     '00000000-0000-0000-0000-000000000000', s.id, 'authenticated', 'authenticated',
-    s.username || '@example.com',
+    public.staff_login_email(s.username),
     extensions.crypt('demo-password-123', extensions.gen_salt('bf')),
     now(),
     '{"provider": "email", "providers": ["email"]}'::jsonb,
