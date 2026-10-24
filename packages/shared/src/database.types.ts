@@ -893,6 +893,10 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: Database['public']['Enums']['app_role'];
       };
+      record_payment: {
+        Args: { p_order_id: string; p_request_id: string; p_tenders: Json };
+        Returns: Json;
+      };
       staff_login_email: { Args: { p_username: string }; Returns: string };
     };
     Enums: {
