@@ -30,6 +30,51 @@ export type Database = {
         };
         Relationships: [];
       };
+      profiles: {
+        Row: {
+          branch_id: string;
+          created_at: string;
+          full_name: string;
+          id: string;
+          is_active: boolean;
+          phone: string | null;
+          role: Database['public']['Enums']['app_role'];
+          updated_at: string;
+          username: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          branch_id?: string;
+          created_at?: string;
+          full_name: string;
+          id: string;
+          is_active?: boolean;
+          phone?: string | null;
+          role: Database['public']['Enums']['app_role'];
+          updated_at?: string;
+          username: string;
+        };
+        Update: {
+          branch_id?: string;
+          created_at?: string;
+          full_name?: string;
+          id?: string;
+          is_active?: boolean;
+          phone?: string | null;
+          role?: Database['public']['Enums']['app_role'];
+          updated_at?: string;
+          username?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       settings: {
         Row: {
           address: string | null;

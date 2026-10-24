@@ -1,0 +1,24 @@
+-- Shared pgTAP helpers. A .psql file, so `supabase test db` (which runs *.sql) never runs it alone.
+-- Each test file includes it with `\ir helpers.psql` right after `begin;`.
+--
+-- tests.create_staff(username, role) creates an auth user plus profile and returns its id.
+-- Everything runs inside the test's transaction and is rolled back.
+
+create schema if not exists tests;
+
+create or replace function tests.create_staff(p_username text, p_role public.app_role)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_id uuid := gen_random_uuid();
+begin
+  insert into auth.users (id, email, aud, role)
+  values (v_id, p_username || '@example.com', 'authenticated', 'authenticated');
+
+  insert into public.profiles (id, username, full_name, role)
+  values (v_id, p_username, 'Test ' || p_username, p_role);
+
+  return v_id;
+end;
+$$;
