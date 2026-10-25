@@ -23,6 +23,7 @@ as $$
     'public.get_kitchen_queue()',
     'public.get_menu_availability()',
     'public.get_open_bills()',
+    'public.get_sales_summary(p_business_date date)',
     'public.get_settings()',
     'public.move_order_table(p_request_id uuid, p_order_id uuid, p_to_table_id uuid, p_waiter_id uuid)',
     'public.my_role()',

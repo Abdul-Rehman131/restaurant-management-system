@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir helpers.psql
 
-select plan(15);
+select plan(16);
 
 create function tests.keys(p_value jsonb) returns text[] language sql immutable as $$
   select coalesce(array_agg(k order by k), '{}') from jsonb_object_keys(p_value) k
@@ -150,6 +150,14 @@ select is(
         'order_id', 'order_number', 'paid', 'payment_status', 'service_charge', 'status', 'subtotal', 'table_id',
         'table_number', 'tax', 'total', 'type', 'waiter_id', 'waiter_name'],
   'get_open_bills returns the openBill keys'
+);
+
+-- salesSummaryResponse (schemas/reports.ts)
+select is(
+  tests.keys(tests.call_as(:'admin', 'select public.get_sales_summary()')),
+  array['average_order_value', 'business_date', 'by_type', 'cancelled_count', 'discount', 'gross_sales', 'net_sales',
+        'open_count', 'orders_count', 'service_charge', 'tax', 'top_items'],
+  'get_sales_summary returns the salesSummaryResponse keys'
 );
 
 select * from finish();

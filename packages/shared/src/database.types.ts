@@ -913,6 +913,7 @@ export type Database = {
       get_kitchen_queue: { Args: Record<PropertyKey, never>; Returns: Json };
       get_menu_availability: { Args: Record<PropertyKey, never>; Returns: Json };
       get_open_bills: { Args: Record<PropertyKey, never>; Returns: Json };
+      get_sales_summary: { Args: { p_business_date?: string }; Returns: Json };
       get_settings: { Args: Record<PropertyKey, never>; Returns: Json };
       move_order_table: {
         Args: {
