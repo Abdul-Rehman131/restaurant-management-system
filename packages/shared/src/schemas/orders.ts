@@ -53,6 +53,10 @@ export type RequestBillResponse = OrderSummary;
 export const applyDiscountResponse = orderSummary;
 export type ApplyDiscountResponse = OrderSummary;
 
+/** move_order_table: the summary with the new table and/or waiter. */
+export const moveOrderTableResponse = orderSummary;
+export type MoveOrderTableResponse = OrderSummary;
+
 /** add_items_to_order: the order summary plus the new batch (2 or more: an ADD-ON, BR-06). */
 export const addItemsToOrderResponse = z.extend(orderSummary, {
   batch_no: z.int().check(z.minimum(2)),

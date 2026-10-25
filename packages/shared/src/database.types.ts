@@ -911,6 +911,15 @@ export type Database = {
       };
       custom_access_token_hook: { Args: { event: Json }; Returns: Json };
       get_settings: { Args: Record<PropertyKey, never>; Returns: Json };
+      move_order_table: {
+        Args: {
+          p_order_id: string;
+          p_request_id: string;
+          p_to_table_id?: string;
+          p_waiter_id?: string;
+        };
+        Returns: Json;
+      };
       my_role: {
         Args: Record<PropertyKey, never>;
         Returns: Database['public']['Enums']['app_role'];

@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir helpers.psql
 
-select plan(11);
+select plan(12);
 
 create function tests.keys(p_value jsonb) returns text[] language sql immutable as $$
   select coalesce(array_agg(k order by k), '{}') from jsonb_object_keys(p_value) k
@@ -123,6 +123,17 @@ select is(
   tests.keys(tests.call_as(:'admin', format($$ select public.void_payment(gen_random_uuid(), %L, 'Contract test') $$,
     (select id from public.payments where order_id = (:'created'::jsonb ->> 'order_id')::uuid limit 1)))),
   tests.keys_plus(:'paid', array['payment_id']), 'void_payment returns paymentSummary + payment_id'
+);
+
+-- moveOrderTableResponse = orderSummary
+select tests.create_staff('rc.waiter', 'waiter') as waiter \gset
+select tests.call_as(:'cashier', format(
+  $$ select public.create_order(gen_random_uuid(), 'dine_in', %L, null, null, jsonb_build_array(tests.line(%L))) $$,
+  tests.create_table(992), :'tikka')) ->> 'order_id' as o_move \gset
+select is(
+  tests.keys(tests.call_as(:'cashier', format($$ select public.move_order_table(gen_random_uuid(), %L, %L, %L) $$,
+    :'o_move', tests.create_table(993), :'waiter'))),
+  tests.keys(:'created'), 'move_order_table returns the orderSummary keys'
 );
 
 select * from finish();
