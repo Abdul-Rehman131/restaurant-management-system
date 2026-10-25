@@ -55,6 +55,10 @@ export const addItemsToOrderResponse = z.extend(orderSummary, {
 });
 export type AddItemsToOrderResponse = z.infer<typeof addItemsToOrderResponse>;
 
+/** remove_or_cancel_item: the recalculated order summary plus the cancelled line. */
+export const removeOrCancelItemResponse = z.extend(orderSummary, { order_item_id: id });
+export type RemoveOrCancelItemResponse = z.infer<typeof removeOrCancelItemResponse>;
+
 /** private.payment_summary: returned by record_payment and void_payment. */
 export const paymentSummary = z.object({
   order_id: id,

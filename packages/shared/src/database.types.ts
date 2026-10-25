@@ -915,6 +915,10 @@ export type Database = {
         Args: { p_order_id: string; p_request_id: string; p_tenders: Json };
         Returns: Json;
       };
+      remove_or_cancel_item: {
+        Args: { p_order_item_id: string; p_reason: string; p_request_id: string };
+        Returns: Json;
+      };
       request_bill: { Args: { p_order_id: string; p_request_id: string }; Returns: Json };
       set_batch_status: {
         Args: {

@@ -4,10 +4,15 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir helpers.psql
 
-select plan(8);
+select plan(9);
 
 create function tests.keys(p_value jsonb) returns text[] language sql immutable as $$
   select coalesce(array_agg(k order by k), '{}') from jsonb_object_keys(p_value) k
+$$;
+
+-- The keys of p_value plus p_extra, sorted (for "summary + one more key" responses).
+create function tests.keys_plus(p_value jsonb, p_extra text[]) returns text[] language sql immutable as $$
+  select array_agg(k order by k) from unnest(tests.keys(p_value) || p_extra) k
 $$;
 
 select tests.create_staff('rc.cashier', 'cashier') as cashier \gset
@@ -91,6 +96,16 @@ select is(
 select is(
   tests.keys(tests.call_as(:'chef', format($$ select public.set_item_availability(gen_random_uuid(), %L, false) $$, tests.create_item('RC Sold Out', 5000)))),
   array['is_available', 'menu_item_id', 'replayed'], 'set_item_availability returns the setItemAvailabilityResponse keys'
+);
+
+-- removeOrCancelItemResponse (schemas/orders.ts): orderSummary + order_item_id
+select tests.call_as(:'cashier', format(
+  $$ select public.create_order(gen_random_uuid(), 'take_away', null, 'Guest', null, jsonb_build_array(tests.line(%L), tests.line(%L))) $$,
+  :'tikka', :'water')) ->> 'order_id' as o_item \gset
+select is(
+  tests.keys(tests.call_as(:'cashier', format($$ select public.remove_or_cancel_item(gen_random_uuid(), %L, 'Contract test') $$,
+    (select id from public.order_items where order_id = :'o_item' and menu_item_id = :'water')))),
+  tests.keys_plus(:'created', array['order_item_id']), 'remove_or_cancel_item returns orderSummary + order_item_id'
 );
 
 select * from finish();
