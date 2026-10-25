@@ -21,7 +21,8 @@ as $$
     'public.get_settings()',
     'public.my_role()',
     'public.record_payment(p_request_id uuid, p_order_id uuid, p_tenders jsonb)',
-    'public.set_batch_status(p_request_id uuid, p_batch_id uuid, p_status batch_status)'
+    'public.set_batch_status(p_request_id uuid, p_batch_id uuid, p_status batch_status)',
+    'public.set_order_status(p_request_id uuid, p_order_id uuid, p_status order_status, p_reason text)'
   ]::text[]
 $$;
 

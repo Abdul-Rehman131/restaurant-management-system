@@ -919,6 +919,15 @@ export type Database = {
         };
         Returns: Json;
       };
+      set_order_status: {
+        Args: {
+          p_order_id: string;
+          p_reason?: string;
+          p_request_id: string;
+          p_status: Database['public']['Enums']['order_status'];
+        };
+        Returns: Json;
+      };
       staff_login_email: { Args: { p_username: string }; Returns: string };
     };
     Enums: {

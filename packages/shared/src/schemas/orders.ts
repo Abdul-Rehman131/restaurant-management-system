@@ -37,6 +37,10 @@ export type OrderSummary = z.infer<typeof orderSummary>;
 export const createOrderResponse = orderSummary;
 export type CreateOrderResponse = OrderSummary;
 
+/** set_order_status: Served, Completed (handover) or Cancelled. */
+export const setOrderStatusResponse = orderSummary;
+export type SetOrderStatusResponse = OrderSummary;
+
 /** add_items_to_order: the order summary plus the new batch (2 or more: an ADD-ON, BR-06). */
 export const addItemsToOrderResponse = z.extend(orderSummary, {
   batch_no: z.int().check(z.minimum(2)),

@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir helpers.psql
 
-select plan(4);
+select plan(5);
 
 create function tests.keys(p_value jsonb) returns text[] language sql immutable as $$
   select coalesce(array_agg(k order by k), '{}') from jsonb_object_keys(p_value) k
@@ -63,6 +63,11 @@ select is(
   array['batch_id', 'batch_no', 'batch_status', 'order_id', 'order_status', 'replayed'],
   'set_batch_status returns the setBatchStatusResponse keys'
 );
+
+-- setOrderStatusResponse = orderSummary (schemas/orders.ts)
+select tests.call_as(:'cashier', format(
+  $$ select public.set_order_status(gen_random_uuid(), %L, 'cancelled', 'Contract test') $$, :'o_kitchen')) as status_changed \gset
+select is(tests.keys(:'status_changed'), tests.keys(:'created'), 'set_order_status returns the orderSummary keys');
 
 select * from finish();
 rollback;
