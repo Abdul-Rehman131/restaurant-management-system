@@ -71,6 +71,18 @@ result on a retry.
 - **Chime** for new tickets plays after Start shift, unless muted; the first load never chimes.
 - **e2e projects**: each role spec runs on its device project (waiter on phone, kitchen on a landscape tablet), so "skipped" counts only real skips. Tests that change an account use a disposable one (`createStaff` in `e2e/support.ts`), never a shared demo login, so projects need no fixed order (changed in S4).
 
+## S4 as built: cashier decisions
+- **Bill list order**: Bill Requested first (oldest request first), then Ready Take Away, then the rest by age (sorted on the device from `get_open_bills`). A paid order that is not fulfilled yet stays on the list.
+- **Amounts on the screen** are the server's: totals from the order, paid and due from `get_open_bills`. Two typing aids are worked out on the device and checked by the server: the change preview (cash received minus amount due), and in a split the card part, which starts at what the cash part leaves. After paying, the confirmation shows the server's `change_due`.
+- **Typed amounts** are parsed as decimal text into integer minor units (`parseAmount`), never through a float. "Too little cash" is hinted while typing; the server still decides (`TENDERED_INVALID`).
+- **Quick cash**: Exact, then the next round 500 and 1000 of the currency's major unit; equal amounts are shown once.
+- **Actions**: Mark served only for a Ready Dine-In; Hand over only for a Ready, paid Take Away; cancel the order only before Ready and before payment; cancel a whole line only (S1). Discount and void are Admin only; a Cashier sees a hint. An Admin uses the same screens at `/cashier`.
+- **Receipt**: dated at the last live payment (else the order time), in the settings time zone. Cancelled lines are left out, and rows that are zero are left out (service charge, tax, discount). Only the receipt prints (80 mm print stylesheet). Auto-print is a per-device switch.
+- **Counter Dine-In**: the waiter is optional ("No waiter (counter)").
+- **Live updates**: every Realtime join refetches, the first one too, so a change between the first read and the join is never missed (fixed in S4 for all roles).
+- **Keyboard**: shortcuts are ignored while typing in a field (except Ctrl+P) and while a dialog is open; Escape in a field leaves the field, otherwise it goes back to the list.
+- **e2e data**: cashier tests create and archive their own tables (101 and up); tests that change an account use a disposable one (`createStaff`).
+
 ## Out of P1
 Online orders, deals and pg_cron jobs (P2); delivery, riders and reservations (P3); profit,
 expenses, shifts, the audit log viewer and `daily_summary` (P4).
