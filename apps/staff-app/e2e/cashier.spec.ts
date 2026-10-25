@@ -284,3 +284,116 @@ test('a mismatch or too little cash writes nothing; a double click pays once', a
     cancelTakeAway('E2E Guard');
   }
 });
+
+test('cancelling a line or the order needs a reason, which is stored', async ({
+  page,
+  request,
+}) => {
+  cancelTakeAway('E2E Cancel');
+  const order = await takeAway(request, 'E2E Cancel', ['Chicken Wings (6 pcs)', 'Raita']);
+  try {
+    await openCashier(page);
+    await openBill(page, 'E2E Cancel');
+
+    // One line: the dialog's confirm stays disabled until a reason is typed.
+    await page.getByRole('button', { name: 'Cancel Raita' }).click();
+    const dialog = page.getByRole('alertdialog', { name: 'Cancel Raita?' });
+    const confirm = dialog.getByRole('button', { name: 'Cancel it' });
+    await expect(confirm).toBeDisabled();
+    await dialog.getByLabel('Reason (required)').fill('   ');
+    await expect(confirm).toBeDisabled();
+    await dialog.getByLabel('Reason (required)').fill('Out of yoghurt');
+    await confirm.click();
+    await expect(dialog).toBeHidden();
+    await expect(page.locator('[data-line="Raita"]')).toContainText('Cancelled: Out of yoghurt');
+    expect(
+      psql(`select cancel_reason from public.order_items
+             where order_id = '${order.order_id}' and name_snapshot = 'Raita'`),
+    ).toBe('Out of yoghurt');
+
+    // The whole order.
+    await page.getByRole('button', { name: 'Cancel order' }).click();
+    const orderDialog = page.getByRole('alertdialog');
+    await expect(orderDialog.getByRole('button', { name: 'Cancel it' })).toBeDisabled();
+    await orderDialog.getByLabel('Reason (required)').fill('Customer left');
+    await orderDialog.getByRole('button', { name: 'Cancel it' }).click();
+    await expect(page.getByText('Cancelled', { exact: true }).first()).toBeVisible();
+    expect(
+      psql(
+        `select status || ' ' || cancel_reason from public.orders where id = '${order.order_id}'`,
+      ),
+    ).toBe('cancelled Customer left');
+  } finally {
+    cancelTakeAway('E2E Cancel');
+  }
+});
+
+test('a cashier cannot discount or void; an admin can, and a void reopens the order', async ({
+  page,
+  request,
+}) => {
+  test.slow();
+  cancelTakeAway('E2E Admin');
+  const order = await takeAway(request, 'E2E Admin', ['Mixed BBQ Platter']);
+  const cashier = await apiAs(request, 'cashier');
+  try {
+    // The cashier sees a hint instead, and the server refuses both anyway (BR-10, G8).
+    await openCashier(page);
+    await openBill(page, 'E2E Admin');
+    await expect(page.getByText('Discounts and voids need an admin.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Discount' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Exact' }).click();
+    await page.getByRole('button', { name: /^Pay/ }).click();
+    await expect(page.getByText('Payment recorded')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Void' })).toHaveCount(0);
+    await expect(
+      cashier.rpc('apply_discount', {
+        p_request_id: crypto.randomUUID(),
+        p_order_id: order.order_id,
+        p_amount: 100,
+        p_reason: 'x',
+      }),
+    ).rejects.toThrow('NOT_AUTHORIZED');
+    const paymentId = psql(`select id from public.payments where order_id = '${order.order_id}'`);
+    await expect(
+      cashier.rpc('void_payment', {
+        p_request_id: crypto.randomUUID(),
+        p_payment_id: paymentId,
+        p_reason: 'x',
+      }),
+    ).rejects.toThrow('NOT_AUTHORIZED');
+
+    // The admin voids the payment (with a reason): the order is unpaid again.
+    await page.getByRole('button', { name: 'Account' }).click();
+    await page.getByRole('menuitem', { name: 'Sign out' }).click();
+    await openCashier(page, 'admin');
+    await openBill(page, 'E2E Admin');
+    await page.getByRole('button', { name: 'Void' }).click();
+    const voidDialog = page.getByRole('alertdialog', { name: 'Void this payment?' });
+    await voidDialog.getByLabel('Reason (required)').fill('Wrong bill paid');
+    await voidDialog.getByRole('button', { name: 'Void' }).click();
+    await expect(page.getByText('Voided: Wrong bill paid')).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Pay/ })).toBeVisible();
+    expect(psql(`select payment_status from public.orders where id = '${order.order_id}'`)).toBe(
+      'unpaid',
+    );
+
+    // The admin applies a fixed discount with a reason; the server recalculates the total.
+    await page.getByRole('button', { name: 'Discount' }).click();
+    const discountDialog = page.getByRole('dialog', { name: /^Discount for/ });
+    await discountDialog.getByLabel('Discount amount').fill('200');
+    await discountDialog.getByLabel('Reason (required)').fill('Regular guest');
+    await shot(page, 'discount-dialog');
+    await expectNoSeriousAxe(page);
+    await discountDialog.getByRole('button', { name: 'Apply discount' }).click();
+    await expect(discountDialog).toBeHidden();
+    await expect(page.getByText('Discount: Regular guest')).toBeVisible();
+    expect(
+      psql(
+        `select discount || ' ' || discount_reason from public.orders where id = '${order.order_id}'`,
+      ),
+    ).toBe('20000 Regular guest');
+  } finally {
+    cancelTakeAway('E2E Admin');
+  }
+});

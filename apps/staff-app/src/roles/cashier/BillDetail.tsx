@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 
 import { useRpcAction } from '../../lib/useRpcAction';
+import { BillActions, CancelLineButton, VoidPaymentButton } from './BillActions';
 import { billQuery, billsQuery, cashierKeys, cashierRpc, type BillDetail as Bill } from './data';
 import { useBillName } from './format';
 import type { Tender } from './pay';
@@ -64,6 +65,7 @@ function Lines({ bill }: { bill: Bill }) {
                   amount={line.line_total}
                   className={cn('text-sm', line.is_cancelled && 'line-through')}
                 />
+                <CancelLineButton line={line} bill={bill} />
               </li>
             ))}
           </ul>
@@ -146,7 +148,10 @@ function Payments({ bill }: { bill: Bill }) {
                 </span>
               )}
             </span>
-            <MoneyText amount={p.amount} className={cn(p.voided_at && 'line-through')} />
+            <span className="flex items-center gap-2">
+              <MoneyText amount={p.amount} className={cn(p.voided_at && 'line-through')} />
+              <VoidPaymentButton payment={p} />
+            </span>
           </li>
         ))}
       </ul>
@@ -257,6 +262,7 @@ export function BillDetail() {
       <Lines bill={detail} />
       <Totals bill={detail} />
       <Payments bill={detail} />
+      <BillActions bill={detail} name={name} />
 
       {paid && (
         <section
