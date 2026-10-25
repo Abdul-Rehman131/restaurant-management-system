@@ -1,5 +1,6 @@
 -- apply_discount (M4, BR-10, D4): Admin applies a fixed discount to an open, unpaid order,
--- with a reason. The amount is in minor units, at most the subtotal; 0 removes the discount.
+-- with a reason. The amount is in minor units, at most the subtotal; 0 removes the discount
+-- (the reason for the removal is kept too).
 -- Service charge and tax are then recalculated by private.calc_order_totals from the
 -- settings rules (discount_reduces_charges, docs/pricing-rules.md): the client never sends
 -- a total (BR-01, BR-16). The audit entry, with old and new amount, comes from a trigger
@@ -54,7 +55,7 @@ begin
 
   update public.orders
      set discount = p_amount,
-         discount_reason = case when p_amount = 0 then null else v_reason end
+         discount_reason = v_reason
    where id = p_order_id;
   perform private.calc_order_totals(p_order_id);
 

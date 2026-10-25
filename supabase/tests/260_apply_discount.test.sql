@@ -60,7 +60,7 @@ select is(tests.call_as(:'admin', tests.discount(:'o1', 350000, 'Complaint')) ->
   'a discount of the whole subtotal makes the bill zero');
 select tests.call_as(:'admin', tests.discount(:'o1', 0, 'Discount given by mistake')) as r3 \gset
 select is(:'r3'::jsonb ->> 'total', '423500', 'amount 0 removes the discount');
-select is((select discount_reason from public.orders where id = :'o1'), null, 'and clears the stored reason (the audit log keeps it)');
+select is((select discount_reason from public.orders where id = :'o1'), 'Discount given by mistake', 'and keeps the reason for the removal');
 
 -- ===== Rules =====
 select is(tests.outcome_as(:'admin', tests.discount(:'o1', 350001, 'x')), 'DISCOUNT_TOO_LARGE', 'not above the subtotal');
