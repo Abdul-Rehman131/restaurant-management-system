@@ -49,6 +49,10 @@ export type CancelOrderResponse = OrderSummary;
 export const requestBillResponse = orderSummary;
 export type RequestBillResponse = OrderSummary;
 
+/** apply_discount: Admin only (BR-10); the recalculated summary. */
+export const applyDiscountResponse = orderSummary;
+export type ApplyDiscountResponse = OrderSummary;
+
 /** add_items_to_order: the order summary plus the new batch (2 or more: an ADD-ON, BR-06). */
 export const addItemsToOrderResponse = z.extend(orderSummary, {
   batch_no: z.int().check(z.minimum(2)),

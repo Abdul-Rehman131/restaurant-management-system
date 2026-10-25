@@ -880,6 +880,10 @@ export type Database = {
           username: string;
         }[];
       };
+      apply_discount: {
+        Args: { p_amount: number; p_order_id: string; p_reason: string; p_request_id: string };
+        Returns: Json;
+      };
       cancel_order: {
         Args: { p_order_id: string; p_reason: string; p_request_id: string };
         Returns: Json;

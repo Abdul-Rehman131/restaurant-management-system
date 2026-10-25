@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir helpers.psql
 
-select plan(9);
+select plan(10);
 
 create function tests.keys(p_value jsonb) returns text[] language sql immutable as $$
   select coalesce(array_agg(k order by k), '{}') from jsonb_object_keys(p_value) k
@@ -106,6 +106,16 @@ select is(
   tests.keys(tests.call_as(:'cashier', format($$ select public.remove_or_cancel_item(gen_random_uuid(), %L, 'Contract test') $$,
     (select id from public.order_items where order_id = :'o_item' and menu_item_id = :'water')))),
   tests.keys_plus(:'created', array['order_item_id']), 'remove_or_cancel_item returns orderSummary + order_item_id'
+);
+
+-- applyDiscountResponse = orderSummary
+select tests.create_staff('rc.admin', 'admin') as admin \gset
+select tests.call_as(:'cashier', format(
+  $$ select public.create_order(gen_random_uuid(), 'take_away', null, 'Guest', null, jsonb_build_array(tests.line(%L))) $$,
+  :'tikka')) ->> 'order_id' as o_discount \gset
+select is(
+  tests.keys(tests.call_as(:'admin', format($$ select public.apply_discount(gen_random_uuid(), %L, 100, 'Contract test') $$, :'o_discount'))),
+  tests.keys(:'created'), 'apply_discount returns the orderSummary keys'
 );
 
 select * from finish();
