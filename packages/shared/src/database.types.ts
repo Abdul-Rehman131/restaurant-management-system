@@ -851,6 +851,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      add_items_to_order: {
+        Args: { p_items: Json; p_order_id: string; p_request_id: string };
+        Returns: Json;
+      };
       admin_menu_item_costs: {
         Args: Record<PropertyKey, never>;
         Returns: {
@@ -876,6 +880,14 @@ export type Database = {
           username: string;
         }[];
       };
+      apply_discount: {
+        Args: { p_amount: number; p_order_id: string; p_reason: string; p_request_id: string };
+        Returns: Json;
+      };
+      cancel_order: {
+        Args: { p_order_id: string; p_reason: string; p_request_id: string };
+        Returns: Json;
+      };
       create_order: {
         Args: {
           p_customer_name: string;
@@ -884,6 +896,7 @@ export type Database = {
           p_request_id: string;
           p_table_id: string;
           p_type: Database['public']['Enums']['order_type'];
+          p_waiter_id?: string;
         };
         Returns: Json;
       };
@@ -897,7 +910,20 @@ export type Database = {
         Returns: string;
       };
       custom_access_token_hook: { Args: { event: Json }; Returns: Json };
+      get_kitchen_queue: { Args: Record<PropertyKey, never>; Returns: Json };
+      get_menu_availability: { Args: Record<PropertyKey, never>; Returns: Json };
+      get_open_bills: { Args: Record<PropertyKey, never>; Returns: Json };
+      get_sales_summary: { Args: { p_business_date?: string }; Returns: Json };
       get_settings: { Args: Record<PropertyKey, never>; Returns: Json };
+      move_order_table: {
+        Args: {
+          p_order_id: string;
+          p_request_id: string;
+          p_to_table_id?: string;
+          p_waiter_id?: string;
+        };
+        Returns: Json;
+      };
       my_role: {
         Args: Record<PropertyKey, never>;
         Returns: Database['public']['Enums']['app_role'];
@@ -906,7 +932,37 @@ export type Database = {
         Args: { p_order_id: string; p_request_id: string; p_tenders: Json };
         Returns: Json;
       };
+      remove_or_cancel_item: {
+        Args: { p_order_item_id: string; p_reason: string; p_request_id: string };
+        Returns: Json;
+      };
+      request_bill: { Args: { p_order_id: string; p_request_id: string }; Returns: Json };
+      set_batch_status: {
+        Args: {
+          p_batch_id: string;
+          p_request_id: string;
+          p_status: Database['public']['Enums']['batch_status'];
+        };
+        Returns: Json;
+      };
+      set_item_availability: {
+        Args: { p_is_available: boolean; p_menu_item_id: string; p_request_id: string };
+        Returns: Json;
+      };
+      set_order_status: {
+        Args: {
+          p_order_id: string;
+          p_reason?: string;
+          p_request_id: string;
+          p_status: Database['public']['Enums']['order_status'];
+        };
+        Returns: Json;
+      };
       staff_login_email: { Args: { p_username: string }; Returns: string };
+      void_payment: {
+        Args: { p_payment_id: string; p_reason: string; p_request_id: string };
+        Returns: Json;
+      };
     };
     Enums: {
       app_role: 'admin' | 'cashier' | 'waiter' | 'chef' | 'rider';

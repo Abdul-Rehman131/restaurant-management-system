@@ -13,13 +13,27 @@ returns text[]
 language sql
 as $$
   select array[
+    'public.add_items_to_order(p_request_id uuid, p_order_id uuid, p_items jsonb)',
     'public.admin_menu_item_costs()',
     'public.admin_order_item_costs(p_order_id uuid)',
     'public.admin_staff_directory()',
-    'public.create_order(p_request_id uuid, p_type order_type, p_table_id uuid, p_customer_name text, p_customer_phone text, p_items jsonb)',
+    'public.apply_discount(p_request_id uuid, p_order_id uuid, p_amount bigint, p_reason text)',
+    'public.cancel_order(p_request_id uuid, p_order_id uuid, p_reason text)',
+    'public.create_order(p_request_id uuid, p_type order_type, p_table_id uuid, p_customer_name text, p_customer_phone text, p_items jsonb, p_waiter_id uuid)',
+    'public.get_kitchen_queue()',
+    'public.get_menu_availability()',
+    'public.get_open_bills()',
+    'public.get_sales_summary(p_business_date date)',
     'public.get_settings()',
+    'public.move_order_table(p_request_id uuid, p_order_id uuid, p_to_table_id uuid, p_waiter_id uuid)',
     'public.my_role()',
-    'public.record_payment(p_request_id uuid, p_order_id uuid, p_tenders jsonb)'
+    'public.record_payment(p_request_id uuid, p_order_id uuid, p_tenders jsonb)',
+    'public.remove_or_cancel_item(p_request_id uuid, p_order_item_id uuid, p_reason text)',
+    'public.request_bill(p_request_id uuid, p_order_id uuid)',
+    'public.set_batch_status(p_request_id uuid, p_batch_id uuid, p_status batch_status)',
+    'public.set_item_availability(p_request_id uuid, p_menu_item_id uuid, p_is_available boolean)',
+    'public.set_order_status(p_request_id uuid, p_order_id uuid, p_status order_status, p_reason text)',
+    'public.void_payment(p_request_id uuid, p_payment_id uuid, p_reason text)'
   ]::text[]
 $$;
 

@@ -38,8 +38,10 @@ grant execute on function tests.visible_on(text) to authenticated, anon;
 
 -- ===== The policy decides with my_role(), never the JWT claim =====
 select policies_are(
-  'realtime', 'messages', array['staff_heartbeat_receive'],
-  'realtime.messages has exactly the policies from our migrations'
+  'realtime', 'messages',
+  array['staff_heartbeat_receive', 'staff_kitchen_receive', 'staff_menu_receive', 'staff_orders_receive',
+        'staff_tables_receive', 'staff_waiter_receive'],
+  'realtime.messages has exactly the policies from our migrations (S1 topics: 330_realtime_topics)'
 );
 select policy_cmd_is(
   'realtime', 'messages', 'staff_heartbeat_receive', 'select',
