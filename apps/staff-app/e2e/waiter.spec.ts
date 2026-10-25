@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { APIRequestContext, Browser, Page } from '@playwright/test';
 
 import { expect, test } from './fixtures';
 import {
@@ -28,6 +28,8 @@ test.beforeEach(async ({ page }) => {
 
 async function shot(page: Page, name: string) {
   if (!shots) return;
+  // Toasts close by themselves; the screenshot shows the screen, not the last toast.
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 10_000 });
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: `${shots}/waiter-${name}-${theme}.png` });
 }
@@ -205,5 +207,100 @@ test('an item marked Sold Out elsewhere greys out live and blocks Send', async (
       p_menu_item_id: garlicNaan,
       p_is_available: true,
     });
+  }
+});
+
+interface KitchenTicket {
+  batch_id: string;
+  order_number: string;
+  batch_no: number;
+}
+
+/** The chef's tablet: a second signed-in page on the kitchen screen, using the S1 RPCs. */
+async function chefDevice(browser: Browser, request: APIRequestContext) {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await signInAs(page, 'chef');
+  await expect(page).toHaveURL(/\/kitchen$/);
+  const chef = await apiAs(request, 'chef');
+  const ticket = async (orderNumber: string, batchNo: number) => {
+    const queue = await chef.rpc<{ tickets: KitchenTicket[] }>('get_kitchen_queue');
+    const found = queue.tickets.find(
+      (t) => t.order_number === orderNumber && t.batch_no === batchNo,
+    );
+    if (!found) throw new Error(`no kitchen ticket for ${orderNumber} batch ${String(batchNo)}`);
+    return found.batch_id;
+  };
+  const setBatch = async (orderNumber: string, batchNo: number, status: 'preparing' | 'ready') => {
+    await chef.rpc('set_batch_status', {
+      p_request_id: crypto.randomUUID(),
+      p_batch_id: await ticket(orderNumber, batchNo),
+      p_status: status,
+    });
+  };
+  return { setBatch, close: () => context.close() };
+}
+
+/** Free table, waiter1 sends a quick order from the UI; returns the order number. */
+async function sendOrder(page: Page, number: number, items: string[]) {
+  freeTable(number);
+  await openWaiter(page);
+  await tile(page, number).click();
+  for (const item of items) await page.getByRole('button', { name: `Add ${item}` }).click();
+  await page.getByRole('button', { name: 'Send to Kitchen' }).click();
+  const toastText = await page.getByText(/^Sent to the kitchen: ORD-/).textContent();
+  return (toastText ?? '').replace('Sent to the kitchen: ', '');
+}
+
+test('existing order: kitchen status live, Served, Request Bill, add-on batch, move table', async ({
+  page,
+  browser,
+  request,
+}) => {
+  freeTable(6);
+  const orderNumber = await sendOrder(page, 5, ['Seekh Kebab (4 pcs)', 'Soft Drink (Can)']);
+  const firstSend = page.getByRole('region', { name: 'First send' });
+  await expect(firstSend).toContainText('Sent');
+  await expect(firstSend).toContainText('Soft Drink (Can)');
+  await expect(firstSend).toContainText('No kitchen');
+  await expect(page.getByText('To cancel an item, ask the cashier.')).toBeVisible();
+  await expect(page.getByText('Total', { exact: true })).toBeVisible();
+
+  const kitchen = await chefDevice(browser, request);
+  try {
+    await kitchen.setBatch(orderNumber, 1, 'preparing');
+    await expect(firstSend).toContainText('Preparing', { timeout: 2_000 });
+    await kitchen.setBatch(orderNumber, 1, 'ready');
+    await expect(firstSend).toContainText('Ready', { timeout: 2_000 });
+    await shot(page, 'existing-order');
+    await expectNoSeriousAxe(page);
+
+    await page.getByRole('button', { name: 'Mark served' }).click();
+    await expect(page.getByText('Table 5 marked served')).toBeVisible();
+    await expect(firstSend).toContainText('Served');
+
+    await page.getByRole('button', { name: 'Request bill' }).click();
+    await expect(page.getByText('The cashier has the bill request for table 5')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Bill requested' }).first()).toBeDisabled();
+
+    // Add more items: a new batch, the kitchen's ADD-ON (BR-06); it clears the bill request.
+    await page.getByRole('link', { name: 'Add more items' }).click();
+    await expect(page.getByText(`Adding to ${orderNumber}`)).toBeVisible();
+    await page.getByRole('button', { name: 'Add Garlic Naan' }).click();
+    await page.getByRole('button', { name: 'Send add-on' }).click();
+    await expect(page.getByText('Add-on 2 sent to the kitchen')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Add-on 2' })).toContainText('Garlic Naan');
+    await expect(page.getByRole('button', { name: 'Request bill' })).toBeEnabled();
+
+    await page.getByRole('button', { name: 'Move table' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Table 6' }).click();
+    await expect(page.getByText('Moved to table 6')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Table 6' })).toBeVisible();
+    expect(openOrders(5)).toBe(0);
+    expect(openOrders(6)).toBe(1);
+  } finally {
+    await kitchen.close();
+    freeTable(5);
+    freeTable(6);
   }
 });
