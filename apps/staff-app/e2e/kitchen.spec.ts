@@ -8,6 +8,7 @@ import {
   freeTable,
   liveDot,
   menuItemId,
+  openOrderNumber,
   psql,
   shots,
   signInAs,
@@ -131,8 +132,9 @@ test('the order loop: waiter sends, kitchen within 2 s, Start, Ready, alert, ADD
       .getByRole('textbox', { name: 'Note for Chicken Wings (6 pcs)' })
       .fill('extra crisp');
     await waiter.page.getByRole('dialog').getByRole('button', { name: 'Send to Kitchen' }).click();
-    const sent = await waiter.page.getByText(/^Sent to the kitchen: ORD-/).textContent();
-    const orderNumber = (sent ?? '').replace('Sent to the kitchen: ', '');
+    await expect(waiter.page.getByText(/^Sent to the kitchen: ORD-/).last()).toBeVisible();
+    // From the server: an earlier toast may still be on screen.
+    const orderNumber = openOrderNumber(9);
 
     // Done criterion 2: on the kitchen screen within 2 seconds, with the note; the bottled
     // water never reaches the kitchen (BR-07).

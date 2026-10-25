@@ -153,6 +153,14 @@ export function archiveTable(number: number) {
          where number = ${String(number)} and section = 'E2E'`);
 }
 
+/** The order number of the open order on a table, from the server (not from a toast). */
+export function openOrderNumber(number: number): string {
+  return psql(`select o.order_number from public.orders o
+                 join public.restaurant_tables t on t.id = o.table_id
+                where t.number = ${String(number)} and t.is_active
+                  and o.status not in ('completed', 'cancelled')`);
+}
+
 export function tableId(number: number): string {
   return psql(
     `select id from public.restaurant_tables where number = ${String(number)} and is_active`,

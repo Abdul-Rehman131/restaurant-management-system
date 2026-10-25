@@ -509,9 +509,11 @@ async function counterTakeAway(page: Page, name: string, items: string[]) {
   await page.getByLabel('Phone (optional)').fill('0300 1234567');
   for (const item of items) await page.getByRole('button', { name: `Add ${item}` }).click();
   await page.getByRole('button', { name: 'Send to Kitchen' }).click();
-  const sent = await page.getByText(/^Sent to the kitchen: ORD-/).textContent();
   await expect(page.getByRole('heading', { name: `Take Away · ${name}`, level: 2 })).toBeVisible();
-  return (sent ?? '').replace('Sent to the kitchen: ', '');
+  // The order number from the server, by this order's own customer name: an earlier order's
+  // "Sent to the kitchen" toast may still be on screen (seen in the S4 check).
+  return psql(`select order_number from public.orders where customer_name = '${name}'
+                order by created_at desc limit 1`);
 }
 
 const orderState = (orderNumber: string) =>

@@ -7,6 +7,7 @@ import {
   freeTable,
   liveDot,
   menuItemId,
+  openOrderNumber,
   psql,
   shots,
   signInAs,
@@ -248,8 +249,9 @@ async function sendOrder(page: Page, number: number, items: string[], signedIn =
   await tile(page, number).click();
   for (const item of items) await page.getByRole('button', { name: `Add ${item}` }).click();
   await page.getByRole('button', { name: 'Send to Kitchen' }).click();
-  const toastText = await page.getByText(/^Sent to the kitchen: ORD-/).textContent();
-  return (toastText ?? '').replace('Sent to the kitchen: ', '');
+  await expect(page.getByText(/^Sent to the kitchen: ORD-/).last()).toBeVisible();
+  // From the server: an earlier toast may still be on screen.
+  return openOrderNumber(number);
 }
 
 test('orders tab: my open orders with status, opens the table', async ({ page }) => {
