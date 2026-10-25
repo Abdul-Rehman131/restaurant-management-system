@@ -915,6 +915,7 @@ export type Database = {
         Args: { p_order_id: string; p_request_id: string; p_tenders: Json };
         Returns: Json;
       };
+      request_bill: { Args: { p_order_id: string; p_request_id: string }; Returns: Json };
       set_batch_status: {
         Args: {
           p_batch_id: string;

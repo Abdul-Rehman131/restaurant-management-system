@@ -45,6 +45,10 @@ export type SetOrderStatusResponse = OrderSummary;
 export const cancelOrderResponse = orderSummary;
 export type CancelOrderResponse = OrderSummary;
 
+/** request_bill: the summary with bill_requested = true. */
+export const requestBillResponse = orderSummary;
+export type RequestBillResponse = OrderSummary;
+
 /** add_items_to_order: the order summary plus the new batch (2 or more: an ADD-ON, BR-06). */
 export const addItemsToOrderResponse = z.extend(orderSummary, {
   batch_no: z.int().check(z.minimum(2)),
