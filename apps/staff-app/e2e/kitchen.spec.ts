@@ -16,7 +16,7 @@ import {
 
 // S3 kitchen screen on a landscape tablet (the tablet project only, playwright.config.ts)
 // against the local Supabase stack. The waiter side is waiter2 on a phone, so these tests
-// never add Ready alerts to waiter1's screens in waiter.spec.ts. Tables 9, 10 and 12 and
+// never add Ready alerts to waiter1's screens in waiter.spec.ts. Tables 1, 9, 10 and 12 and
 // the items below are not used by waiter.spec.ts. Screenshots go to $SHOTS.
 
 /** Money at any depth of a response the chef receives (G6): never allowed. */
@@ -87,15 +87,18 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: `${shots}/kitchen-${name}.png`, fullPage: name === 'board' });
 }
 
-/** Take Away orders the tests create through the cashier, cancelled afterwards. */
-function cancelE2eTakeAway() {
+/**
+ * Take Away orders a test creates through the cashier, cancelled afterwards. Each test has its
+ * own name prefix, so tests running in parallel never cancel each other's orders.
+ */
+function cancelTakeAway(prefix: string) {
+  const open = `select id from public.orders where customer_name like '${prefix}%'
+                  and status not in ('completed', 'cancelled')`;
   psql(`
     update public.order_batches set status = 'cancelled'
-     where order_id in (select id from public.orders where customer_name like 'E2E %'
-                          and status not in ('completed', 'cancelled'))
-       and status not in ('served', 'cancelled');
+     where order_id in (${open}) and status not in ('served', 'cancelled');
     update public.orders set status = 'cancelled', cancel_reason = 'e2e reset', cancelled_at = now()
-     where customer_name like 'E2E %' and status not in ('completed', 'cancelled');`);
+     where id in (${open});`);
 }
 
 async function takeAway(cashier: Awaited<ReturnType<typeof apiAs>>, name: string, item: string) {
@@ -211,18 +214,18 @@ test('age colours from the settings: green, amber and red, each with minutes and
   page,
   request,
 }) => {
-  cancelE2eTakeAway();
+  cancelTakeAway('E2E Age');
   const cashier = await apiAs(request, 'cashier');
-  freeTable(9);
+  freeTable(1);
   const waiter = await apiAs(request, 'waiter2');
-  const fresh = await takeAway(cashier, 'E2E Green', 'Chicken Biryani');
-  const amber = await takeAway(cashier, 'E2E Amber', 'Chicken Malai Boti');
-  const red = await takeAway(cashier, 'E2E Red', 'Daal Makhani');
-  // An ADD-ON for the screenshot: table 9 with a second batch.
+  const fresh = await takeAway(cashier, 'E2E Age Green', 'Chicken Biryani');
+  const amber = await takeAway(cashier, 'E2E Age Amber', 'Chicken Malai Boti');
+  const red = await takeAway(cashier, 'E2E Age Red', 'Daal Makhani');
+  // An ADD-ON for the screenshot: table 1 (no other test uses it) with a second batch.
   const dineIn = await waiter.rpc<{ order_id: string }>('create_order', {
     p_request_id: crypto.randomUUID(),
     p_type: 'dine_in',
-    p_table_id: tableId(9),
+    p_table_id: tableId(1),
     p_customer_name: '',
     p_customer_phone: '',
     p_items: [{ menu_item_id: menuItemId('Seekh Kebab (4 pcs)'), quantity: 2 }],
@@ -241,19 +244,19 @@ test('age colours from the settings: green, amber and red, each with minutes and
          where order_id = '${fresh.order_id}';`);
   try {
     await openKitchen(page);
-    await expect(ticket(page, 'E2E Green')).toHaveAttribute('data-band', 'fresh');
-    await expect(ticket(page, 'E2E Green')).toContainText('1 min · On time');
-    await expect(ticket(page, 'E2E Amber')).toHaveAttribute('data-band', 'aging');
-    await expect(ticket(page, 'E2E Amber')).toContainText('12 min · Waiting');
-    await expect(ticket(page, 'E2E Red')).toHaveAttribute('data-band', 'late');
-    await expect(ticket(page, 'E2E Red')).toContainText('25 min · Late');
-    await expect(ticket(page, 'E2E Red')).toContainText('Take Away');
+    await expect(ticket(page, 'E2E Age Green')).toHaveAttribute('data-band', 'fresh');
+    await expect(ticket(page, 'E2E Age Green')).toContainText('1 min · On time');
+    await expect(ticket(page, 'E2E Age Amber')).toHaveAttribute('data-band', 'aging');
+    await expect(ticket(page, 'E2E Age Amber')).toContainText('12 min · Waiting');
+    await expect(ticket(page, 'E2E Age Red')).toHaveAttribute('data-band', 'late');
+    await expect(ticket(page, 'E2E Age Red')).toContainText('25 min · Late');
+    await expect(ticket(page, 'E2E Age Red')).toContainText('Take Away');
     await expect(page.getByText(/^ADD-ON for ORD-/).first()).toBeVisible();
     await shot(page, 'board');
     await expectNoSeriousAxe(page);
   } finally {
-    cancelE2eTakeAway();
-    freeTable(9);
+    cancelTakeAway('E2E Age');
+    freeTable(1);
   }
 });
 
@@ -261,7 +264,7 @@ test('the kitchen cannot skip Preparing; a stale ticket explains itself', async 
   page,
   request,
 }) => {
-  cancelE2eTakeAway();
+  cancelTakeAway('E2E Stale');
   const cashier = await apiAs(request, 'cashier');
   const chef = await apiAs(request, 'chef');
   await takeAway(cashier, 'E2E Stale', 'Vegetable Pulao');
@@ -301,7 +304,7 @@ test('the kitchen cannot skip Preparing; a stale ticket explains itself', async 
     );
   } finally {
     await page.unroute('**/rpc/get_kitchen_queue');
-    cancelE2eTakeAway();
+    cancelTakeAway('E2E Stale');
   }
 });
 
@@ -363,7 +366,7 @@ test('offline: the banner shows and every kitchen action is disabled', async ({
   context,
   request,
 }) => {
-  cancelE2eTakeAway();
+  cancelTakeAway('E2E Offline');
   const cashier = await apiAs(request, 'cashier');
   await takeAway(cashier, 'E2E Offline', 'Plain Rice');
   try {
@@ -378,6 +381,6 @@ test('offline: the banner shows and every kitchen action is disabled', async ({
     await expect(liveDot(page)).toBeVisible({ timeout: 15_000 });
     await expect(start).toBeEnabled();
   } finally {
-    cancelE2eTakeAway();
+    cancelTakeAway('E2E Offline');
   }
 });
