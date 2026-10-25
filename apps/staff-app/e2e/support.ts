@@ -130,6 +130,29 @@ export function setStaffActive(username: string, active: boolean) {
   psql(`update public.profiles set is_active = ${String(active)} where username = '${username}'`);
 }
 
+/**
+ * A table of the test's own (number 101 and up, section "E2E"), free and active; archive it
+ * afterwards with archiveTable (archive, never delete). Keeps tests off the seed tables.
+ */
+export function createTable(number: number) {
+  psql(`
+    update public.restaurant_tables set is_active = true, status = 'available'
+     where number = ${String(number)} and section = 'E2E'
+       and not exists (select 1 from public.restaurant_tables
+                        where number = ${String(number)} and is_active);
+    insert into public.restaurant_tables (number, capacity, section)
+    select ${String(number)}, 4, 'E2E'
+     where not exists (select 1 from public.restaurant_tables
+                        where number = ${String(number)} and is_active);`);
+  freeTable(number);
+}
+
+export function archiveTable(number: number) {
+  freeTable(number);
+  psql(`update public.restaurant_tables set is_active = false
+         where number = ${String(number)} and section = 'E2E'`);
+}
+
 export function tableId(number: number): string {
   return psql(
     `select id from public.restaurant_tables where number = ${String(number)} and is_active`,
@@ -152,6 +175,15 @@ export async function apiAs(request: APIRequestContext, user: string) {
   expect(login.ok()).toBe(true);
   const { access_token: token } = (await login.json()) as { access_token: string };
   return {
+    /** A PostgREST read as this user (RLS applies), e.g. 'payments?select=id'. */
+    async select<T = unknown>(path: string): Promise<T> {
+      const response = await request.get(`${supabaseUrl}/rest/v1/${path}`, {
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` },
+      });
+      const body: unknown = await response.json();
+      if (!response.ok()) throw new Error(`${path}: ${JSON.stringify(body)}`);
+      return body as T;
+    },
     async rpc<T = unknown>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
       const response = await request.post(`${supabaseUrl}/rest/v1/rpc/${fn}`, {
         headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` },

@@ -61,15 +61,6 @@
     "updateNow": "Update",
     "offlineReady": "The app is ready to work with a weak connection."
   },
-  "cashier": {
-    "title": "Cashier",
-    "openBills": "Open bills",
-    "newCounterOrder": "New counter order",
-    "billsEmpty": "No open bills",
-    "billsEmptyBody": "Bills appear here when an order is sent.",
-    "detailEmpty": "Choose a bill",
-    "detailEmptyBody": "Its lines, totals and payment appear here."
-  },
   "admin": {
     "title": "Admin",
     "nav": "Admin sections",
