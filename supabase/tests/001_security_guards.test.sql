@@ -13,6 +13,7 @@ returns text[]
 language sql
 as $$
   select array[
+    'public.add_items_to_order(p_request_id uuid, p_order_id uuid, p_items jsonb)',
     'public.admin_menu_item_costs()',
     'public.admin_order_item_costs(p_order_id uuid)',
     'public.admin_staff_directory()',

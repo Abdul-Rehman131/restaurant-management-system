@@ -851,6 +851,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      add_items_to_order: {
+        Args: { p_items: Json; p_order_id: string; p_request_id: string };
+        Returns: Json;
+      };
       admin_menu_item_costs: {
         Args: Record<PropertyKey, never>;
         Returns: {

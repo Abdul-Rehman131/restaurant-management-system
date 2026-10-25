@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir helpers.psql
 
-select plan(2);
+select plan(3);
 
 create function tests.keys(p_value jsonb) returns text[] language sql immutable as $$
   select coalesce(array_agg(k order by k), '{}') from jsonb_object_keys(p_value) k
@@ -24,6 +24,19 @@ select is(
         'replayed', 'service_charge', 'status', 'subtotal', 'table_id', 'tax', 'total', 'type', 'waiter_id'],
   'create_order returns the orderSummary keys'
 );
+
+-- addItemsToOrderResponse (schemas/orders.ts): orderSummary + batch_no
+select tests.call_as(:'cashier', format(
+  $$ select public.add_items_to_order(gen_random_uuid(), %L, jsonb_build_array(tests.line(%L))) $$,
+  :'created'::jsonb ->> 'order_id', :'water')) as added \gset
+select is(
+  tests.keys(:'added'),
+  array['batch_no', 'bill_requested', 'business_date', 'discount', 'order_id', 'order_number', 'payment_status',
+        'replayed', 'service_charge', 'status', 'subtotal', 'table_id', 'tax', 'total', 'type', 'waiter_id'],
+  'add_items_to_order returns orderSummary + batch_no'
+);
+-- (the bill changed: read the new total for the payment below)
+select private.order_summary((:'created'::jsonb ->> 'order_id')::uuid, false) as created \gset
 
 -- paymentSummary (schemas/orders.ts)
 select tests.call_as(:'cashier', format(

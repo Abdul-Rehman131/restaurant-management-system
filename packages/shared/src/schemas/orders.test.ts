@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as z from 'zod/mini';
 
-import { createOrderResponse, recordPaymentResponse } from './orders';
+import { addItemsToOrderResponse, createOrderResponse, recordPaymentResponse } from './orders';
 
 // Shapes as returned by the database (keys pinned by supabase/tests/990_rpc_contracts.test.sql).
 const orderSummaryFixture = {
@@ -47,6 +47,19 @@ describe('create_order response', () => {
     const withoutReplayed: Partial<typeof orderSummaryFixture> = { ...orderSummaryFixture };
     delete withoutReplayed.replayed;
     expect(() => z.parse(createOrderResponse, withoutReplayed)).toThrow();
+  });
+});
+
+describe('add_items_to_order response', () => {
+  it('accepts the summary with the add-on batch number', () => {
+    const r = z.parse(addItemsToOrderResponse, { ...orderSummaryFixture, batch_no: 2 });
+    expect(r.batch_no).toBe(2);
+  });
+
+  it('rejects batch 1 (an add-on is always batch 2 or more)', () => {
+    expect(() =>
+      z.parse(addItemsToOrderResponse, { ...orderSummaryFixture, batch_no: 1 }),
+    ).toThrow();
   });
 });
 
