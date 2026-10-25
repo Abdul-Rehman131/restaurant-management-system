@@ -911,6 +911,14 @@ export type Database = {
         Args: { p_order_id: string; p_request_id: string; p_tenders: Json };
         Returns: Json;
       };
+      set_batch_status: {
+        Args: {
+          p_batch_id: string;
+          p_request_id: string;
+          p_status: Database['public']['Enums']['batch_status'];
+        };
+        Returns: Json;
+      };
       staff_login_email: { Args: { p_username: string }; Returns: string };
     };
     Enums: {

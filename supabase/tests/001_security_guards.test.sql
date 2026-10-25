@@ -20,7 +20,8 @@ as $$
     'public.create_order(p_request_id uuid, p_type order_type, p_table_id uuid, p_customer_name text, p_customer_phone text, p_items jsonb, p_waiter_id uuid)',
     'public.get_settings()',
     'public.my_role()',
-    'public.record_payment(p_request_id uuid, p_order_id uuid, p_tenders jsonb)'
+    'public.record_payment(p_request_id uuid, p_order_id uuid, p_tenders jsonb)',
+    'public.set_batch_status(p_request_id uuid, p_batch_id uuid, p_status batch_status)'
   ]::text[]
 $$;
 
