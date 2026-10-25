@@ -69,7 +69,7 @@ result on a retry.
 - **Recently ready** lists the tickets marked Ready on this screen (device-local, last 6). A Ready ticket stays on the board for 4 s first. There is no undo in S3.
 - **Sold Out list** shows every active item, drinks included: a bottled drink can run out too.
 - **Chime** for new tickets plays after Start shift, unless muted; the first load never chimes.
-- **e2e projects**: each role spec runs on its device project (waiter on phone, kitchen on a landscape tablet), so "skipped" counts only real skips. The tablet project runs after desktop, because the desktop project switches `waiter2` (the kitchen tests' waiter) off once.
+- **e2e projects**: each role spec runs on its device project (waiter on phone, kitchen on a landscape tablet), so "skipped" counts only real skips. Tests that change an account use a disposable one (`createStaff` in `e2e/support.ts`), never a shared demo login, so projects need no fixed order (changed in S4).
 
 ## Out of P1
 Online orders, deals and pg_cron jobs (P2); delivery, riders and reservations (P3); profit,

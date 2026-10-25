@@ -35,9 +35,6 @@ export default defineConfig({
       name: 'tablet',
       use: { ...devices['Galaxy Tab S4 landscape'] },
       testMatch: /kitchen\.spec\.ts/,
-      // waiter2 is the kitchen tests' waiter; the desktop project switches it off once
-      // (auth.spec.ts), so the tablet runs after desktop (phone runs alongside).
-      dependencies: ['desktop'],
     },
   ],
   webServer: {

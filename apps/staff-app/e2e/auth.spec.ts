@@ -1,7 +1,14 @@
-import { execFileSync } from 'node:child_process';
-
 import { expect, test } from './fixtures';
-import { PASSWORD, expectNoSeriousAxe, liveDot, shots, signIn, signInAs } from './support';
+import {
+  PASSWORD,
+  createStaff,
+  expectNoSeriousAxe,
+  liveDot,
+  setStaffActive,
+  shots,
+  signIn,
+  signInAs,
+} from './support';
 
 // T8 against the LOCAL Supabase stack (`supabase start`, seed.sql demo logins). Runs on phone
 // and desktop. Screenshots go to $SHOTS when set. Rider screens are P3.
@@ -121,38 +128,24 @@ test('a deactivated user is denied', async ({ page }) => {
 });
 
 // Deactivation while signed in: the token is still valid, but my_role() turns NULL at once.
-// Changes the local demo DB through the Supabase CLI container (local stack only).
-function setActive(username: string, active: boolean) {
-  execFileSync('docker', [
-    'exec',
-    'supabase_db_rms',
-    'psql',
-    '-U',
-    'postgres',
-    '-qc',
-    `update public.profiles set is_active = ${String(active)} where username = '${username}'`,
-  ]);
-}
-
-test.describe('deactivated while signed in', () => {
-  // One account is switched off and on again: never run this in parallel with itself.
-  test.describe.configure({ mode: 'serial' });
-
-  test('the next check signs the user out with "not active"', async ({ page }, info) => {
-    test.skip(info.project.name !== 'desktop', 'one run is enough');
-    await signInAs(page, 'waiter2');
+// A disposable account per run (createStaff), so no shared demo login is ever switched off.
+test('deactivated while signed in: the next check signs the user out with "not active"', async ({
+  page,
+}) => {
+  const username = createStaff('waiter');
+  try {
+    await signInAs(page, username);
     await expect(page).toHaveURL(/\/waiter$/);
-    try {
-      setActive('waiter2', false);
-      await page.reload();
-      await expect(page).toHaveURL(/\/login$/, { timeout: 10_000 });
-      await expect(
-        page.getByText('This account is not active any more. Ask your manager.'),
-      ).toBeVisible();
-    } finally {
-      setActive('waiter2', true);
-    }
-  });
+    setStaffActive(username, false);
+    await page.reload();
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(
+      page.getByText('This account is not active any more. Ask your manager.'),
+    ).toBeVisible();
+  } finally {
+    // Archived, never deleted (CLAUDE.md rule 6): it stays inactive.
+    setStaffActive(username, false);
+  }
 });
 
 test('sign out from the account menu', async ({ page }) => {
