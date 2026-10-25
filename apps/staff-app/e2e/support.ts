@@ -18,11 +18,23 @@ const supabaseKey = env['VITE_SUPABASE_PUBLISHABLE_KEY'] ?? '';
 export const PASSWORD = 'demo-password-123';
 export const shots = process.env['SHOTS'];
 
+/**
+ * Signs in through the login screen and waits for Auth's answer. A password sign-in hashes the
+ * password on the server; at the start of a run (three browsers, a cold dev server and the
+ * Docker VM sharing the CPU) it took up to 5.6 s, longer than the 5 s an assertion waits by
+ * default. Waiting for the response itself, then checking where the app went, keeps the
+ * tests exact without a fixed sleep.
+ */
 export async function signIn(page: Page, user: string, password = PASSWORD) {
   await page.goto('/login');
   await page.getByLabel('Username').fill(user);
   await page.getByLabel('Password', { exact: true }).fill(password);
+  const answer = page.waitForResponse(
+    (response) =>
+      response.url().includes('/auth/v1/token') && response.request().method() === 'POST',
+  );
   await page.getByRole('button', { name: 'Sign in' }).click();
+  await answer;
 }
 
 /** Admin has no TOTP factor in the seed: skip the set-up prompt (enforcement is S5). */

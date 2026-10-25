@@ -1,47 +1,16 @@
 import { execFileSync } from 'node:child_process';
 
-import AxeBuilder from '@axe-core/playwright';
-import type { Page } from '@playwright/test';
-
 import { expect, test } from './fixtures';
+import { PASSWORD, expectNoSeriousAxe, liveDot, shots, signIn, signInAs } from './support';
 
 // T8 against the LOCAL Supabase stack (`supabase start`, seed.sql demo logins). Runs on phone
 // and desktop. Screenshots go to $SHOTS when set. Rider screens are P3.
-const PASSWORD = 'demo-password-123';
-const shots = process.env['SHOTS'];
-
 const roles = [
   { user: 'admin', home: '/admin', heading: 'Dashboard' },
   { user: 'cashier', home: '/cashier', heading: 'Open bills' },
   { user: 'waiter1', home: '/waiter', heading: null },
   { user: 'chef', home: '/kitchen', heading: 'Kitchen' },
 ] as const;
-
-async function signIn(page: Page, user: string, password = PASSWORD) {
-  await page.goto('/login');
-  await page.getByLabel('Username').fill(user);
-  await page.getByLabel('Password', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Sign in' }).click();
-}
-
-/** Admin has no TOTP factor in the seed: skip the set-up prompt (enforcement is P1). */
-async function signInAs(page: Page, user: string) {
-  await signIn(page, user);
-  if (user === 'admin') await page.getByRole('button', { name: 'Skip for now' }).click();
-}
-
-const liveDot = (page: Page) =>
-  page.getByRole('status').filter({ hasText: 'Live' }).filter({ visible: true });
-
-async function expectNoSeriousAxe(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
-    .analyze();
-  const serious = results.violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  );
-  expect(serious.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
-}
 
 test('login screen: accessible, required fields, plain-language errors', async ({ page }, info) => {
   await page.goto('/login');
@@ -113,7 +82,9 @@ test('signed out: any screen goes to login, and back after signing in', async ({
   await expect(page).toHaveURL(/\/login$/);
   await page.getByLabel('Username').fill('cashier');
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
+  const answer = page.waitForResponse((r) => r.url().includes('/auth/v1/token'));
   await page.getByRole('button', { name: 'Sign in' }).click();
+  await answer;
   await expect(page).toHaveURL(/\/cashier$/);
 });
 
