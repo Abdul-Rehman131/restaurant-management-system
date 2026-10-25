@@ -5,7 +5,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir helpers.psql
 
-select plan(26);
+select plan(28);
 
 select tests.create_staff('kq.admin', 'admin') as admin \gset
 select tests.create_staff('kq.cashier', 'cashier') as cashier \gset
@@ -60,6 +60,8 @@ select is(jsonb_array_length(:'q1'::jsonb -> 'tickets'), 2, 'two tickets: the dr
 select is(:'q1'::jsonb #>> '{tickets,0,order_id}', :'o1', 'oldest first');
 select is(:'q1'::jsonb #>> '{tickets,0,table_number}', '977', 'the ticket shows the table number');
 select is(:'q1'::jsonb #>> '{tickets,1,table_number}', null, 'a Take Away ticket has no table');
+select is(:'q1'::jsonb #>> '{tickets,1,customer_name}', 'Guest', 'a Take Away ticket shows the customer name (S3)');
+select is(:'q1'::jsonb #>> '{tickets,0,customer_name}', null, 'a Dine-In ticket has no customer name');
 select is(:'q1'::jsonb #>> '{tickets,0,is_addon}', 'false', 'batch 1 is not an add-on');
 select is(jsonb_array_length(:'q1'::jsonb #> '{tickets,0,items}'), 1, 'only the kitchen line, not the cola (BR-07)');
 select is((:'q1'::jsonb #> '{tickets,0,items,0}') - 'order_item_id'::text,
@@ -70,7 +72,7 @@ select ok((:'q1'::jsonb ->> 'server_time') is not null, 'server time for the tic
 select is(tests.money_keys(:'q1'), '{}'::text[], 'no money field at any depth of the kitchen queue');
 select is(
   tests.all_keys(:'q1'),
-  array['batch_id', 'batch_no', 'is_addon', 'items', 'name', 'notes', 'order_id', 'order_item_id', 'order_number',
+  array['batch_id', 'batch_no', 'customer_name', 'is_addon', 'items', 'name', 'notes', 'order_id', 'order_item_id', 'order_number',
         'order_type', 'preparing_at', 'quantity', 'sent_at', 'server_time', 'status', 'table_number', 'tickets'],
   'the queue has exactly these keys'
 );
