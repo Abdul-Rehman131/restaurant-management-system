@@ -11,6 +11,7 @@
 -- Session helpers (RLS tests):
 --   tests.login_as(user_id)   act as that user: role authenticated + JWT claims (auth.uid())
 --   tests.login_as_anon()     act as an anonymous API caller
+--   tests.claims_as(user_id)  only the JWT claims (stay the owner, to call private helpers)
 --   tests.logout()            back to the test owner (postgres) to build fixtures or inspect
 -- Everything runs inside the test's transaction and is rolled back.
 
@@ -103,6 +104,19 @@ begin
   );
   execute 'set local role authenticated';
 end;
+$$;
+
+-- Sets only the JWT claims (auth.uid() = p_user_id) and stays the test owner: for calling
+-- private helpers directly, which the API roles cannot reach.
+create or replace function tests.claims_as(p_user_id uuid)
+returns void
+language sql
+as $$
+  select set_config(
+    'request.jwt.claims',
+    json_build_object('sub', p_user_id, 'role', 'authenticated', 'aud', 'authenticated')::text,
+    true
+  )::text is null
 $$;
 
 create or replace function tests.login_as_anon()
