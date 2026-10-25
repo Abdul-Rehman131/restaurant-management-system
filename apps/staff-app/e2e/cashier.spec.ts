@@ -397,3 +397,88 @@ test('a cashier cannot discount or void; an admin can, and a void reopens the or
     cancelTakeAway('E2E Admin');
   }
 });
+
+test('the receipt has the right lines and totals, no cost price, and prints (Ctrl+P, auto)', async ({
+  page,
+  request,
+}) => {
+  test.slow();
+  cancelTakeAway('E2E Receipt');
+  // Seekh Kebab: price Rs 700, cost Rs 300 in the seed. The cost must never appear.
+  const order = await takeAway(request, 'E2E Receipt Main', ['Seekh Kebab (4 pcs)', 'Raita']);
+  const second = await takeAway(request, 'E2E Receipt Auto', ['Plain Rice']);
+  const costKeys: string[] = [];
+  page.on('response', (response) => {
+    if (!response.url().includes(':54321/')) return;
+    void response.text().then(
+      (text) => {
+        if (/cost_price|cost_snapshot|"cost"/.test(text)) costKeys.push(response.url());
+      },
+      () => null,
+    );
+  });
+  // Count print calls instead of opening the browser's dialog.
+  await page.addInitScript(() => {
+    const w = window as unknown as { prints: number };
+    w.prints = 0;
+    window.print = () => {
+      w.prints += 1;
+      window.dispatchEvent(new Event('afterprint'));
+    };
+  });
+  const prints = () => page.evaluate(() => (window as unknown as { prints: number }).prints);
+  try {
+    await openCashier(page);
+    await openBill(page, 'E2E Receipt Main');
+    // A cancelled line is not on the receipt.
+    await page.getByRole('button', { name: 'Cancel Raita' }).click();
+    await page.getByRole('alertdialog').getByLabel('Reason (required)').fill('Not wanted');
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel it' }).click();
+    await expect(page.locator('[data-line="Raita"]')).toContainText('Cancelled');
+    await page.getByLabel('Cash received').fill('1000');
+    await page.getByRole('button', { name: /^Pay/ }).click();
+    await expect(page.getByText('Payment recorded')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Preview receipt' }).click();
+    const preview = page.getByRole('dialog', { name: 'Receipt' });
+    const receipt = preview.locator('[data-receipt]');
+    await expect(receipt).toContainText('Ember Kitchen (Demo)');
+    await expect(receipt).toContainText(`Order ${order.order_number}`);
+    await expect(receipt).toContainText('Take Away · E2E Receipt Main');
+    await expect(receipt).toContainText('Seekh Kebab (4 pcs)');
+    await expect(receipt).not.toContainText('Raita');
+    const total = psql(`select total from public.orders where id = '${order.order_id}'`);
+    await expect(receipt).toContainText('Total');
+    await expect(receipt).toContainText(
+      `Rs ${(Number(total) / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`,
+    );
+    await expect(receipt).toContainText('Received');
+    await expect(receipt).toContainText('Rs 1,000.00');
+    await expect(receipt).toContainText('Change');
+    await expect(receipt).not.toContainText('300.00');
+    await shot(page, 'receipt-preview');
+    await expectNoSeriousAxe(page);
+
+    // Ctrl+P prints the receipt copy only (receipt.css).
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Control+p');
+    await expect.poll(prints).toBe(1);
+
+    // Auto-print after payment (per device): the next payment prints on its own.
+    await page.getByRole('button', { name: 'Preview receipt' }).click();
+    await page.getByRole('dialog', { name: 'Receipt' }).getByRole('switch').click();
+    await page.keyboard.press('Escape');
+    await openBill(page, 'E2E Receipt Auto');
+    await page.getByRole('button', { name: 'Exact' }).click();
+    await page.getByRole('button', { name: /^Pay/ }).click();
+    await expect(page.getByText('Payment recorded')).toBeVisible();
+    await expect.poll(prints).toBe(2);
+    expect(second.order_number).toMatch(/^ORD-/);
+    expect(costKeys).toEqual([]);
+  } finally {
+    await page.evaluate(() => {
+      localStorage.removeItem('rms-cashier-auto-print');
+    });
+    cancelTakeAway('E2E Receipt');
+  }
+});

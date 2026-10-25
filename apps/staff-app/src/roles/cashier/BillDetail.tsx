@@ -1,7 +1,7 @@
-import { EmptyState, ErrorState, MoneyText, SkeletonList, StatusBadge, cn } from '@rms/ui';
+import { Button, EmptyState, ErrorState, MoneyText, SkeletonList, StatusBadge, cn } from '@rms/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, CircleCheck, ReceiptText } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { ArrowLeft, CircleCheck, Printer, ReceiptText } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 
@@ -12,6 +12,8 @@ import { useBillName } from './format';
 import type { Tender } from './pay';
 import { PaymentPad } from './PaymentPad';
 import { cashierPaths } from './paths';
+import { usePrintReceipt, useReceipt } from './printing';
+import { ReceiptPreview } from './ReceiptPreview';
 import { useCashierStore } from './store';
 
 /** Totals after the subtotal and discount, in bill order: the server's (BR-01, BR-16). */
@@ -175,6 +177,13 @@ export function BillDetail() {
   });
   const billName = useBillName();
   const markRequestRead = useCashierStore((s) => s.markRequestRead);
+  const setShortcuts = useCashierStore((s) => s.setShortcuts);
+  const receipt = useReceipt(bill.data);
+  const { print, portal } = usePrintReceipt(receipt);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  // Auto-print (per device) runs once the server's data has the new payment.
+  const printAfterPayment = useRef(false);
+  const hasPayment = (bill.data?.payments ?? []).some((p) => !p.voided_at);
   const [lastPaid, setPaid] = useState<Paid | null>(null);
   // The confirmation belongs to the bill it was paid on.
   const paid = lastPaid?.orderId === orderId ? lastPaid : null;
@@ -182,6 +191,19 @@ export function BillDetail() {
   useEffect(() => {
     markRequestRead(orderId);
   }, [orderId, markRequestRead]);
+
+  // Ctrl+P prints the receipt once something is paid (plan 4.8).
+  useEffect(() => {
+    if (!hasPayment) return;
+    setShortcuts({ print });
+    if (printAfterPayment.current) {
+      printAfterPayment.current = false;
+      print();
+    }
+    return () => {
+      setShortcuts({ print: undefined });
+    };
+  });
 
   const payment = useRpcAction(
     useCallback(
@@ -198,6 +220,7 @@ export function BillDetail() {
           completed: result.status === 'completed',
           tableFree: result.table_status === 'available',
         });
+        printAfterPayment.current = useCashierStore.getState().autoPrint;
         // Shown only as the server has it (hard rule 9).
         await queryClient.refetchQueries({ queryKey: cashierKeys.all });
       },
@@ -286,6 +309,27 @@ export function BillDetail() {
           </p>
         </section>
       )}
+
+      {receipt && hasPayment && (
+        <>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setPreviewOpen(true);
+            }}
+          >
+            <Printer aria-hidden />
+            {t('cashier:previewReceipt')}
+          </Button>
+          <ReceiptPreview
+            open={previewOpen}
+            onOpenChange={setPreviewOpen}
+            receipt={receipt}
+            onPrint={print}
+          />
+        </>
+      )}
+      {portal}
 
       {payable && <PaymentPad key={`${detail.id}-${String(due)}`} due={due} action={payment} />}
     </div>

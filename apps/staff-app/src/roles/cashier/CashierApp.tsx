@@ -204,9 +204,11 @@ export function CashierApp() {
           break;
       }
     };
-    window.addEventListener('keydown', onKey);
+    // Capture phase: this runs before a dialog handles the key, so an Escape that closes a
+    // dialog (seen while it is still open) never also leaves the bill.
+    window.addEventListener('keydown', onKey, true);
     return () => {
-      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keydown', onKey, true);
     };
   }, [navigate, inDetail, canSend]);
 

@@ -7,11 +7,11 @@ const AUTO_PRINT_KEY = 'rms-cashier-auto-print';
 
 /** Keyboard actions the open bill offers (plan 4.8); null when there is nothing to do. */
 export interface BillShortcuts {
-  pay?: () => void;
-  cashFull?: () => void;
-  cardFull?: () => void;
-  split?: () => void;
-  print?: () => void;
+  pay?: (() => void) | undefined;
+  cashFull?: (() => void) | undefined;
+  cardFull?: (() => void) | undefined;
+  split?: (() => void) | undefined;
+  print?: (() => void) | undefined;
 }
 
 interface CashierState {
@@ -33,6 +33,7 @@ interface CashierState {
   setAutoPrint: (autoPrint: boolean) => void;
   rememberRequests: (ids: Iterable<string>, unread: boolean) => void;
   markRequestRead: (orderId: string) => void;
+  /** Adds or replaces some keys; pass undefined to remove one. */
   setShortcuts: (shortcuts: BillShortcuts) => void;
 }
 
@@ -75,6 +76,7 @@ export const useCashierStore = create<CashierState>()((set) => ({
     });
   },
   setShortcuts: (shortcuts) => {
-    set({ shortcuts });
+    // Merged: the payment pad and the receipt each offer their own keys.
+    set((state) => ({ shortcuts: { ...state.shortcuts, ...shortcuts } }));
   },
 }));

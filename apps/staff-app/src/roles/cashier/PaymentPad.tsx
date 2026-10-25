@@ -138,7 +138,7 @@ export function PaymentPad({
       pay,
     });
     return () => {
-      setShortcuts({});
+      setShortcuts({ cashFull: undefined, cardFull: undefined, split: undefined, pay: undefined });
     };
   });
 
