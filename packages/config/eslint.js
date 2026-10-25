@@ -53,7 +53,35 @@ export default tseslint.config(
     files: ['apps/*/src/**/*.tsx', 'packages/ui/src/**/*.tsx'],
     plugins: { i18next },
     rules: {
-      'i18next/no-literal-string': ['error', { mode: 'jsx-only' }],
+      'i18next/no-literal-string': [
+        'error',
+        {
+          mode: 'jsx-only',
+          // Attributes nobody sees or hears (plugin defaults, plus data-* hooks, htmlFor and
+          // input behaviour such as autoComplete and inputMode). aria-label, title, alt and placeholder stay checked.
+          'jsx-attributes': {
+            exclude: [
+              'className',
+              'styleName',
+              'style',
+              'type',
+              'key',
+              'id',
+              'width',
+              'height',
+              'htmlFor',
+              'autoComplete',
+              'autoCapitalize',
+              'autoCorrect',
+              'inputMode',
+              'enterKeyHint',
+              'pattern',
+              'name',
+              'data-.*',
+            ],
+          },
+        },
+      ],
     },
   },
 );

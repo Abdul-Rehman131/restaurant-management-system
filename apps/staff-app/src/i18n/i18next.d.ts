@@ -1,11 +1,19 @@
 import 'i18next';
 
-import type { defaultNS, resources } from './index';
+import type { UiResources } from '@rms/ui/i18n';
 
-// Typed translation keys: t('missing.key') is a compile error.
+import type devEn from '../dev/locales/en/dev.json';
+import type rpcEn from './locales/en/rpc.json';
+import type waiterEn from './locales/en/waiter.json';
+import type { defaultNS, en } from './index';
+
+// Typed translation keys: t('missing.key') is a compile error, in this app and in packages/ui.
+// `dev` is the gallery's namespace, loaded only by the development-only /dev/ui screen;
+// `waiter` and `rpc` load with the role chunks (src/roles/waiter/i18n.ts, src/i18n/rpc.ts).
 declare module 'i18next' {
   interface CustomTypeOptions {
     defaultNS: typeof defaultNS;
-    resources: (typeof resources)['en'];
+    resources: typeof en &
+      UiResources & { dev: typeof devEn; rpc: typeof rpcEn; waiter: typeof waiterEn };
   }
 }

@@ -1,0 +1,36 @@
+# Keeps the free staging project from pausing (Supabase pauses free projects after 7 days
+# without activity). Pings the public Auth health endpoint once a week. No secrets: the URL and
+# the publishable key are public values (repository variables, not secrets).
+#
+# GitHub runs scheduled workflows from the DEFAULT branch (main) only, so the weekly ping starts
+# once this file is on main. A push to develop also pings, which works before that and shows
+# that the endpoint answers.
+#
+# Skipped (not failed) until the repository variable STAGING_DEPLOY_ENABLED is 'true'.
+name: Staging keep-alive
+
+on:
+  schedule:
+    - cron: '17 3 * * 1' # Mondays 03:17 UTC
+  push:
+    branches: [develop]
+    paths: ['.github/workflows/staging-keepalive.yml']
+
+permissions: {}
+
+jobs:
+  ping:
+    if: github.repository == 'Abdul-Rehman131/restaurant-management-system' && vars.STAGING_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      STAGING_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_PUBLISHABLE_KEY: ${{ vars.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - name: Ping staging Auth health
+        run: |
+          test -n "$STAGING_URL" || { echo "::error::Set the STAGING_SUPABASE_URL repository variable."; exit 1; }
+          status=$(curl -sS -o /dev/null -w '%{http_code}' --retry 3 --retry-delay 10 \
+            -H "apikey: ${STAGING_PUBLISHABLE_KEY}" "${STAGING_URL}/auth/v1/health")
+          echo "HTTP $status from ${STAGING_URL}/auth/v1/health"
+          test "$status" = 200

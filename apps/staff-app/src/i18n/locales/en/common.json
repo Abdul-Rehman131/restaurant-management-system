@@ -3,16 +3,91 @@
     "title": "Staff",
     "logoLabel": "Restaurant logo"
   },
-  "scaffold": {
-    "heading": "Foundation build",
-    "body": "This is the Phase 0 shell. Sign-in and role screens arrive in T8.",
-    "tokens": "Design tokens",
-    "brand": "Brand",
-    "accent": "Accent",
-    "success": "Success",
-    "warning": "Warning",
-    "danger": "Danger",
-    "info": "Info",
-    "primaryAction": "Primary action"
+  "login": {
+    "title": "Sign in",
+    "subtitle": "Use the username and password your manager gave you.",
+    "username": "Username",
+    "password": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "submit": "Sign in",
+    "offline": "You are offline. Connect to the internet to sign in.",
+    "errors": {
+      "invalidCredentials": "That username or password is not right. Check both and try again.",
+      "inactive": "This account is not active. Ask your manager to turn it back on.",
+      "tooManyAttempts": "Too many attempts. Wait a minute, then try again.",
+      "network": "Can't reach the server. Check the connection and try again.",
+      "unknown": "Sign-in did not work. Try again, or ask your manager."
+    },
+    "ended": {
+      "expired": "Your session ended. Sign in again to continue.",
+      "inactive": "This account is not active any more. Ask your manager."
+    }
+  },
+  "mfa": {
+    "verifyTitle": "Enter your sign-in code",
+    "verifyBody": "Open your authenticator app and enter the 6-digit code for this account.",
+    "setupTitle": "Set up two-step sign-in",
+    "setupBody": "Admin accounts need a second step. Scan the code with an authenticator app, then enter the 6-digit code it shows.",
+    "setupLater": "This becomes required in Phase 1. You can skip it for now.",
+    "qrAlt": "QR code to add this account to an authenticator app",
+    "secretLabel": "Or enter this key by hand",
+    "code": "6-digit code",
+    "verify": "Verify",
+    "skip": "Skip for now",
+    "signOut": "Use another account",
+    "wrongCode": "That code did not work. Check the time on your phone and try again.",
+    "setupFailed": "Two-step sign-in could not be set up. Try again."
+  },
+  "shell": {
+    "account": "Account",
+    "signedInAs": "Signed in as {{name}}",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "Same as device",
+    "signOut": "Sign out",
+    "loading": "Loading the app",
+    "comingInP1": "This screen arrives in Phase 1.",
+    "notAvailableTitle": "No screens for this role yet",
+    "notAvailableBody": "Rider screens arrive in Phase 3. Sign out to use another account.",
+    "notFoundTitle": "This page does not exist",
+    "notFoundBody": "Go back to your home screen.",
+    "goHome": "Home",
+    "errorTitle": "Something went wrong",
+    "errorBody": "Reload the app. If it happens again, tell your manager.",
+    "reload": "Reload",
+    "updateReady": "A new version of the app is ready.",
+    "updateNow": "Update",
+    "offlineReady": "The app is ready to work with a weak connection."
+  },
+  "kitchen": {
+    "title": "Kitchen",
+    "soldOut": "Sold out list",
+    "queueEmpty": "No tickets right now",
+    "queueEmptyBody": "New orders appear here as soon as a waiter sends them."
+  },
+  "cashier": {
+    "title": "Cashier",
+    "openBills": "Open bills",
+    "newCounterOrder": "New counter order",
+    "billsEmpty": "No open bills",
+    "billsEmptyBody": "Bills appear here when an order is sent.",
+    "detailEmpty": "Choose a bill",
+    "detailEmptyBody": "Its lines, totals and payment appear here."
+  },
+  "admin": {
+    "title": "Admin",
+    "nav": "Admin sections",
+    "dashboard": "Dashboard",
+    "menu": "Menu",
+    "tables": "Tables",
+    "staff": "Staff",
+    "settings": "Settings",
+    "reports": "Reports",
+    "collapse": "Collapse menu",
+    "expand": "Expand menu",
+    "openMenu": "Open menu",
+    "sectionEmpty": "{{section}} arrives in Phase 1"
   }
 }

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { cn } from '../lib/cn';
+import { Skeleton } from './Skeleton';
 
 export interface AppHeaderProps {
   /** From the settings table. Never pass a hardcoded name. */
@@ -10,7 +11,9 @@ export interface AppHeaderProps {
   /** Translated label used as the logo's alt text when no name is shown. */
   logoLabel: string;
   logoSrc?: string;
-  /** Right-aligned slot: connection status, user menu, etc. */
+  /** Before the logo: a menu button on phones (admin sidebar). */
+  leading?: ReactNode;
+  /** Inline-end slot: connection status, user menu, etc. */
   actions?: ReactNode;
   className?: string;
 }
@@ -20,16 +23,18 @@ export function AppHeader({
   loading = false,
   logoLabel,
   logoSrc = '/brand/logo-mark.svg',
+  leading,
   actions,
   className,
 }: AppHeaderProps) {
   return (
     <header
       className={cn(
-        'sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface/95 px-4 backdrop-blur',
+        'sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b border-border bg-surface/95 px-4 py-1 backdrop-blur',
         className,
       )}
     >
+      {leading}
       <img
         src={logoSrc}
         width={32}
@@ -38,7 +43,7 @@ export function AppHeader({
         alt={restaurantName ? '' : logoLabel}
       />
       {loading ? (
-        <span className="h-4 w-32 animate-pulse rounded-sm bg-surface-2 motion-reduce:animate-none" />
+        <Skeleton className="h-4 w-32" />
       ) : (
         restaurantName && (
           <span className="truncate text-lg font-semibold tracking-tight text-fg">

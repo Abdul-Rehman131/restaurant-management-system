@@ -1,30 +1,15 @@
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
+import { setupI18n } from '@rms/ui/i18n';
 
 import enCommon from './locales/en/common.json';
 
-// English only for now. To add a language (e.g. Urdu, RTL), add locales/<lng>/*.json, list it
-// in supportedLngs, and the `dir` attribute below follows automatically.
+// English is bundled. Other languages are lazy-loaded from locales/<lng>/*.json (Urdu is a
+// stub until requested, D9); `dir` on <html> follows the language. The `ui` namespace of the
+// shared components is added by setupI18n.
 export const defaultNS = 'common';
-export const resources = {
-  en: { common: enCommon },
-} as const;
+export const en = { common: enCommon } as const;
 
-void i18n.use(initReactI18next).init({
-  resources,
-  lng: 'en',
-  fallbackLng: 'en',
-  supportedLngs: ['en'],
+export default setupI18n({
   defaultNS,
-  interpolation: { escapeValue: false },
+  en,
+  lazy: import.meta.glob(['./locales/*/*.json', '!./locales/en/*.json']),
 });
-
-function applyLanguage(lng: string) {
-  document.documentElement.lang = lng;
-  document.documentElement.dir = i18n.dir(lng);
-}
-
-applyLanguage(i18n.language);
-i18n.on('languageChanged', applyLanguage);
-
-export default i18n;

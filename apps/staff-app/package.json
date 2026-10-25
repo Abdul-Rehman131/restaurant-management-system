@@ -9,27 +9,42 @@
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "brand:icons": "pwa-assets-generator"
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "e2e:pwa": "playwright test -c e2e-pwa/playwright.pwa.config.ts"
   },
   "dependencies": {
+    "@hookform/resolvers": "5.9.1",
     "@rms/shared": "workspace:*",
     "@rms/ui": "workspace:*",
+    "@supabase/auth-js": "2.117.3",
+    "@supabase/postgrest-js": "2.117.3",
+    "@supabase/realtime-js": "2.117.3",
+    "@tanstack/react-query": "5.104.1",
     "i18next": "26.5.7",
+    "lucide-react": "1.55.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "react-i18next": "17.1.5"
+    "react-hook-form": "7.89.0",
+    "react-i18next": "17.1.5",
+    "react-router": "8.4.0",
+    "workbox-window": "7.4.1",
+    "zod": "4.6.5",
+    "zustand": "5.0.15"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.64.0",
     "@rms/config": "workspace:*",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "26.6.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "@vite-pwa/assets-generator": "2.0.0",
     "@vitejs/plugin-react": "6.1.2",
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3",
     "vite": "8.3.5",
-    "vite-plugin-pwa": "2.0.0"
+    "vite-plugin-pwa": "2.0.0",
+    "vitest": "5.0.3"
   }
 }

@@ -1,21 +1,29 @@
 /*
- * Design tokens. Brand colours live ONLY in ./brand.css; everything here is neutral,
- * status or structural, and references the brand through var(--brand*).
- * Import after `@import "tailwindcss";` in each app's index.css.
+ * Design tokens ("Warm Modern", plan section 4). Brand colours live ONLY in ./brand.css;
+ * everything here is neutral, status or structural, and refers to the brand through
+ * var(--brand*). Import after `@import "tailwindcss";` in each app's index.css.
+ *
+ * Colour values must stay #rrggbb: scripts/check-contrast.mjs reads them (CI).
  */
 @import './brand.css';
+@import './fonts.css';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ---------- Colour: light (default) ---------- */
 :root {
   color-scheme: light;
   --bg: #fafaf9;
   --surface: #ffffff;
   --surface-2: #f5f5f4;
+  --surface-raised: #ffffff;
   --text: #1c1917;
   --text-muted: #57534e;
   --border: #e7e5e4;
+  --input: #78716c;
   --ring: var(--brand);
+  --accent-fg: #1c1917;
+  --overlay: #0c0a09;
 
   --success: #15803d;
   --success-bg: #dcfce7;
@@ -23,18 +31,23 @@
   --warning-bg: #fef3c7;
   --danger: #b91c1c;
   --danger-bg: #fee2e2;
+  --danger-fg: #ffffff;
   --info: #1d4ed8;
   --info-bg: #dbeafe;
 }
 
+/* ---------- Colour: dark ---------- */
 .dark {
   color-scheme: dark;
   --bg: #0c0a09;
   --surface: #1c1917;
   --surface-2: #292524;
+  --surface-raised: #292524;
   --text: #fafaf9;
   --text-muted: #a8a29e;
   --border: #44403c;
+  --input: #8a837e;
+  --overlay: #000000;
 
   --success: #4ade80;
   --success-bg: #052e16;
@@ -42,8 +55,99 @@
   --warning-bg: #451a03;
   --danger: #f87171;
   --danger-bg: #450a0a;
+  --danger-fg: #1c1917;
   --info: #60a5fa;
   --info-bg: #172554;
+}
+
+/* ---------- Elevation: warm, low shadows; dark mode uses lighter surfaces instead ---------- */
+:root {
+  --elev-sm: 0 1px 2px 0 rgb(68 64 60 / 0.08), 0 1px 3px 0 rgb(68 64 60 / 0.06);
+  --elev-md: 0 4px 8px -2px rgb(68 64 60 / 0.1), 0 2px 4px -2px rgb(68 64 60 / 0.06);
+  --elev-lg: 0 16px 32px -8px rgb(68 64 60 / 0.18), 0 4px 8px -4px rgb(68 64 60 / 0.08);
+}
+.dark {
+  --elev-sm: 0 0 #0000;
+  --elev-md: 0 0 #0000;
+  --elev-lg: 0 0 #0000;
+}
+
+/* ---------- Density (data-density on <html> or any container) ---------- */
+/* touch: waiter and customer (default). display: kitchen. desk: admin and cashier. */
+:root,
+[data-density='touch'] {
+  --control-sm: 44px;
+  --control-md: 48px;
+  --control-lg: 56px;
+  --control-xl: 64px;
+  --icon: 24px;
+}
+[data-density='display'] {
+  --control-sm: 48px;
+  --control-md: 56px;
+  --control-lg: 64px;
+  --control-xl: 72px;
+  --icon: 28px;
+}
+[data-density='desk'] {
+  --control-sm: 36px;
+  --control-md: 40px;
+  --control-lg: 48px;
+  --control-xl: 56px;
+  --icon: 20px;
+}
+/* Touch screens never get desk-sized targets (44 px minimum, CLAUDE.md rule 10). */
+@media (pointer: coarse) {
+  [data-density='desk'] {
+    --control-sm: 44px;
+    --control-md: 44px;
+  }
+}
+/* Kitchen screens are read from 3 m: the whole rem scale grows 1.25x. */
+html[data-density='display'] {
+  font-size: 125%;
+}
+
+/* ---------- Motion ---------- */
+:root {
+  --motion-feedback: 120ms;
+  --motion-enter: 200ms;
+  --motion-exit: 200ms;
+  --motion-layout: 300ms;
+  /* 1 = movement allowed; 0 under prefers-reduced-motion (opacity changes only). */
+  --motion-on: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-on: 0;
+  }
+}
+/* Logical direction for slide animations: sheets enter from the inline end. */
+[dir='rtl'] {
+  --dir-sign: -1;
+}
+
+@keyframes rms-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(
+        calc(var(--enter-x, 0px) * var(--motion-on) * var(--dir-sign, 1)),
+        calc(var(--enter-y, 0px) * var(--motion-on)),
+        0
+      )
+      scale(calc(1 - (1 - var(--enter-scale, 1)) * var(--motion-on)));
+  }
+}
+@keyframes rms-exit {
+  to {
+    opacity: 0;
+    transform: translate3d(
+        calc(var(--enter-x, 0px) * var(--motion-on) * var(--dir-sign, 1)),
+        calc(var(--enter-y, 0px) * var(--motion-on)),
+        0
+      )
+      scale(calc(1 - (1 - var(--enter-scale, 1)) * var(--motion-on)));
+  }
 }
 
 @theme inline {
@@ -61,14 +165,18 @@
   --color-brand-800: color-mix(in oklab, var(--brand) 55%, var(--text));
   --color-brand-900: color-mix(in oklab, var(--brand) 40%, var(--text));
   --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
 
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-surface-raised: var(--surface-raised);
   --color-fg: var(--text);
   --color-fg-muted: var(--text-muted);
   --color-border: var(--border);
+  --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
 
   --color-success: var(--success);
   --color-success-bg: var(--success-bg);
@@ -76,15 +184,34 @@
   --color-warning-bg: var(--warning-bg);
   --color-danger: var(--danger);
   --color-danger-bg: var(--danger-bg);
+  --color-danger-fg: var(--danger-fg);
   --color-info: var(--info);
   --color-info-bg: var(--info-bg);
+
+  /* Control heights follow the density mode: h-control-md, min-h-control-lg, size-control-sm. */
+  --spacing-control-sm: var(--control-sm);
+  --spacing-control-md: var(--control-md);
+  --spacing-control-lg: var(--control-lg);
+  --spacing-control-xl: var(--control-xl);
+  --spacing-icon: var(--icon);
 
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
 
-  /* Inter is self-hosted in T7; system fonts until then. */
+  --shadow-sm: var(--elev-sm);
+  --shadow-md: var(--elev-md);
+  --shadow-lg: var(--elev-lg);
+
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Radix open/closed states: data-[state=open]:animate-enter data-[state=closed]:animate-exit.
+     Direction comes from --enter-x / --enter-y / --enter-scale on the element. */
+  --animate-enter: rms-enter var(--motion-enter) var(--ease-enter);
+  --animate-exit: rms-exit var(--motion-exit) var(--ease-exit) forwards;
+
   --font-sans:
     'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
@@ -95,10 +222,23 @@
     color: var(--text);
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--bg);
   }
 
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      scroll-behavior: auto !important;
+    }
   }
 }

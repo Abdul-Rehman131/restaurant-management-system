@@ -17,8 +17,8 @@ Each item has a proposed resolution. Items marked **(Q)** need the owner and are
 | G4 | **"Waiter: own tables"** has no table-to-waiter assignment in the data model, and a waiter must see every table's status to pick a free one. | All waiters see all tables' status. "Own" means `orders.waiter_id = me`. Handing over to another waiter is a Cashier or Admin action **(Q4)**. |
 | G5 | **"Remove item before sent"** assumes unsent items exist in the database. With a client-side cart they do not. | The cart lives on the device until Send. Every item in the database counts as sent, so after send it can only be cancelled with a reason (BR-09). This simplifies `remove_or_cancel_item`. |
 | G6 | **"Chef sees no prices"** cannot be done with RLS alone, because RLS filters rows, not columns. | The chef has no SELECT on `orders` or `order_items`. The kitchen reads through `get_kitchen_queue()`, which returns no money fields. Realtime payloads carry only IDs. |
-| G7 | **The totals formula is undefined:** tax-inclusive or exclusive prices; the order of discount, service charge and tax; whether service charge applies to take away; rounding; discount as % or fixed. **(Q1, Q6)** | Assumed until answered: prices exclusive of tax; `base = subtotal - discount`; service charge on `base` for Dine-In only; tax on `base`; round half up once per order. All of this sits in one function, `calc_order_totals`. |
-| G8 | **Payments.** Is a split payment one call or several partial payments? Cash tendered and change are not modelled, there is no card reference, and refunds or voids after payment are not covered **(Q8)**. | One `record_payment` call with 1 to n tenders whose sum equals the amount due. Cash `tendered` is stored and change is shown. An optional card reference is stored. No partial payments in P1. |
+| G7 | **The totals formula is undefined:** tax-inclusive or exclusive prices; the order of discount, service charge and tax; whether service charge applies to take away; rounding; discount as % or fixed. **(Q1, Q6)** | Assumed until answered: prices exclusive of tax; `base = subtotal - discount`; service charge on `base` for Dine-In only; tax on `base`; round half up once per order. All of this sits in one function, `calc_order_totals`. **Implemented in T4** as `settings` columns with these defaults, so the owner's answer changes data, not schema. See [pricing-rules.md](pricing-rules.md). |
+| G8 | **Payments.** Is a split payment one call or several partial payments? Cash tendered and change are not modelled, there is no card reference, and refunds or voids after payment are not covered **(Q8)**. | One `record_payment` call with 1 to n tenders whose sum equals the amount due. Cash `tendered` is stored and change is shown. An optional card reference is stored. No partial payments in P1. **Void (agreed for P1):** Admin only, with a reason. The schema (T4) is in place: payments are immutable, and a void is a one-time, trigger-enforced change. The `void_payment` function comes in P1. |
 | G9 | **Take Away payment timing.** Flow 6.2 pays after Ready, while many counters take payment first **(Q5)**. | Both are allowed. Payment sets `payment_status = paid`. The order completes when it is both paid and fulfilled (BR-12), whichever comes last. |
 | G10 | **Time zone missing.** The business-day cut-off (BR-04) depends on local time, but `settings` has no time zone. | Add `settings.timezone` (default `Asia/Karachi`, to be confirmed). Calculate the business date in SQL only. |
 | G11 | **Kitchen age thresholds** (green, yellow, red) are not defined. | Add `kitchen_warn_min` (default 10) and `kitchen_late_min` (default 20) to settings. |
@@ -93,6 +93,10 @@ Migrations, in order:
 `seed.sql` (local only): Demo Restaurant settings, 6 categories, about 30 items (including bottled drinks with `needs_kitchen = false`, and some with photos from `supabase/seed/images`), 12 tables in 2 sections (Hall, Family), and 6 users (`admin`, `cashier`, `waiter1`, `waiter2`, `chef`, `rider`) with local-only passwords.
 
 - **AC:** `pnpm db:reset` builds everything with no errors. `pnpm db:types` generates types with no `any`. The ERD is exported to `docs/erd.md` (Mermaid).
+- **As built (T4):**
+  - Split into 13 migrations, one concern each. Constraints and indexes sit with their table, not in a separate step 6.
+  - pgTAP is created by each test (test-only, never installed in staging or production). pg_cron is deferred to P2, together with the P2 settings columns (online ordering, busy mode, auto-accept).
+  - Added `private.round_to_unit` and `compute_order_totals`, plus the payment void schema.
 
 ### T5. Auth, roles and RLS baseline (1.5 d)
 - `profiles.role` is the **source of truth**. `public.app_role()` and `public.is_active_staff()` are `STABLE SECURITY DEFINER` helpers that read `profiles` by `auth.uid()`. Policies use `(select public.app_role())` so it is evaluated once per statement. This makes deactivation take effect at once, instead of waiting for the JWT to refresh.
@@ -122,6 +126,19 @@ Migrations, in order:
   - (c) Fail if `anon` can execute any function.
   - (d) A per-role SELECT test for every row of the matrix.
 - **AC:** all guard tests pass. A deactivated user's next request is denied. Creating a new table without RLS makes CI red (demonstrated once on a branch).
+- **As built (T5):**
+  - **5 migrations:** revoke default grants, auth helpers, access token hook, SELECT policies, role-scoped RPCs.
+  - **Role helper:** the plan's `app_role()` / `is_active_staff()` became `public.my_role()`, which returns NULL for inactive staff (one helper instead of two), plus `private.require_role()`.
+  - **Username login:** `public.staff_login_email()` maps `<username>` to `<username>@staff.invalid` (mirrored in `packages/shared`), and a trigger keeps each profile's username and login email in sync.
+  - **Token hook:** also refuses tokens for inactive staff.
+  - **Settings:** RPC only (`get_settings()`, fields per role). Admin reads costs and staff phones through `admin_*` RPCs.
+  - **Probe tests:** the "new table without RLS fails" check is a pgTAP probe that runs on every test run, not a one-off branch demo. It is confirmed in CI at T9.
+  - **Chef kitchen RPCs** (`get_kitchen_queue`, Sold Out list) are P1, as planned.
+  - **Hook is on locally:** `supabase/config.toml` enables it (`[auth.hook.custom_access_token]`, `enabled = true`, `uri = "pg-functions://postgres/public/custom_access_token_hook"`), so every local sign-in and refresh goes through it.
+    - **What the tests cover:** `026_access_token_hook.test.sql` calls the function directly (claim added, inactive or unknown staff refused, only `supabase_auth_admin` may execute it). That does **not** go through the Auth server.
+    - **Checked by hand:** the Auth path was verified manually in T5 with real logins against the local stack (`app_role` present for all 6 demo roles, 403 for a deactivated user).
+    - **Automated end-to-end coverage** (log in, then read `app_role` from the session) arrives with the Playwright login smoke test in T8/T9.
+    - Staging and production enable the hook at T10 (setup checklist).
 
 ### T6. Early proof: `create_order` and `record_payment` (1.5 d)
 Both are `SECURITY DEFINER`, `set search_path = ''`, check the role first, run in one transaction, raise stable error codes, and are idempotent by `request_id`.
@@ -176,8 +193,17 @@ record_payment(request_id uuid, order_id uuid,
 - Domain primitives: `MoneyText`, `StatusBadge`, `QtyStepper`, `StickyActionBar`, `OfflineBanner`, `ConnectionDot`, `EmptyState`, `ErrorState`, `Skeleton` presets.
 - i18n: react-i18next with namespaces, `en` complete and an `ur` stub. `dir` is set on `<html>`. An ESLint rule (`i18next/no-literal-string`) blocks literal JSX strings in apps.
 - A `/dev/ui` gallery route (dev builds only) showing every component in light, dark, LTR and RTL.
-- Brand files: make `packages/ui` the single source for `logo.svg` and `logo-mark.svg`, and copy them into each app's `public/brand/` at build time. Until then the two app copies are kept in sync by hand (decision of 24 Oct 2026).
+- Brand files: `packages/ui/brand/` is the single source for the logo, logo mark and icons. They are copied into each app's `public/brand/` (gitignored) when Vite starts (`packages/ui/vite-plugin.mjs`).
 - **AC:** the gallery renders in all 4 combinations. An axe check on the gallery reports 0 serious violations. Changing `--brand` in one place re-themes the whole app.
+- **As built (T7):**
+  - **Components:** every 4.4 "shadcn base" component and every T7 domain primitive, in `packages/ui/src/components/` (one per file). Patterns and other domain components (DataTable, ReasonDialog, KitchenTicket, PaymentPad, ...) are P1, as planned.
+  - **Tokens added for contrast:** `--input` (field borders, 3:1), `--accent-fg`, `--danger-fg`, `--surface-raised` (popovers; lighter surfaces in dark mode), `--overlay`. `--border` stays a soft divider only.
+  - **Checks:** `pnpm test` runs the contrast check for both themes (66 pairs, reads `brand.css` and `tokens.css`). `pnpm size` checks the initial-JS budgets and fails if gallery code reaches a production bundle. `pnpm e2e` runs the gallery in light, dark, LTR and RTL on phone and desktop with axe, and opens every overlay (axe plus focus return).
+  - **Overlays:** `UiProvider` makes the page behind an open Radix overlay `inert` while Radix hides it, because Radix sets `aria-hidden` but leaves the content focusable (axe `aria-hidden-focus`).
+  - **Skeletons are static** (no pulse), following 4.3. Only the P1 late-ticket pulse will animate.
+  - **Money:** `formatMoney` in `@rms/shared` formats integer minor units without floats, using `currency_code` and `currency_minor_units` from settings. `MoneyText` is always LTR, so amounts stay intact in RTL.
+  - **i18n:** `setupI18n` in `@rms/ui/i18n` (English bundled, other languages lazy-loaded, `ui` namespace for the components). Zod messages are `ui:validation.*` keys. The literal-string ESLint rule exempts only `data-*`, `htmlFor` and `autoComplete`.
+  - **Gallery:** the staff app's `main.tsx` mounts `/dev/ui` only when `import.meta.env.DEV`; it moves into the router in T8. Options also come from the URL: `?theme=dark&dir=rtl&density=desk`.
 
 ### T8. Staff app shell (1.5 d)
 - Vite, React Router with lazy role routes (`/waiter`, `/kitchen`, `/cashier`, `/admin`; `/rider` is P3). Providers: Supabase client, TanStack Query, i18n, theme.
@@ -186,6 +212,19 @@ record_payment(request_id uuid, order_id uuid,
 - Realtime: connect to a private broadcast channel and show `ConnectionDot` status. An `OfflineBanner` appears from `navigator.onLine` plus the channel state, and disables primary actions while offline.
 - PWA: manifest, icons (placeholder logo), asset precache, and an "update available" toast.
 - **AC:** each of the 5 seeded users logs in on staging and lands on the correct screen (the P0 done criterion). Wrong-role URLs redirect. Airplane mode shows the banner within 2 s. Lighthouse PWA installable check passes.
+- **As built (T8, local Supabase only):**
+  - **Verified locally, not on staging** (as instructed; staging is wired at T10). The Playwright suite runs against `supabase start` with the seed logins. Rider screens are P3, so rider lands on a "no screens yet" page. The Lighthouse installable check is not automated yet (manifest, icons and service worker are in place); it moves to T9 CI.
+  - **Routing:** the JWT `app_role` claim only picks the screen. Wrong-role URLs go to the user's own home; **Admin may open every role area** (spec 4: full access) but lands on `/admin`. The database still decides every permission with `my_role()`.
+  - **Login:** username and password through `staffLoginEmail()`. Messages: wrong username or password, account not active (the token hook's 403), too many attempts, no connection. A session that ends without the user signing out (expired, revoked, signed out in another tab) shows "Your session ended".
+  - **Account status:** a separate check calls `public.my_role()` on sign-in and when the screen regains focus; NULL (deactivated) signs the user out with "not active any more". It is not tied to `get_settings`, which serves admin, cashier, waiter and chef only: an early version treated the rider's NOT_AUTHORIZED settings answer as "deactivated" and signed riders out (fixed, with an e2e test that waits for the `my_role` answer).
+  - **Admin MFA:** with a verified TOTP factor the code step is required (aal2). Without one, a minimal set-up (QR, key, first code) can be skipped for the tab. Enforcement (aal2 for admin writes) is P1.
+  - **Settings:** `get_settings` is validated by a Zod (`zod/mini`) schema in `packages/shared`; contact and pricing groups are optional because they depend on the role.
+  - **Realtime:** private `staff:heartbeat` channel; RLS on `realtime.messages` allows SELECT for any active staff member through `my_role()`, with no INSERT policy (17 pgTAP tests). The connection is Live when joined, Reconnecting on a drop, and offline (banner, primary actions disabled) when the browser is offline or the channel is lost for more than 5 s. A rejoin refetches all queries.
+  - **PWA:** the service worker registers after the first screen; a new version waits for the "Update" toast (tested on a production preview: `pnpm --filter @rms/staff-app e2e:pwa`).
+  - **Seed:** a deactivated demo login `former` exists for the denial test. The "deactivated while signed in" e2e test switches `waiter2` off and on again in the local DB through the CLI container (`supabase_db_rms`).
+  - **Tests at the end of T8:** pgTAP 376 (17 new for Realtime), Vitest 12, contrast 66 pairs, Playwright 45 passed and 1 skipped (the deactivation test runs once, on desktop), plus `e2e:pwa` 1.
+  - **Bundles (budgets unchanged), final gate:** login 166.0 KB, signed-in shell 177.9 KB (budget 180 each), role chunks 37.8 to 41.3 KB (120; admin 250), Realtime 16.0 KB loaded after first paint (30), customer-web 92.1 KB (200). The signed-in shell was 177.8 KB before the account-status check added about 0.1 KB. The first measurement was 227.6 KB. It was brought down by: a lean Supabase client (`auth-js` in the entry, `postgrest-js` with the signed-in shell, `realtime-js` after first paint; no Storage or Functions), `zod/mini`, `@rms/shared` marked side-effect free, the Toaster lazy, a plain login form (no form library), and one tooltip provider per tooltip (Floating UI left the first screen). The largest remaining parts of the login path are react-dom, auth-js, react-router and i18next.
+  - **Headroom warning:** the signed-in shell has only about **2 KB** left (177.9 of 180). Anything P1 adds to every signed-in screen (providers, the header, shared hooks) must go into the role chunks, which have plenty of room, or be lazy-loaded. If P1 needs more, lazy-load in this order: (1) the not-found, not-available and route-error screens, which the router imports statically today; (2) TanStack Query's code in the entry that the login screen does not use, by moving the QueryClientProvider into the signed-in shell; (3) `tailwind-merge` (about 8 KB) only by an ADR, since every component's `cn()` relies on it. Measure each with `pnpm build && pnpm size`. Raising the 180 KB budget needs a written reason here.
 
 ### T9. CI pipeline (0.5 d)
 `ci.yml` runs on every push and PR:
@@ -197,12 +236,28 @@ record_payment(request_id uuid, order_id uuid,
 6. Bundle budget with `size-limit`: customer-web ≤ 200 KB gzip initial JS, staff-app limits from 4.10.
 7. Upload the Playwright smoke results (login per role against local).
 - **AC:** a PR with a lint error, a failing pgTAP test, stale types or an oversized bundle is blocked. Run time is under 10 minutes.
+- **As built (T9):** `.github/workflows/ci.yml`, described job by job in the README ("CI").
+  - **No secrets anywhere.** Every database check runs against a local Supabase stack started in the runner: the database container only for pgTAP, lint and type drift; auth, REST and Realtime for e2e. Triggers are `push` and `pull_request` only (never `pull_request_target`), default `permissions: contents: read`, `persist-credentials: false` on every checkout, and the final `ci` job has no permissions at all.
+  - **Jobs, in parallel:** `quality` (lint, typecheck, Prettier, Vitest, contrast), `database` (start, reset, pgTAP, `db lint`, type drift with `git diff --exit-code`), `build-and-size`, `e2e` (Playwright on phone and desktop, then the PWA update test; report and traces uploaded only on failure), `secrets` (gitleaks over the full history, pinned release with a SHA-256 check rather than a third-party action), and `ci`, which needs all of them and is the one required status check. Docs-only changes skip `database`, `build-and-size` and `e2e`; skipped jobs count as passed in `ci`.
+  - **Supply chain:** third-party actions pinned to full commit SHAs with a version comment; Dependabot proposes weekly updates for actions and npm (7-day cooldown on npm).
+  - **Bundle budgets:** still the existing `scripts/check-size.mjs` instead of `size-limit`. It already measures each path through the app from Vite's manifest, which `size-limit` cannot do without a config per chunk.
+  - **Found by CI:** without `VITE_SUPABASE_*` values, `src/lib/env.ts` always throws and the bundler dropped the Supabase client, so the first CI run measured login at 141.7 KB instead of 166.0 KB. The staff-app build now fails without those values, and CI builds with non-secret placeholders. Vercel (T10) must set both, or the deploy fails at build time instead of shipping a dead app.
+  - **Gates proven red** on throwaway branches (one defect each, deleted afterwards): a lint error, a failing pgTAP test, a migration without regenerated types, an oversized login bundle and a fake secret-like string.
 
 ### T10. CD (0.5 d)
 - Vercel: 2 projects (`rms-staff`, `rms-web`). Production branch is `main`, and `develop` gets a fixed staging domain. Each PR gets a preview, which uses the **staging** backend.
 - `db-deploy.yml`: on push to `develop`, `supabase db push` to staging; on push to `main`, the same to production behind the GitHub Environment `production` with required reviewer approval. Secrets (`SUPABASE_ACCESS_TOKEN`, DB passwords, project refs) live only in GitHub Environments.
 - Staging users and demo data are loaded by `scripts/seed-staging.ts`, run by hand with the service-role key from the vault. `seed.sql` never runs on cloud projects, and production gets no demo data.
 - **AC:** merging to `develop` deploys both apps and the migrations to staging. Merging to `main` deploys to production after approval. Rollback means redeploying the previous Vercel build plus a forward-fix migration, documented in the README.
+- **As built (T10, staging only; production deferred):**
+  - **Production is deferred.** There is no `rms-prod`, no production workflow, secret or deploy job. The "Before go-live" list in `docs/setup-checklist.md` covers the project, the `production` environment with a required reviewer, a db-deploy job for `main`, the front-end production settings and D14.
+  - **Vercel:** two projects on a personal Hobby account (Git integration), staging only. Their Production branch is `develop`, so the staging domain follows `develop` and Instant Rollback works; PR previews use the same staging values. `apps/*/vercel.json`: SPA rewrite, immutable `/assets`, no-cache for the service worker and `index.html`, basic security headers, and `git.deploymentEnabled.main = false` until go-live. Hobby is non-commercial, so production moves to Vercel Pro or Cloudflare Pages (D14).
+  - **`db-deploy.yml`:** push to `develop` only, `environment: staging` (deployment branch `develop`), secrets passed only to the CLI steps, never cancelled half-way. Steps: link, drift check (`scripts/check-migration-drift.mjs` on `supabase migration list --linked`: a remote-only or out-of-order migration fails), dry run, push, then every migration must be applied. No `--include-seed`.
+  - **`scripts/seed-staging.ts`** (`pnpm seed:staging`): creates `admin`, `cashier`, `waiter`, `chef` with confirmed `@staff.invalid` logins through the Auth admin API, using the secret key from the owner's shell; passwords are generated and printed once. Hard-wired to the staging ref, so it cannot reach production. Existing accounts are skipped. Tested end to end on the local stack (`--local`), including a sign-in that gets the `app_role` claim.
+  - **New migration `create_staff_profile`:** the profile half of creating staff, `SECURITY DEFINER`, EXECUTE for `service_role` only (15 pgTAP tests: every staff role and anon refused; idempotent; `USERNAME_TAKEN`, `PROFILE_EXISTS`, `PROFILE_EMAIL_MISMATCH`). Needed because the API roles cannot run the column default (`private.default_branch_id()`) or the login-email trigger; P1's Admin "create staff" Edge Function will use it too. Idempotent on the auth user id instead of a `request_id`, since it is server-only.
+  - **Keep-alive:** weekly ping of the staging Auth health endpoint with no secrets (repository variables). Scheduled workflows run from `main` only, so the schedule starts when `develop` is next merged to `main`; until then the `db-deploy` runs on each push to `develop` also count as activity.
+  - **Off switch:** both staging workflows run only when the repository variable `STAGING_DEPLOY_ENABLED` is `true`; otherwise the job is skipped (not failed). Setting it is the last step of the staging setup (`docs/setup-checklist.md`, 4.5), after the secrets and variables exist.
+  - **Rollback:** README "Rollback (staging)": revert in Git (Instant Rollback as a stop-gap), forward-fix migrations only.
 
 ### T11. Observability, docs and sign-off (0.5 d)
 - Sentry in both apps (release equals the commit SHA, source maps uploaded in CI, PII scrubbing). An uptime monitor on both domains and the Supabase health endpoint.
@@ -265,7 +320,7 @@ restaurant-system/
 | Migrations | `db reset` | Auto on merge to `develop` | On merge to `main` + manual approval |
 | Env vars | `.env.local` | Vercel and GitHub Environment `staging` | Vercel and GitHub Environment `production` |
 
-Front-end env vars are only `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (public by design, and safe because of RLS) and `VITE_SENTRY_DSN`. `scripts/check-env.ts` fails the build if a variable named `*SERVICE_ROLE*` is visible to Vite.
+Front-end env vars are only `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (the `sb_publishable_...` key: public by design, and safe because of RLS) and `VITE_SENTRY_DSN`. `scripts/check-env.ts` fails the build if a variable named `*SERVICE_ROLE*` is visible to Vite.
 
 The Free plan pauses after 7 days of inactivity (R2). The staging project gets a weekly CI keep-alive ping until it moves to Pro.
 
@@ -501,6 +556,18 @@ Oldest first; age bar colour on the left edge + text label; no prices.
 | 5 | Production setup (Pro plans, backups and a tested restore). | Per-role one-page guides, UAT on staging, fixes, go-live checklist (spec 12). |
 
 The exit gate is the 10 P1 done criteria in spec section 11. Each one maps to a Playwright or pgTAP test, or a written UAT step.
+
+**P1 requirements carried over from T5:**
+1. **`staff-admin` Edge Function: create.**
+   - Creates the Auth user with the internal login email `public.staff_login_email(username)` (`<username>@staff.invalid`) and **`email_confirm: true`**. These addresses can never receive mail, so an unconfirmed account could never sign in.
+   - Creates the profile in the same request. The profile trigger rejects any username and email mismatch.
+2. **`staff-admin` Edge Function: deactivate.** Sets `profiles.is_active = false` **and bans the Auth user** (`ban_duration`, for example `876000h`), so no new session or refresh can be issued even if the token hook is misconfigured. Reactivation reverses both. `my_role()` already denies the deactivated user's current JWT on the next request.
+3. **Realtime channel authorization.** Policies on `realtime.messages` (private broadcast channels) must decide access with `public.my_role()` (profiles, by `auth.uid()`), **never** the JWT `app_role` claim. The claim is for UI routing only and stays stale until the token expires. Add pgTAP tests per topic and role, including a deactivated user.
+
+**P1 requirements from the T6 decision gate ([ADR 002](adr/002-supabase-confirmed.md)):**
+1. **Week 1 conditions.** A Zod response schema per RPC in `packages/shared`, and a shared SQL validation helper in `private` for the repeated JSON checks.
+2. **`create_order`: optional `waiter_id` for Cashier and Admin.** Today a Dine-In order created by a Cashier or Admin has no waiter, so no waiter sees it. Add an optional parameter that only Cashier and Admin may set; it must name an active waiter. A waiter's own call keeps `waiter_id = auth.uid()` and cannot name another waiter.
+3. **`move_order_table`: change the waiter as well.** Cashier and Admin can move an order to another table and hand it to another active waiter in the same call (both optional, at least one given). The change is written to the audit log.
 
 ---
 

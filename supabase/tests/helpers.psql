@@ -1,0 +1,222 @@
+-- Shared pgTAP helpers. A .psql file, so `supabase test db` (which runs *.sql) never runs it alone.
+-- Each test file includes it with `\ir helpers.psql` right after `begin;`.
+--
+-- Fixture builders (all return the new id):
+--   tests.create_staff(username, role)            auth user + profile
+--   tests.create_table(number)                    restaurant table
+--   tests.create_item(name, price, needs_kitchen) menu item in a test category
+--   tests.create_order(type, table_id, number)    order with batch 1, no lines, zero totals
+--   tests.line(menu_item_id, quantity, notes)     one create_order item as jsonb
+--
+-- Session helpers (RLS tests):
+--   tests.login_as(user_id)   act as that user: role authenticated + JWT claims (auth.uid())
+--   tests.login_as_anon()     act as an anonymous API caller
+--   tests.claims_as(user_id)  only the JWT claims (stay the owner, to call private helpers)
+--   tests.logout()            back to the test owner (postgres) to build fixtures or inspect
+-- Everything runs inside the test's transaction and is rolled back.
+
+create schema if not exists tests;
+
+create or replace function tests.create_staff(p_username text, p_role public.app_role)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_id uuid := gen_random_uuid();
+begin
+  insert into auth.users (id, email, aud, role)
+  values (v_id, public.staff_login_email(p_username), 'authenticated', 'authenticated');
+
+  insert into public.profiles (id, username, full_name, role)
+  values (v_id, p_username, 'Test ' || p_username, p_role);
+
+  return v_id;
+end;
+$$;
+
+create or replace function tests.create_table(p_number integer)
+returns uuid
+language sql
+as $$
+  insert into public.restaurant_tables (number, section) values (p_number, 'Test')
+  returning id
+$$;
+
+create or replace function tests.create_item(
+  p_name text,
+  p_price bigint,
+  p_needs_kitchen boolean default true
+)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_category uuid;
+  v_id uuid;
+begin
+  select id into v_category from public.categories where name = 'Test Category' and is_active;
+  if v_category is null then
+    insert into public.categories (name) values ('Test Category') returning id into v_category;
+  end if;
+
+  insert into public.menu_items (category_id, name, price, cost_price, needs_kitchen)
+  values (v_category, p_name, p_price, p_price / 2, p_needs_kitchen)
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+create or replace function tests.create_order(
+  p_type public.order_type,
+  p_table_id uuid,
+  p_number integer
+)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_id uuid;
+begin
+  insert into public.orders (order_number, business_date, type, table_id, request_id)
+  values (
+    'ORD-20261024-' || lpad(p_number::text, 3, '0'),
+    date '2026-10-24',
+    p_type,
+    p_table_id,
+    gen_random_uuid()
+  )
+  returning id into v_id;
+
+  insert into public.order_batches (order_id, batch_no) values (v_id, 1);
+  return v_id;
+end;
+$$;
+
+create or replace function tests.login_as(p_user_id uuid)
+returns void
+language plpgsql
+as $$
+begin
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', p_user_id, 'role', 'authenticated', 'aud', 'authenticated')::text,
+    true
+  );
+  execute 'set local role authenticated';
+end;
+$$;
+
+-- Sets only the JWT claims (auth.uid() = p_user_id) and stays the test owner: for calling
+-- private helpers directly, which the API roles cannot reach.
+create or replace function tests.claims_as(p_user_id uuid)
+returns void
+language sql
+as $$
+  select set_config(
+    'request.jwt.claims',
+    json_build_object('sub', p_user_id, 'role', 'authenticated', 'aud', 'authenticated')::text,
+    true
+  )::text is null
+$$;
+
+create or replace function tests.login_as_anon()
+returns void
+language plpgsql
+as $$
+begin
+  perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+  execute 'set local role anon';
+end;
+$$;
+
+create or replace function tests.logout()
+returns void
+language plpgsql
+as $$
+begin
+  execute 'reset role';
+  perform set_config('request.jwt.claims', '', true);
+end;
+$$;
+
+-- One create_order item: {"menu_item_id", "quantity", "notes"} (the only accepted keys).
+create or replace function tests.line(
+  p_menu_item_id uuid,
+  p_quantity integer default 1,
+  p_notes text default null
+)
+returns jsonb
+language sql
+immutable
+as $$
+  select jsonb_strip_nulls(jsonb_build_object(
+    'menu_item_id', p_menu_item_id, 'quantity', p_quantity, 'notes', p_notes))
+$$;
+
+-- Runs p_sql as p_user (NULL: anon) in a subtransaction that is ALWAYS rolled back, so it
+-- never changes the fixtures, and returns the outcome:
+--   'ok'                 the statement succeeded
+--   'PERMISSION_DENIED'  Postgres refused (no EXECUTE grant, e.g. anon)
+--   the error message    our stable codes ('NOT_AUTHORIZED', 'ORDER_CLOSED', ...)
+-- Used for the role matrix of every function: one line per role.
+create or replace function tests.outcome_as(p_user uuid, p_sql text)
+returns text
+language plpgsql
+as $$
+declare
+  v_outcome text;
+begin
+  begin
+    if p_user is null then
+      perform tests.login_as_anon();
+    else
+      perform tests.login_as(p_user);
+    end if;
+    execute p_sql;
+    raise exception 'rolled back' using errcode = 'XTEST';
+  exception when others then
+    v_outcome := case
+      when sqlstate = 'XTEST' then 'ok'
+      when sqlstate = '42501' and sqlerrm like 'permission denied%' then 'PERMISSION_DENIED'
+      else sqlerrm
+    end;
+  end;
+  -- The rollback also undid the login; make sure we are the test owner again.
+  perform tests.logout();
+  return v_outcome;
+end;
+$$;
+
+-- Runs p_sql as p_user and KEEPS its effects; returns the statement's single jsonb value.
+create or replace function tests.call_as(p_user uuid, p_sql text)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_result jsonb;
+begin
+  perform tests.login_as(p_user);
+  execute p_sql into v_result;
+  perform tests.logout();
+  return v_result;
+end;
+$$;
+
+-- Tests that assert exact order numbers ("the first order of the day is 001") must not depend
+-- on orders already in the database (a local e2e run creates real ones today). Inside the
+-- test's rolled-back transaction: move existing orders to past numbers and clear the counters.
+create or replace function tests.clear_order_numbers()
+returns void
+language sql
+as $$
+  with numbered as (select id, row_number() over (order by created_at, id) as n from public.orders)
+  update public.orders o
+     set order_number = 'ORD-19000101-' || lpad(numbered.n::text, 6, '0')
+    from numbered
+   where numbered.id = o.id;
+  delete from public.order_counters;
+$$;
+
+-- The API roles must be able to call the session helpers (test schema only, rolled back).
+grant usage on schema tests to anon, authenticated;
+grant execute on all functions in schema tests to anon, authenticated;
