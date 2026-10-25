@@ -51,7 +51,7 @@ const normalize = (text: string) => text.toLocaleLowerCase().normalize('NFKD');
  * open order (BR-06). The cart stays on the device until the server confirms.
  */
 export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder | null }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   const { session } = useAuth();
   const { canSend } = useConnection();
   const navigate = useNavigate();
@@ -126,10 +126,10 @@ export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder |
     const requestId = ready.requestId ?? newRequestId();
     try {
       const done = order
-        ? t('waiter.addOnSent', {
+        ? t('waiter:addOnSent', {
             batch: (await waiterRpc.addItems(requestId, order.id, toRpcItems(ready))).batch_no,
           })
-        : t('waiter.sent', {
+        : t('waiter:sent', {
             number: (await waiterRpc.createOrder(requestId, table.id, toRpcItems(ready)))
               .order_number,
           });
@@ -160,7 +160,7 @@ export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder |
     }
   }
 
-  const sendLabel = order ? t('waiter.sendAddOn') : t('waiter.send');
+  const sendLabel = order ? t('waiter:sendAddOn') : t('waiter:send');
   const sendButton = (
     <Button
       size="lg"
@@ -179,17 +179,17 @@ export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder |
   } else if (menu.isError && !menu.data) {
     list = (
       <ErrorState
-        title={t('waiter.loadFailed')}
-        description={t('waiter.loadFailedBody')}
-        retryLabel={t('waiter.retry')}
+        title={t('waiter:loadFailed')}
+        description={t('waiter:loadFailedBody')}
+        retryLabel={t('waiter:retry')}
         retrying={menu.isFetching}
         onRetry={() => void menu.refetch()}
       />
     );
   } else if (menu.data.items.length === 0) {
-    list = <EmptyState icon={UtensilsCrossed} title={t('waiter.menuEmpty')} />;
+    list = <EmptyState icon={UtensilsCrossed} title={t('waiter:menuEmpty')} />;
   } else if (shown.length === 0) {
-    list = <p className="py-10 text-center text-fg-muted">{t('waiter.noResults', { query })}</p>;
+    list = <p className="py-10 text-center text-fg-muted">{t('waiter:noResults', { query })}</p>;
   } else {
     list = (
       <ul className="divide-y divide-border">
@@ -206,7 +206,7 @@ export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder |
                   {item.name}
                 </span>
                 <span className="rounded-full bg-surface-2 px-3 py-1 text-sm font-semibold">
-                  {t('waiter.soldOut')}
+                  {t('waiter:soldOut')}
                 </span>
               </li>
             );
@@ -239,7 +239,7 @@ export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder |
                 <Button
                   variant="outline"
                   size="icon"
-                  aria-label={t('waiter.add', { name: item.name })}
+                  aria-label={t('waiter:add', { name: item.name })}
                   onClick={() => {
                     add(item);
                   }}
@@ -265,16 +265,16 @@ export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder |
     <>
       <ScreenTitle
         back={order ? waiterPaths.table(table.id) : waiterPaths.tables}
-        title={t('waiter.table', { number: table.number })}
+        title={t('waiter:table', { number: table.number })}
         subtitle={
           order
-            ? t('waiter.addingTo', { number: order.order_number })
-            : t('waiter.seats', { count: table.capacity })
+            ? t('waiter:addingTo', { number: order.order_number })
+            : t('waiter:seats', { count: table.capacity })
         }
       />
       <div className="sticky top-14 z-20 -mx-4 space-y-2 border-b border-border bg-bg/95 px-4 pt-1 pb-2 backdrop-blur">
         <label className="relative block">
-          <span className="sr-only">{t('waiter.searchLabel')}</span>
+          <span className="sr-only">{t('waiter:searchLabel')}</span>
           <Search
             aria-hidden
             className="pointer-events-none absolute start-3 top-1/2 size-5 -translate-y-1/2 text-fg-muted"
@@ -282,14 +282,14 @@ export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder |
           <Input
             type="search"
             value={query}
-            placeholder={t('waiter.searchPlaceholder')}
+            placeholder={t('waiter:searchPlaceholder')}
             onChange={(event) => {
               setQuery(event.target.value);
             }}
             className="ps-10"
           />
         </label>
-        <nav aria-label={t('waiter.categories')} className="-mx-4 overflow-x-auto px-4">
+        <nav aria-label={t('waiter:categories')} className="-mx-4 overflow-x-auto px-4">
           <ul className="flex gap-2">
             <li>
               <button
@@ -301,7 +301,7 @@ export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder |
                   setQuery('');
                 }}
               >
-                {t('waiter.all')}
+                {t('waiter:all')}
               </button>
             </li>
             {categories.map((c) => (
@@ -324,8 +324,8 @@ export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder |
       </div>
 
       {order && order.order_batches.length > 0 && (
-        <section aria-label={t('waiter.alreadySent')} className="mt-3 rounded-lg bg-surface-2 p-3">
-          <h2 className="text-sm font-semibold text-fg-muted">{t('waiter.alreadySent')}</h2>
+        <section aria-label={t('waiter:alreadySent')} className="mt-3 rounded-lg bg-surface-2 p-3">
+          <h2 className="text-sm font-semibold text-fg-muted">{t('waiter:alreadySent')}</h2>
           <ul className="mt-2 flex flex-wrap gap-2">
             {order.order_batches.map((batch) => (
               <li key={batch.id} className="flex items-center gap-2 text-sm">
@@ -353,10 +353,10 @@ export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder |
         <div className="border-t border-border bg-surface/95 px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-md backdrop-blur">
           <div className="flex items-baseline justify-between gap-3">
             <p className="shrink-0 font-semibold">
-              {count > 0 ? t('waiter.items', { count }) : t('waiter.noItems')}
+              {count > 0 ? t('waiter:items', { count }) : t('waiter:noItems')}
             </p>
             <p className="min-w-0 truncate text-sm text-fg-muted">
-              {unavailable.size > 0 ? t('waiter.cartHasSoldOut') : t('waiter.totalOnSend')}
+              {unavailable.size > 0 ? t('waiter:cartHasSoldOut') : t('waiter:totalOnSend')}
             </p>
           </div>
           <div className="mt-2 grid grid-cols-[auto_1fr] gap-3">
@@ -370,7 +370,7 @@ export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder |
               }}
             >
               <ListChecks aria-hidden />
-              {t('waiter.review')}
+              {t('waiter:review')}
             </Button>
             {sendButton}
           </div>
@@ -380,7 +380,7 @@ export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder |
       <ReviewSheet
         open={reviewOpen}
         onOpenChange={setReviewOpen}
-        title={t('waiter.reviewTitle', { number: table.number })}
+        title={t('waiter:reviewTitle', { number: table.number })}
         draftKey={key}
         unavailable={unavailable}
         error={error}

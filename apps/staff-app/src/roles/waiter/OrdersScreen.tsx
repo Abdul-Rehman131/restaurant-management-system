@@ -12,7 +12,7 @@ import { waiterPaths } from './paths';
 
 /** Orders tab: my open orders, oldest first, with status, bill request and age. */
 export function OrdersScreen() {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   const orders = useQuery(myOrdersQuery);
   const tables = useQuery(tablesQuery);
   const now = useNow();
@@ -27,9 +27,9 @@ export function OrdersScreen() {
   } else if (orders.isError) {
     content = (
       <ErrorState
-        title={t('waiter.loadFailed')}
-        description={t('waiter.loadFailedBody')}
-        retryLabel={t('waiter.retry')}
+        title={t('waiter:loadFailed')}
+        description={t('waiter:loadFailedBody')}
+        retryLabel={t('waiter:retry')}
         onRetry={() => void orders.refetch()}
       />
     );
@@ -37,8 +37,8 @@ export function OrdersScreen() {
     content = (
       <EmptyState
         icon={ClipboardList}
-        title={t('waiter.ordersEmpty')}
-        description={t('waiter.ordersEmptyBody')}
+        title={t('waiter:ordersEmpty')}
+        description={t('waiter:ordersEmptyBody')}
       />
     );
   } else {
@@ -55,7 +55,7 @@ export function OrdersScreen() {
                 <span className="min-w-0 flex-1 space-y-1.5">
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="text-lg font-semibold">
-                      {t('waiter.table', { number: tableNumber.get(order.table_id) ?? '' })}
+                      {t('waiter:table', { number: tableNumber.get(order.table_id) ?? '' })}
                     </span>
                     <MoneyText amount={order.total} className="text-sm font-semibold" />
                   </span>
@@ -81,7 +81,7 @@ export function OrdersScreen() {
 
   return (
     <div className="pt-4 pb-6">
-      <h1 className="text-xl font-semibold">{t('waiter.orders')}</h1>
+      <h1 className="text-xl font-semibold">{t('waiter:orders')}</h1>
       {content}
     </div>
   );

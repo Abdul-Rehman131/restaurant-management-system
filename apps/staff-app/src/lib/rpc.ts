@@ -1,18 +1,18 @@
-// Already in the shell bundle (English is bundled, src/i18n/index.ts): no extra bytes.
-import enCommon from '../i18n/locales/en/common.json';
+// The `rpc` namespace: loaded with the role screens, not with the shell (plan 4.10).
+import enRpc from '../i18n/locales/en/rpc.json';
 
 /**
  * RPC errors in plain language (plan 4.6 rule 4). Every function raises a stable code as the
  * error message (ADR 001): P0001 for business rules, 42501 for NOT_AUTHORIZED. Each code has
- * one message in common.json `rpcErrors`; raw technical text never reaches staff. A Vitest
+ * one message in the `rpc` namespace (locales/en/rpc.json); raw technical text never reaches staff. A Vitest
  * test checks that every code in supabase/migrations has a message.
  */
-export type RpcErrorCode = keyof (typeof enCommon)['rpcErrors'];
-export type RpcErrorKey = `rpcErrors.${RpcErrorCode}`;
+export type RpcErrorCode = keyof typeof enRpc;
+export type RpcErrorKey = `rpc:${RpcErrorCode}`;
 
 // The upper-case keys are the server's codes; `network` and `unknown` are the app's own.
 const codes: ReadonlySet<string> = new Set(
-  Object.keys(enCommon.rpcErrors).filter((key) => /^[A-Z_]+$/.test(key)),
+  Object.keys(enRpc).filter((key) => /^[A-Z_]+$/.test(key)),
 );
 
 /** An RPC answer that is not what its Zod schema says (a contract break, never shown raw). */
@@ -43,9 +43,9 @@ export function isNetworkError(error: unknown): boolean {
 /** The i18n key for an RPC failure: its stable code, else network, else unknown. */
 export function rpcErrorKey(error: unknown): RpcErrorKey {
   const message = messageOf(error);
-  if (message !== null && codes.has(message)) return `rpcErrors.${message as RpcErrorCode}`;
-  if (isNetworkError(error)) return 'rpcErrors.network';
-  return 'rpcErrors.unknown';
+  if (message !== null && codes.has(message)) return `rpc:${message as RpcErrorCode}`;
+  if (isNetworkError(error)) return 'rpc:network';
+  return 'rpc:unknown';
 }
 
 /** The stable code of an RPC failure, or null (network, contract or unknown errors). */

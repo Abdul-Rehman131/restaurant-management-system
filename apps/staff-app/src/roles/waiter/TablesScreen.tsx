@@ -36,7 +36,7 @@ function TableTile({
   order: MyOrder | undefined;
   now: number;
 }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   // Any waiter may open a free table (Q4); a busy table of another waiter is not theirs.
   const othersTable = table.status !== 'available' && !order;
   const ready = order?.status === 'ready';
@@ -44,11 +44,11 @@ function TableTile({
     <>
       <span className="flex flex-col">
         <span className="text-3xl leading-none font-bold tabular-nums">
-          <span className="sr-only">{t('waiter.table', { number: table.number })} </span>
+          <span className="sr-only">{t('waiter:table', { number: table.number })} </span>
           <span aria-hidden>{table.number}</span>
         </span>
         <span className="mt-1 text-xs whitespace-nowrap text-fg-muted">
-          {t('waiter.seats', { count: table.capacity })}
+          {t('waiter:seats', { count: table.capacity })}
         </span>
       </span>
       <StatusBadge
@@ -61,13 +61,13 @@ function TableTile({
         {ready && (
           <span className="inline-flex items-center gap-1 font-semibold text-success">
             <BellRing aria-hidden className="size-4" />
-            {t('waiter.ready')}
+            {t('waiter:ready')}
           </span>
         )}
         {othersTable && (
           <span className="inline-flex items-center gap-1">
             <UserRound aria-hidden className="size-4" />
-            {t('waiter.otherWaiter')}
+            {t('waiter:otherWaiter')}
           </span>
         )}
       </span>
@@ -86,7 +86,7 @@ function TableTile({
         type="button"
         className={tile}
         onClick={() => {
-          toast(t('waiter.otherWaiterToast', { number: table.number }));
+          toast(t('waiter:otherWaiterToast', { number: table.number }));
         }}
       >
         {body}
@@ -102,7 +102,7 @@ function TableTile({
 
 /** Tables (plan 4.11): grid by section, live status, "My tables" on by default. */
 export function TablesScreen() {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   const tables = useQuery(tablesQuery);
   const orders = useQuery(myOrdersQuery);
   const [mine, setMine] = useState(true);
@@ -126,9 +126,9 @@ export function TablesScreen() {
   } else if (tables.isError || orders.isError) {
     content = (
       <ErrorState
-        title={t('waiter.loadFailed')}
-        description={t('waiter.loadFailedBody')}
-        retryLabel={t('waiter.retry')}
+        title={t('waiter:loadFailed')}
+        description={t('waiter:loadFailedBody')}
+        retryLabel={t('waiter:retry')}
         retrying={tables.isFetching || orders.isFetching}
         onRetry={() => {
           void tables.refetch();
@@ -140,8 +140,8 @@ export function TablesScreen() {
     content = (
       <EmptyState
         icon={LayoutGrid}
-        title={t('waiter.tablesEmpty')}
-        description={t('waiter.tablesEmptyBody')}
+        title={t('waiter:tablesEmpty')}
+        description={t('waiter:tablesEmptyBody')}
       />
     );
   } else {
@@ -164,19 +164,19 @@ export function TablesScreen() {
   return (
     <div className="pb-6">
       <div className="flex items-center justify-between gap-3 pt-4">
-        <h1 className="text-xl font-semibold">{t('waiter.tables')}</h1>
+        <h1 className="text-xl font-semibold">{t('waiter:tables')}</h1>
         <Button
           variant={mine ? 'secondary' : 'outline'}
           size="sm"
           aria-pressed={mine}
-          title={t('waiter.mineHint')}
+          title={t('waiter:mineHint')}
           onClick={() => {
             setMine((value) => !value);
           }}
           className={cn('min-h-11', mine && 'ring-2 ring-brand')}
         >
           <UserRound aria-hidden />
-          {t('waiter.mine')}
+          {t('waiter:mine')}
         </Button>
       </div>
       {content}

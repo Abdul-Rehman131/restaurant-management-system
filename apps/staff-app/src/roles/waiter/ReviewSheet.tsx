@@ -40,7 +40,7 @@ export function ReviewSheet({
   onEdit: () => void;
   sendButton: ReactNode;
 }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   const draft = useDraft(draftKey);
   const update = useCartStore((state) => state.update);
   const change = (edit: Parameters<typeof update>[1]) => {
@@ -53,10 +53,10 @@ export function ReviewSheet({
       <SheetContent side="auto" className="gap-3">
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
-          <SheetDescription>{t('waiter.reviewDescription')}</SheetDescription>
+          <SheetDescription>{t('waiter:reviewDescription')}</SheetDescription>
         </SheetHeader>
         {draft.lines.length === 0 ? (
-          <p className="py-6 text-center text-fg-muted">{t('waiter.reviewEmpty')}</p>
+          <p className="py-6 text-center text-fg-muted">{t('waiter:reviewEmpty')}</p>
         ) : (
           <ul className="divide-y divide-border">
             {draft.lines.map((line) => {
@@ -80,17 +80,17 @@ export function ReviewSheet({
                   {soldOut && (
                     <p className="flex items-center gap-1.5 text-sm font-medium text-danger">
                       <CircleAlert aria-hidden className="size-4" />
-                      {t('waiter.soldOutInCart')}
+                      {t('waiter:soldOutInCart')}
                     </p>
                   )}
                   <label htmlFor={noteId} className="sr-only">
-                    {t('waiter.noteFor', { name: line.name })}
+                    {t('waiter:noteFor', { name: line.name })}
                   </label>
                   <Input
                     id={noteId}
                     value={line.notes}
                     maxLength={MAX_NOTES}
-                    placeholder={t('waiter.notePlaceholder')}
+                    placeholder={t('waiter:notePlaceholder')}
                     onChange={(event) => {
                       const notes = event.target.value;
                       change((d) => setNotes(d, line.key, notes));

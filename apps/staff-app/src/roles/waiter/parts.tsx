@@ -15,13 +15,13 @@ import { Link } from 'react-router';
 
 /** "12 min" or "1 h 5 min" since a server timestamp. */
 export function OrderAge({ since, now }: { since: string; now: number }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   const minutes = Math.max(0, Math.floor((now - Date.parse(since)) / 60_000));
   return (
     <span className="tabular-nums">
       {minutes < 60
-        ? t('waiter.ageMinutes', { minutes })
-        : t('waiter.ageHours', { hours: Math.floor(minutes / 60), minutes: minutes % 60 })}
+        ? t('waiter:ageMinutes', { minutes })
+        : t('waiter:ageHours', { hours: Math.floor(minutes / 60), minutes: minutes % 60 })}
     </span>
   );
 }
@@ -43,7 +43,7 @@ const batchLooks: Record<Enums<'batch_status'>, { tone: Tone; icon: LucideIcon }
 
 /** Kitchen status of one batch: colour plus icon plus label (plan 4.1). */
 export function BatchBadge({ status }: { status: Enums<'batch_status'> }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   const { tone, icon: Icon } = batchLooks[status];
   return (
     <span
@@ -54,7 +54,7 @@ export function BatchBadge({ status }: { status: Enums<'batch_status'> }) {
       )}
     >
       <Icon aria-hidden className="size-4 shrink-0" strokeWidth={2.25} />
-      {t(`waiter.batchStatus.${status}`)}
+      {t(`waiter:batchStatus.${status}`)}
     </span>
   );
 }
@@ -71,12 +71,12 @@ export function ScreenTitle({
   back: string;
   children?: ReactNode;
 }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   return (
     <div className="flex items-center gap-2 py-3">
       <Link
         to={back}
-        aria-label={t('waiter.back')}
+        aria-label={t('waiter:back')}
         className="-ms-2 grid size-control-md shrink-0 place-items-center rounded-md text-fg hover:bg-surface-2"
       >
         <ArrowLeft aria-hidden className="size-6 rtl:-scale-x-100" />

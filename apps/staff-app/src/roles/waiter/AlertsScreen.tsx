@@ -9,7 +9,7 @@ import { waiterPaths } from './paths';
 
 /** Alerts tab: Start shift, sound and wake-lock state, and the Ready alerts of this shift. */
 export function AlertsScreen() {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useTranslation(['waiter', 'rpc']);
   const tableNumber = useTableNumber();
   const alerts = useAlertStore((state) => state.alerts);
   const shiftStarted = useAlertStore((state) => state.shiftStarted);
@@ -21,25 +21,25 @@ export function AlertsScreen() {
 
   return (
     <div className="space-y-4 pt-4 pb-6">
-      <h1 className="text-xl font-semibold">{t('waiter.alerts')}</h1>
+      <h1 className="text-xl font-semibold">{t('waiter:alerts')}</h1>
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
         {shiftStarted ? (
           <>
-            <h2 className="font-semibold">{t('waiter.shiftStarted')}</h2>
+            <h2 className="font-semibold">{t('waiter:shiftStarted')}</h2>
             <p className="mt-1 flex items-start gap-2 text-sm text-fg-muted">
               {wakeLock ? (
                 <Sun aria-hidden className="size-4 shrink-0" />
               ) : (
                 <Moon aria-hidden className="size-4 shrink-0" />
               )}
-              {wakeLock ? t('waiter.wakeLockOn') : t('waiter.wakeLockOff')}
+              {wakeLock ? t('waiter:wakeLockOn') : t('waiter:wakeLockOff')}
             </p>
           </>
         ) : (
           <>
-            <h2 className="font-semibold">{t('waiter.startShift')}</h2>
-            <p className="mt-1 text-sm text-fg-muted">{t('waiter.startShiftBody')}</p>
+            <h2 className="font-semibold">{t('waiter:startShift')}</h2>
+            <p className="mt-1 text-sm text-fg-muted">{t('waiter:startShiftBody')}</p>
             <Button
               size="lg"
               className="mt-3 w-full"
@@ -50,7 +50,7 @@ export function AlertsScreen() {
               }}
             >
               <Play aria-hidden />
-              {t('waiter.startShift')}
+              {t('waiter:startShift')}
             </Button>
           </>
         )}
@@ -59,14 +59,14 @@ export function AlertsScreen() {
       {alerts.length === 0 ? (
         <EmptyState
           icon={BellRing}
-          title={t('waiter.alertsEmpty')}
-          description={t('waiter.alertsEmptyBody')}
+          title={t('waiter:alertsEmpty')}
+          description={t('waiter:alertsEmptyBody')}
         />
       ) : (
         <>
           <div className="flex justify-end">
             <Button variant="ghost" size="sm" className="min-h-11" onClick={markAllRead}>
-              {t('waiter.markAllRead')}
+              {t('waiter:markAllRead')}
             </Button>
           </div>
           <ul className="space-y-3">
@@ -84,16 +84,16 @@ export function AlertsScreen() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold">
-                      {t('waiter.readyTitle', { number: tableNumber(alert.tableId) })}
+                      {t('waiter:readyTitle', { number: tableNumber(alert.tableId) })}
                     </span>
                     <span className="block text-sm text-fg-muted">
-                      {t('waiter.readyAlert', { batch: batchLabel(t, alert.batchNo) })} ·{' '}
+                      {t('waiter:readyAlert', { batch: batchLabel(t, alert.batchNo) })} ·{' '}
                       <time dateTime={new Date(alert.at).toISOString()}>
                         {time.format(alert.at)}
                       </time>
                     </span>
                   </span>
-                  {!alert.read && <Badge variant="accent">{t('waiter.newAlert')}</Badge>}
+                  {!alert.read && <Badge variant="accent">{t('waiter:newAlert')}</Badge>}
                 </Link>
               </li>
             ))}

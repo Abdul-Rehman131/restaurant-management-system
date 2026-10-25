@@ -9,7 +9,7 @@ import { waiterPaths } from './paths';
 
 /** Header control: Start shift (a tap unlocks sound, R10), then the visible mute toggle. */
 export function ShiftControl() {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   const shiftStarted = useAlertStore((state) => state.shiftStarted);
   const muted = useAlertStore((state) => state.muted);
   const setMuted = useAlertStore((state) => state.setMuted);
@@ -28,7 +28,7 @@ export function ShiftControl() {
         }}
       >
         <Play aria-hidden />
-        {t('waiter.startShift')}
+        {t('waiter:startShift')}
       </Button>
     );
   }
@@ -38,14 +38,14 @@ export function ShiftControl() {
       size="sm"
       className={cn('min-h-11', muted && 'text-danger')}
       aria-pressed={muted}
-      aria-label={muted ? t('waiter.unmute') : t('waiter.mute')}
+      aria-label={muted ? t('waiter:unmute') : t('waiter:mute')}
       onClick={() => {
         setMuted(!muted);
       }}
     >
       {muted ? <VolumeX aria-hidden /> : <Volume2 aria-hidden />}
       <span aria-hidden className="text-sm">
-        {muted ? t('waiter.muted') : t('waiter.soundOn')}
+        {muted ? t('waiter:muted') : t('waiter:soundOn')}
       </span>
     </Button>
   );
@@ -57,7 +57,7 @@ export function ShiftControl() {
  * prefers-reduced-motion.
  */
 export function ReadyBanner() {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   const navigate = useNavigate();
   const tableNumber = useTableNumber();
   const alert = useAlertStore((state) => state.alerts.find((a) => a.id === state.bannerId));
@@ -71,10 +71,10 @@ export function ReadyBanner() {
           <BellRing aria-hidden className="size-6 shrink-0" />
           <p className="min-w-0 flex-1">
             <span className="block font-semibold">
-              {t('waiter.readyTitle', { number: tableNumber(alert.tableId) })}
+              {t('waiter:readyTitle', { number: tableNumber(alert.tableId) })}
             </span>
             <span className="block text-sm">
-              {t('waiter.readyAlert', { batch: batchLabel(t, alert.batchNo) })}
+              {t('waiter:readyAlert', { batch: batchLabel(t, alert.batchNo) })}
             </span>
           </p>
           <Button
@@ -85,13 +85,13 @@ export function ReadyBanner() {
               if (alert.tableId) void navigate(waiterPaths.table(alert.tableId));
             }}
           >
-            {t('waiter.open')}
+            {t('waiter:open')}
           </Button>
           <Button
             variant="ghost"
             size="icon"
             className="text-success"
-            aria-label={t('waiter.dismiss')}
+            aria-label={t('waiter:dismiss')}
             onClick={dismiss}
           >
             <X aria-hidden />

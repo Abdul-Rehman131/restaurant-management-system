@@ -1,3 +1,8 @@
+// Loaded only inside the signed-in shell: importing it ties the shell's modules (data
+// client, TanStack Query, settings) to the shell chunk instead of splitting them into shared
+// chunks the shell would download as extra files (plan 4.10 budgets).
+import '../../shell/SignedIn';
+
 import {
   Button,
   OfflineBanner,

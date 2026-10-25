@@ -15,7 +15,7 @@ import { waiterPaths } from './paths';
  * entry for a free table. Another waiter's busy table is not mine to open.
  */
 export function TableRoute({ adding }: { adding: boolean }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   const { tableId } = useParams();
   const tables = useQuery(tablesQuery);
   const orders = useQuery(myOrdersQuery);
@@ -24,9 +24,9 @@ export function TableRoute({ adding }: { adding: boolean }) {
   if (tables.isError || orders.isError) {
     return (
       <ErrorState
-        title={t('waiter.loadFailed')}
-        description={t('waiter.loadFailedBody')}
-        retryLabel={t('waiter.retry')}
+        title={t('waiter:loadFailed')}
+        description={t('waiter:loadFailedBody')}
+        retryLabel={t('waiter:retry')}
         onRetry={() => {
           void tables.refetch();
           void orders.refetch();
@@ -56,11 +56,11 @@ export function TableRoute({ adding }: { adding: boolean }) {
   }
   return (
     <>
-      <ScreenTitle back={waiterPaths.tables} title={t('waiter.table', { number: table.number })} />
+      <ScreenTitle back={waiterPaths.tables} title={t('waiter:table', { number: table.number })} />
       <EmptyState
         icon={UserRound}
-        title={t('waiter.notYoursTitle', { number: table.number })}
-        description={t('waiter.notYoursBody')}
+        title={t('waiter:notYoursTitle', { number: table.number })}
+        description={t('waiter:notYoursBody')}
       />
     </>
   );

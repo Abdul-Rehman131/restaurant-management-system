@@ -19,8 +19,8 @@ export function useNow(intervalMs = 30_000): number {
 }
 
 /** "First send" or "Add-on 2" (BR-06). */
-export function batchLabel(t: TFunction, batchNo: number): string {
-  return batchNo === 1 ? t('waiter.firstBatch') : t('waiter.addOnBatch', { batch: batchNo });
+export function batchLabel(t: TFunction<['waiter', 'rpc']>, batchNo: number): string {
+  return batchNo === 1 ? t('waiter:firstBatch') : t('waiter:addOnBatch', { batch: batchNo });
 }
 
 /** "Table 7" for an alert, from the cached tables (the alert carries ids only). */

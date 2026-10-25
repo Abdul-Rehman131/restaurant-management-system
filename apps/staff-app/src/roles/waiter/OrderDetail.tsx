@@ -32,9 +32,9 @@ import { waiterPaths } from './paths';
 
 /** The totals block, in bill order: every amount is the server's (BR-01, BR-16). */
 const totalRows = [
-  ['waiter.subtotal', 'subtotal'],
-  ['waiter.serviceCharge', 'service_charge'],
-  ['waiter.tax', 'tax'],
+  ['waiter:subtotal', 'subtotal'],
+  ['waiter:serviceCharge', 'service_charge'],
+  ['waiter:tax', 'tax'],
 ] as const;
 
 /** Statuses in which a bill can be requested (request_bill: not Pending, not closed). */
@@ -51,7 +51,7 @@ function MoveTableSheet({
   order: MyOrder;
   table: TableRow;
 }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   const { canSend } = useConnection();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -67,7 +67,7 @@ function MoveTableSheet({
         const to = queryClient
           .getQueryData<TableRow[]>(waiterKeys.tables)
           ?.find((row) => row.id === result.table_id);
-        toast.success(t('waiter.moved', { number: to?.number ?? '' }));
+        toast.success(t('waiter:moved', { number: to?.number ?? '' }));
         if (result.table_id) void navigate(waiterPaths.table(result.table_id), { replace: true });
       },
       [queryClient, navigate, t],
@@ -78,11 +78,11 @@ function MoveTableSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="auto">
         <SheetHeader>
-          <SheetTitle>{t('waiter.moveTitle')}</SheetTitle>
-          <SheetDescription>{t('waiter.moveDescription')}</SheetDescription>
+          <SheetTitle>{t('waiter:moveTitle')}</SheetTitle>
+          <SheetDescription>{t('waiter:moveDescription')}</SheetDescription>
         </SheetHeader>
         {free.length === 0 ? (
-          <p className="py-4 text-center text-fg-muted">{t('waiter.moveNoFree')}</p>
+          <p className="py-4 text-center text-fg-muted">{t('waiter:moveNoFree')}</p>
         ) : (
           <ul className="grid grid-cols-3 gap-3">
             {free.map((row) => (
@@ -94,7 +94,7 @@ function MoveTableSheet({
                   disabled={!canSend || move.pending}
                   onClick={() => void move.run(order.id, row.id)}
                 >
-                  {t('waiter.table', { number: row.number })}
+                  {t('waiter:table', { number: row.number })}
                 </Button>
               </li>
             ))}
@@ -120,7 +120,7 @@ function MoveTableSheet({
  * Bill and Move table. Waiters cannot cancel sent lines (BR-09): the cashier does.
  */
 export function OrderDetail({ table, order }: { table: TableRow; order: MyOrder }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   const { canSend } = useConnection();
   const queryClient = useQueryClient();
   const [moving, setMoving] = useState(false);
@@ -134,14 +134,14 @@ export function OrderDetail({ table, order }: { table: TableRow; order: MyOrder 
     waiterRpc.markServed,
     useCallback(async () => {
       await refetch();
-      toast.success(t('waiter.servedToast', { number: table.number }));
+      toast.success(t('waiter:servedToast', { number: table.number }));
     }, [refetch, t, table.number]),
   );
   const bill = useRpcAction(
     waiterRpc.requestBill,
     useCallback(async () => {
       await refetch();
-      toast.success(t('waiter.billToast', { number: table.number }));
+      toast.success(t('waiter:billToast', { number: table.number }));
     }, [refetch, t, table.number]),
   );
   const error = served.error ?? bill.error;
@@ -151,7 +151,7 @@ export function OrderDetail({ table, order }: { table: TableRow; order: MyOrder 
     <>
       <ScreenTitle
         back={waiterPaths.tables}
-        title={t('waiter.table', { number: table.number })}
+        title={t('waiter:table', { number: table.number })}
         subtitle={order.order_number}
       >
         <StatusBadge kind="order" status={order.status} />
@@ -194,11 +194,11 @@ export function OrderDetail({ table, order }: { table: TableRow; order: MyOrder 
                     )}
                     {line.is_cancelled && (
                       <span className="block text-sm font-medium text-danger">
-                        {t('waiter.lineCancelled')}
+                        {t('waiter:lineCancelled')}
                       </span>
                     )}
                     {!line.needs_kitchen && !line.is_cancelled && (
-                      <span className="block text-sm text-fg-muted">{t('waiter.noKitchen')}</span>
+                      <span className="block text-sm text-fg-muted">{t('waiter:noKitchen')}</span>
                     )}
                   </span>
                   <MoneyText
@@ -223,14 +223,14 @@ export function OrderDetail({ table, order }: { table: TableRow; order: MyOrder 
           ))}
           {order.discount > 0 && (
             <div className="flex justify-between gap-3 text-fg-muted">
-              <dt>{t('waiter.discount')}</dt>
+              <dt>{t('waiter:discount')}</dt>
               <dd>
                 −<MoneyText amount={order.discount} />
               </dd>
             </div>
           )}
           <div className="flex justify-between gap-3 border-t border-border pt-2 text-lg font-semibold">
-            <dt>{t('waiter.total')}</dt>
+            <dt>{t('waiter:total')}</dt>
             <dd>
               <MoneyText amount={order.total} />
             </dd>
@@ -239,7 +239,7 @@ export function OrderDetail({ table, order }: { table: TableRow; order: MyOrder 
 
         <p className="flex items-start gap-2 text-sm text-fg-muted">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-          {t('waiter.cancelHint')}
+          {t('waiter:cancelHint')}
         </p>
         <Button
           variant="ghost"
@@ -250,7 +250,7 @@ export function OrderDetail({ table, order }: { table: TableRow; order: MyOrder 
           }}
         >
           <ArrowRightLeft aria-hidden />
-          {t('waiter.moveTable')}
+          {t('waiter:moveTable')}
         </Button>
       </div>
 
@@ -273,7 +273,7 @@ export function OrderDetail({ table, order }: { table: TableRow; order: MyOrder 
               onClick={() => void served.run(order.id)}
             >
               <UtensilsCrossed aria-hidden />
-              {t('waiter.markServed')}
+              {t('waiter:markServed')}
             </Button>
           ) : (
             <Button
@@ -284,19 +284,19 @@ export function OrderDetail({ table, order }: { table: TableRow; order: MyOrder 
               onClick={() => void bill.run(order.id)}
             >
               <ReceiptText aria-hidden />
-              {order.bill_requested ? t('waiter.billRequested') : t('waiter.requestBill')}
+              {order.bill_requested ? t('waiter:billRequested') : t('waiter:requestBill')}
             </Button>
           )}
           {paid ? (
             <Button size="lg" disabled>
               <Plus aria-hidden />
-              {t('waiter.addMore')}
+              {t('waiter:addMore')}
             </Button>
           ) : (
             <Button asChild size="lg" variant={order.status === 'ready' ? 'outline' : 'primary'}>
               <Link to={waiterPaths.addItems(table.id)}>
                 <Plus aria-hidden />
-                {t('waiter.addMore')}
+                {t('waiter:addMore')}
               </Link>
             </Button>
           )}
@@ -310,7 +310,7 @@ export function OrderDetail({ table, order }: { table: TableRow; order: MyOrder 
             onClick={() => void bill.run(order.id)}
           >
             <ReceiptText aria-hidden />
-            {order.bill_requested ? t('waiter.billRequested') : t('waiter.requestBill')}
+            {order.bill_requested ? t('waiter:billRequested') : t('waiter:requestBill')}
           </Button>
         )}
       </div>

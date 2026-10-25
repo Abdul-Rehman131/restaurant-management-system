@@ -1,3 +1,9 @@
+// Loaded only inside the signed-in shell: importing it ties the shell's modules (data
+// client, TanStack Query, settings) to the shell chunk instead of splitting them into shared
+// chunks the shell would download as extra files (plan 4.10 budgets).
+import '../../shell/SignedIn';
+import './i18n';
+
 import { Badge, OfflineBanner, cn } from '@rms/ui';
 import { BellRing, ClipboardList, LayoutGrid, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -21,16 +27,16 @@ const tabs: {
   to: string;
   end: boolean;
   icon: LucideIcon;
-  label: 'waiter.tables' | 'waiter.orders' | 'waiter.alerts';
+  label: 'waiter:tables' | 'waiter:orders' | 'waiter:alerts';
 }[] = [
-  { to: waiterPaths.tables, end: true, icon: LayoutGrid, label: 'waiter.tables' },
-  { to: waiterPaths.orders, end: false, icon: ClipboardList, label: 'waiter.orders' },
-  { to: waiterPaths.alerts, end: false, icon: BellRing, label: 'waiter.alerts' },
+  { to: waiterPaths.tables, end: true, icon: LayoutGrid, label: 'waiter:tables' },
+  { to: waiterPaths.orders, end: false, icon: ClipboardList, label: 'waiter:orders' },
+  { to: waiterPaths.alerts, end: false, icon: BellRing, label: 'waiter:alerts' },
 ];
 
 /** Waiter: phone first, touch density, bottom navigation (plan 4.5). */
 export function WaiterApp() {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['waiter', 'rpc']);
   const { state } = useConnection();
   const { session } = useAuth();
   useScreenAppearance({ density: 'touch' });
@@ -56,7 +62,7 @@ export function WaiterApp() {
       </main>
       {!onTable && (
         <nav
-          aria-label={t('waiter.nav')}
+          aria-label={t('waiter:nav')}
           className="sticky bottom-0 z-30 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
         >
           <ul className="mx-auto grid max-w-3xl grid-cols-3">
@@ -74,14 +80,14 @@ export function WaiterApp() {
                 >
                   <span className="relative">
                     <Icon aria-hidden className="size-6" />
-                    {label === 'waiter.alerts' && unread > 0 && (
+                    {label === 'waiter:alerts' && unread > 0 && (
                       <Badge
                         variant="accent"
                         className="absolute -end-3 -top-2 h-5 min-w-5 justify-center px-1.5"
                       >
                         <span aria-hidden>{unread}</span>
                         <span className="sr-only">
-                          {t('waiter.alertsBadge', { count: unread })}
+                          {t('waiter:alertsBadge', { count: unread })}
                         </span>
                       </Badge>
                     )}
