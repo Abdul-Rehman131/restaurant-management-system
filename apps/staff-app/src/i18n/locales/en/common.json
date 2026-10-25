@@ -61,12 +61,6 @@
     "updateNow": "Update",
     "offlineReady": "The app is ready to work with a weak connection."
   },
-  "kitchen": {
-    "title": "Kitchen",
-    "soldOut": "Sold out list",
-    "queueEmpty": "No tickets right now",
-    "queueEmptyBody": "New orders appear here as soon as a waiter sends them."
-  },
   "cashier": {
     "title": "Cashier",
     "openBills": "Open bills",

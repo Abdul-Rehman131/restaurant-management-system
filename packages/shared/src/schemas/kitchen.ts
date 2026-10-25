@@ -28,6 +28,8 @@ export const kitchenTicket = z.object({
   order_number: z.string(),
   order_type: orderType,
   table_number: z.nullable(z.int()),
+  /** Take Away: the name the kitchen calls out; null for Dine-In. */
+  customer_name: z.nullable(z.string()),
   batch_no: z.int().check(z.minimum(1)),
   is_addon: z.boolean(),
   status: z.enum(['sent', 'preparing']),

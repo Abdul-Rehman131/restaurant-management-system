@@ -29,6 +29,7 @@ describe('get_kitchen_queue response', () => {
     order_number: 'ORD-20261025-001',
     order_type: 'dine_in',
     table_number: 7,
+    customer_name: null,
     batch_no: 2,
     is_addon: true,
     status: 'sent',

@@ -40,6 +40,25 @@ Staff log in with a **username**. The app maps it to the internal login email
 `packages/shared`). That domain is reserved and can never receive mail. Staff accounts are
 created only by an Admin; public sign-up is disabled.
 
+## Demo logins (local only)
+
+`pnpm db:reset` loads `supabase/seed.sql`, which creates these demo staff accounts on your
+**local** stack only. Sign in with the **username** (not an email) and the password
+`demo-password-123`:
+
+| Username  | Role                                            | Lands on                  |
+| --------- | ----------------------------------------------- | ------------------------- |
+| `admin`   | Admin (skip the two-step set-up prompt locally) | `/admin`                  |
+| `cashier` | Cashier                                         | `/cashier`                |
+| `waiter1` | Waiter                                          | `/waiter`                 |
+| `waiter2` | Waiter                                          | `/waiter`                 |
+| `chef`    | Chef                                            | `/kitchen`                |
+| `rider`   | Rider (no screens until P3)                     | a "no screens yet" notice |
+
+The seed also has `former`, a deactivated waiter whose sign-in is refused. These accounts
+exist only after `pnpm db:reset` on a local stack. They are never created on staging or
+production, where staff accounts are made by an Admin.
+
 ## Commands
 
 | Command                                              | What it does                                                                                                                                                                                                                                      |

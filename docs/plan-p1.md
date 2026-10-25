@@ -63,6 +63,14 @@ result on a retry.
 - **Bundles**: role chunks import the signed-in shell module, so modules they share with it stay in the shell chunk instead of extra shared files (plan 4.10).
 - **e2e**: a failure with `net::ERR_NETWORK_CHANGED` comes from the host's network changing (seen with a Wi-Fi drop), and the fixture names it; tests that assert exact order numbers clear the counters in their own transaction.
 
+## S3 as built: kitchen screen decisions
+- **Queue**: `get_kitchen_queue` now also returns `customer_name` (new migration), so a Take Away ticket is called by name. Still no money field; an e2e test checks every API answer and Realtime frame the chef receives.
+- **Ticket age** counts from the batch's `sent_at` on the server's clock (the queue's `server_time`). Green under `kitchen_warn_min`, amber to `kitchen_late_min`, red after; each band also has an icon, the minutes and a word (On time, Waiting, Late).
+- **Recently ready** lists the tickets marked Ready on this screen (device-local, last 6). A Ready ticket stays on the board for 4 s first. There is no undo in S3.
+- **Sold Out list** shows every active item, drinks included: a bottled drink can run out too.
+- **Chime** for new tickets plays after Start shift, unless muted; the first load never chimes.
+- **e2e projects**: each role spec runs on its device project (waiter on phone, kitchen on a landscape tablet), so "skipped" counts only real skips. The tablet project runs after desktop, because the desktop project switches `waiter2` (the kitchen tests' waiter) off once.
+
 ## Out of P1
 Online orders, deals and pg_cron jobs (P2); delivery, riders and reservations (P3); profit,
 expenses, shifts, the audit log viewer and `daily_summary` (P4).

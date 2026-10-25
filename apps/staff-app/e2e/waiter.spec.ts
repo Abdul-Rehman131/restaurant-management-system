@@ -13,10 +13,10 @@ import {
   tableId,
 } from './support';
 
-// S2 waiter app on a phone viewport against the local Supabase stack. Each test owns one
+// S2 waiter app on a phone viewport (the phone project only, playwright.config.ts) against the
+// local Supabase stack. Each test owns one
 // table (freed before it starts), so tests can run in parallel. Screenshots go to $SHOTS
 // (light, and dark with SHOTS_THEME=dark).
-test.skip(({ isMobile }) => !isMobile, 'the waiter app is phone first: the phone project');
 
 const theme = process.env['SHOTS_THEME'] === 'dark' ? 'dark' : 'light';
 

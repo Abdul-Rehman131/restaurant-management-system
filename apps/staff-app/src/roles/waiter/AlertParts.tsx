@@ -3,7 +3,8 @@ import { BellRing, Play, Volume2, VolumeX, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
-import { startShift, useAlertStore } from './alerts';
+import { startShift } from '../../lib/shift';
+import { useAlertStore } from './alerts';
 import { batchLabel, useTableNumber } from './format';
 import { waiterPaths } from './paths';
 
