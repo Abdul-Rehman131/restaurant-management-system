@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir helpers.psql
 
-select plan(12);
+select plan(14);
 
 create function tests.keys(p_value jsonb) returns text[] language sql immutable as $$
   select coalesce(array_agg(k order by k), '{}') from jsonb_object_keys(p_value) k
@@ -135,6 +135,13 @@ select is(
     :'o_move', tests.create_table(993), :'waiter'))),
   tests.keys(:'created'), 'move_order_table returns the orderSummary keys'
 );
+
+-- kitchenQueueResponse (schemas/kitchen.ts); nested keys are pinned in 290_kitchen_queue
+select is(tests.keys(tests.call_as(:'chef', 'select public.get_kitchen_queue()')), array['server_time', 'tickets'],
+  'get_kitchen_queue returns the kitchenQueueResponse keys');
+-- menuAvailabilityResponse (schemas/menu.ts)
+select is(tests.keys(tests.call_as(:'chef', 'select public.get_menu_availability()')), array['items'],
+  'get_menu_availability returns the menuAvailabilityResponse keys');
 
 select * from finish();
 rollback;

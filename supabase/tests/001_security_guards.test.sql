@@ -20,6 +20,8 @@ as $$
     'public.apply_discount(p_request_id uuid, p_order_id uuid, p_amount bigint, p_reason text)',
     'public.cancel_order(p_request_id uuid, p_order_id uuid, p_reason text)',
     'public.create_order(p_request_id uuid, p_type order_type, p_table_id uuid, p_customer_name text, p_customer_phone text, p_items jsonb, p_waiter_id uuid)',
+    'public.get_kitchen_queue()',
+    'public.get_menu_availability()',
     'public.get_settings()',
     'public.move_order_table(p_request_id uuid, p_order_id uuid, p_to_table_id uuid, p_waiter_id uuid)',
     'public.my_role()',

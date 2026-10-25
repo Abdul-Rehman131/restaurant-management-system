@@ -910,6 +910,8 @@ export type Database = {
         Returns: string;
       };
       custom_access_token_hook: { Args: { event: Json }; Returns: Json };
+      get_kitchen_queue: { Args: Record<PropertyKey, never>; Returns: Json };
+      get_menu_availability: { Args: Record<PropertyKey, never>; Returns: Json };
       get_settings: { Args: Record<PropertyKey, never>; Returns: Json };
       move_order_table: {
         Args: {
