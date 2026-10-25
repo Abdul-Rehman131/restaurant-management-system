@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { MyOrder, OrderBatch } from './data';
-import { batchStatuses, newlyReady } from './ready';
+import { newlyReady, readyBatches } from './ready';
 
 const batch = (id: string, batchNo: number, status: OrderBatch['status']): OrderBatch => ({
   id,
@@ -29,29 +29,45 @@ const order = (batches: OrderBatch[]): MyOrder => ({
   order_batches: batches,
 });
 
+const kitchenLine = {
+  id: 'l1',
+  name_snapshot: 'Tikka',
+  quantity: 1,
+  notes: null,
+  line_total: 0,
+  needs_kitchen: true,
+  is_cancelled: false,
+};
+const drinkLine = { ...kitchenLine, id: 'l2', name_snapshot: 'Water', needs_kitchen: false };
+const kitchenBatch = (id: string, batchNo: number, status: OrderBatch['status']) => ({
+  ...batch(id, batchNo, status),
+  order_items: [kitchenLine],
+});
+
 describe('Ready alerts', () => {
-  it('alerts once when a batch turns Ready', () => {
-    const before = batchStatuses([order([batch('b1', 1, 'preparing')])]);
-    const now = [order([batch('b1', 1, 'ready')])];
-    expect(newlyReady(before, now, 1)).toEqual([
+  it('rings once when a kitchen batch turns Ready', () => {
+    const known = readyBatches([order([kitchenBatch('b1', 1, 'preparing')])]);
+    const now = [order([kitchenBatch('b1', 1, 'ready')])];
+    expect(newlyReady(known, now, 1)).toEqual([
       { id: 'b1', orderId: 'order-1', tableId: 'table-7', batchNo: 1, at: 1, read: false },
     ]);
-    expect(newlyReady(batchStatuses(now), now, 2)).toEqual([]);
+    expect(newlyReady(new Set([...known, 'b1']), now, 2)).toEqual([]);
   });
 
-  it('never replays old Ready batches when the app opens', () => {
-    expect(newlyReady(new Map(), [order([batch('b1', 1, 'ready')])], 1)).toEqual([]);
+  it('never replays batches that were already Ready when the app opened', () => {
+    const first = [order([kitchenBatch('b1', 1, 'ready')])];
+    expect(newlyReady(readyBatches(first), first, 1)).toEqual([]);
   });
 
-  it('a drinks-only add-on that is Ready at once does not ring (BR-07)', () => {
-    const before = batchStatuses([order([batch('b1', 1, 'served')])]);
-    const now = [order([batch('b1', 1, 'served'), batch('b2', 2, 'ready')])];
-    expect(newlyReady(before, now, 1)).toEqual([]);
+  it('rings for an ADD-ON this screen never saw before it was Ready (fast kitchen)', () => {
+    const known = readyBatches([order([kitchenBatch('b1', 1, 'served')])]);
+    const now = [order([kitchenBatch('b1', 1, 'served'), kitchenBatch('b2', 2, 'ready')])];
+    expect(newlyReady(known, now, 1).map((a) => a.batchNo)).toEqual([2]);
   });
 
-  it('an ADD-ON that the kitchen finishes rings with its batch number', () => {
-    const before = batchStatuses([order([batch('b1', 1, 'served'), batch('b2', 2, 'sent')])]);
-    const now = [order([batch('b1', 1, 'served'), batch('b2', 2, 'ready')])];
-    expect(newlyReady(before, now, 1).map((a) => a.batchNo)).toEqual([2]);
+  it('a drinks-only add-on that is Ready at once never rings (BR-07)', () => {
+    const known = readyBatches([order([kitchenBatch('b1', 1, 'served')])]);
+    const drinks = { ...batch('b2', 2, 'ready'), order_items: [drinkLine] };
+    expect(newlyReady(known, [order([kitchenBatch('b1', 1, 'served'), drinks])], 1)).toEqual([]);
   });
 });

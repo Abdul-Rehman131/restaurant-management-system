@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { create } from 'zustand';
 
 import {
@@ -11,7 +11,7 @@ import {
   writeFlag,
 } from '../../lib/shift';
 import { myOrdersQuery } from './data';
-import { batchStatuses, newlyReady, type ReadyAlert } from './ready';
+import { newlyReady, readyBatches, type ReadyAlert } from './ready';
 
 /**
  * Ready alerts (spec 6.1 step 4, plan 4.6 rule 6, R10). "Start shift" is a tap, so the browser
@@ -24,6 +24,12 @@ const MUTE_KEY = 'rms-waiter-muted';
 
 interface AlertState {
   alerts: ReadyAlert[];
+  /**
+   * Batches that may not ring (already Ready at the first look, or already rung). In the
+   * store, not the component, so a remount of the waiter screens never resets it.
+   */
+  known: ReadonlySet<string> | null;
+  remember: (ids: Iterable<string>) => void;
   /** The alert shown in the banner, until it is opened or dismissed. */
   bannerId: string | null;
   shiftStarted: boolean;
@@ -40,6 +46,10 @@ interface AlertState {
 
 export const useAlertStore = create<AlertState>()((set) => ({
   alerts: [],
+  known: null,
+  remember: (ids) => {
+    set((state) => ({ known: new Set([...(state.known ?? []), ...ids]) }));
+  },
   bannerId: null,
   shiftStarted: false,
   wakeLock: null,
@@ -96,20 +106,20 @@ export function vibrateReady(): void {
  */
 export function useReadyAlerts(): void {
   const { data } = useQuery(myOrdersQuery);
-  const previous = useRef<Map<string, string> | null>(null);
 
   useEffect(() => {
     if (!data) return;
-    if (previous.current) {
-      const fresh = newlyReady(previous.current, data, Date.now());
-      if (fresh.length > 0) {
-        const { push, muted, shiftStarted } = useAlertStore.getState();
-        push(fresh);
-        if (shiftStarted && !muted) playReadyTone();
-        vibrateReady();
-      }
+    const { known, remember, push, muted, shiftStarted } = useAlertStore.getState();
+    if (!known) {
+      remember(readyBatches(data));
+      return;
     }
-    previous.current = batchStatuses(data);
+    const fresh = newlyReady(known, data, Date.now());
+    if (fresh.length === 0) return;
+    remember(fresh.map((alert) => alert.id));
+    push(fresh);
+    if (shiftStarted && !muted) playReadyTone();
+    vibrateReady();
   }, [data]);
 
   // Keep the screen awake for the whole shift (R10).
