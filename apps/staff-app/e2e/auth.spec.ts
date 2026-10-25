@@ -121,9 +121,12 @@ test('offline: banner within 2 seconds, primary action disabled, back when onlin
   page,
   context,
 }) => {
-  await signInAs(page, 'waiter1');
+  // The shell's connection state; the waiter's Send to Kitchen is covered in waiter.spec.ts.
+  await signInAs(page, 'cashier');
   await expect(liveDot(page)).toBeVisible({ timeout: 10_000 });
-  const newOrder = page.getByRole('button', { name: 'New order' });
+  const newOrder = page
+    .getByRole('button', { name: 'New counter order' })
+    .filter({ visible: true });
   await expect(newOrder).toBeEnabled();
 
   await context.setOffline(true);
