@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+
+import { expect, test } from './fixtures';
 
 // T7 acceptance: the gallery renders in light, dark, LTR and RTL, and axe reports no serious
 // or critical violations (WCAG 2.2 AA). Screenshots go to test-results/gallery/ (or

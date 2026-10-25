@@ -202,6 +202,21 @@ begin
 end;
 $$;
 
+-- Tests that assert exact order numbers ("the first order of the day is 001") must not depend
+-- on orders already in the database (a local e2e run creates real ones today). Inside the
+-- test's rolled-back transaction: move existing orders to past numbers and clear the counters.
+create or replace function tests.clear_order_numbers()
+returns void
+language sql
+as $$
+  with numbered as (select id, row_number() over (order by created_at, id) as n from public.orders)
+  update public.orders o
+     set order_number = 'ORD-19000101-' || lpad(numbered.n::text, 6, '0')
+    from numbered
+   where numbered.id = o.id;
+  delete from public.order_counters;
+$$;
+
 -- The API roles must be able to call the session helpers (test schema only, rolled back).
 grant usage on schema tests to anon, authenticated;
 grant execute on all functions in schema tests to anon, authenticated;

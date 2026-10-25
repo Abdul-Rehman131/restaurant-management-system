@@ -53,6 +53,16 @@ result on a retry.
 - **Added:** `get_menu_availability` (the chef's Sold Out list, no prices).
 - **Realtime topics:** `staff:orders`, `staff:kitchen`, `staff:waiter:<id>`, `staff:tables`, `staff:menu`. Payloads are ids only.
 
+## S2 as built: waiter app decisions
+- **My tables** (on by default) shows my tables plus the free ones, so a waiter can still open any free table (Q4). Another waiter's busy table shows its status only (RLS hides the order).
+- **Before Send** the bar shows the item count only, no total or estimate. Menu rows show the unit price from the menu. Totals appear after Send, from the server.
+- **Cart and request id** stay on the device until the server confirms. One request id per send, kept across retries and edits: a send that did go through answers `REQUEST_ID_CONFLICT` instead of making a second order or batch.
+- **Offline**: the last menu is cached on the device for browsing and search; Send and every action are disabled.
+- **Alerts**: a batch alerts only when it was seen in another status first, so opening the app never replays old alerts, and a drinks-only add-on never rings. Sound needs Start shift (a tap); mute is per device.
+- **Strings**: the `waiter` and `rpc` i18n namespaces load with the role chunk; every RPC error code has a message (Vitest checks all codes in the migrations).
+- **Bundles**: role chunks import the signed-in shell module, so modules they share with it stay in the shell chunk instead of extra shared files (plan 4.10).
+- **e2e**: a failure with `net::ERR_NETWORK_CHANGED` comes from the host's network changing (seen with a Wi-Fi drop), and the fixture names it; tests that assert exact order numbers clear the counters in their own transaction.
+
 ## Out of P1
 Online orders, deals and pg_cron jobs (P2); delivery, riders and reservations (P3); profit,
 expenses, shifts, the audit log viewer and `daily_summary` (P4).

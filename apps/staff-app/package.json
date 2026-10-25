@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "e2e": "playwright test",
     "e2e:pwa": "playwright test -c e2e-pwa/playwright.pwa.config.ts"
   },
@@ -28,7 +29,8 @@
     "react-i18next": "17.1.5",
     "react-router": "8.4.0",
     "workbox-window": "7.4.1",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "zustand": "5.0.15"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
@@ -42,6 +44,7 @@
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3",
     "vite": "8.3.5",
-    "vite-plugin-pwa": "2.0.0"
+    "vite-plugin-pwa": "2.0.0",
+    "vitest": "5.0.3"
   }
 }

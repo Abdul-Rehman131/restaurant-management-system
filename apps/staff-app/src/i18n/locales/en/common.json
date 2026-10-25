@@ -61,16 +61,6 @@
     "updateNow": "Update",
     "offlineReady": "The app is ready to work with a weak connection."
   },
-  "waiter": {
-    "nav": "Waiter",
-    "tables": "Tables",
-    "orders": "Orders",
-    "alerts": "Alerts",
-    "newOrder": "New order",
-    "tablesEmpty": "Tables appear here",
-    "ordersEmpty": "Your open orders appear here",
-    "alertsEmpty": "Ready alerts appear here"
-  },
   "kitchen": {
     "title": "Kitchen",
     "soldOut": "Sold out list",
