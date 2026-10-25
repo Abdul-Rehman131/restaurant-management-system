@@ -593,3 +593,65 @@ test('a counter Dine-In order with the waiter picker; the menu has no cost price
     archiveTable(104);
   }
 });
+
+test('keyboard: ? shows the shortcut sheet, / searches, arrows and Enter open, Esc goes back', async ({
+  page,
+  request,
+}) => {
+  cancelTakeAway('E2E Keys');
+  await takeAway(request, 'E2E Keys One', ['Raita']);
+  await takeAway(request, 'E2E Keys Two', ['Plain Rice']);
+  try {
+    await openCashier(page);
+    await page.keyboard.press('?');
+    const sheet = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+    await expect(sheet).toContainText('Pay the bill');
+    await expect(sheet).toContainText('Ctrl+P');
+    await shot(page, 'shortcut-sheet');
+    await expectNoSeriousAxe(page);
+    await page.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+
+    await page.keyboard.press('/');
+    await expect(page.getByRole('searchbox', { name: 'Search bills' })).toBeFocused();
+    await page.keyboard.type('E2E Keys');
+    await expect(page.locator('[data-bill-row]')).toHaveCount(2);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect(
+      page.getByRole('heading', { name: /^Take Away · E2E Keys/, level: 2 }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/cashier\/bill\//);
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/\/cashier$/);
+  } finally {
+    cancelTakeAway('E2E Keys');
+  }
+});
+
+test('offline: the banner shows and every cashier action is disabled', async ({
+  page,
+  context,
+  request,
+}) => {
+  cancelTakeAway('E2E CashOff');
+  await takeAway(request, 'E2E CashOff', ['Chicken Corn Soup']);
+  try {
+    await openCashier(page);
+    await openBill(page, 'E2E CashOff');
+    const pay = page.getByRole('button', { name: /^Pay/ });
+    await expect(pay).toBeEnabled();
+    await context.setOffline(true);
+    await expect(page.getByText("Offline: orders can't be sent.")).toBeVisible({ timeout: 2_000 });
+    await expect(pay).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Cancel order' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Request bill' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'New counter order' }).first()).toBeDisabled();
+    await context.setOffline(false);
+    await expect(liveDot(page)).toBeVisible({ timeout: 15_000 });
+    await expect(pay).toBeEnabled();
+  } finally {
+    cancelTakeAway('E2E CashOff');
+  }
+});
