@@ -1,6 +1,9 @@
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { create } from 'zustand';
 
-import type { MyOrder } from './data';
+import { myOrdersQuery } from './data';
+import { batchStatuses, newlyReady, type ReadyAlert } from './ready';
 
 /**
  * Ready alerts (spec 6.1 step 4, plan 4.6 rule 6, R10). "Start shift" is a tap, so the browser
@@ -8,16 +11,6 @@ import type { MyOrder } from './data';
  * awake. A batch of my order that turns Ready plays a distinct tone, vibrates where the browser
  * can (not iOS) and shows a banner. Mute is per device and always visible.
  */
-
-export interface ReadyAlert {
-  /** The batch id: one alert per batch. */
-  id: string;
-  orderId: string;
-  tableId: string | null;
-  batchNo: number;
-  at: number;
-  read: boolean;
-}
 
 const MUTE_KEY = 'rms-waiter-muted';
 
@@ -34,12 +27,14 @@ interface AlertState {
   /** The alert shown in the banner, until it is opened or dismissed. */
   bannerId: string | null;
   shiftStarted: boolean;
+  /** Whether the screen is kept awake (null before Start shift). */
+  wakeLock: boolean | null;
   muted: boolean;
   push: (alerts: ReadyAlert[]) => void;
   dismissBanner: () => void;
   markRead: (id: string) => void;
   markAllRead: () => void;
-  setShiftStarted: (started: boolean) => void;
+  setShiftStarted: (started: boolean, wakeLock: boolean | null) => void;
   setMuted: (muted: boolean) => void;
 }
 
@@ -47,6 +42,7 @@ export const useAlertStore = create<AlertState>()((set) => ({
   alerts: [],
   bannerId: null,
   shiftStarted: false,
+  wakeLock: null,
   muted: storedMute(),
   push: (fresh) => {
     set((state) => {
@@ -71,8 +67,8 @@ export const useAlertStore = create<AlertState>()((set) => ({
   markAllRead: () => {
     set((state) => ({ alerts: state.alerts.map((a) => ({ ...a, read: true })), bannerId: null }));
   },
-  setShiftStarted: (shiftStarted) => {
-    set({ shiftStarted });
+  setShiftStarted: (shiftStarted, wakeLock) => {
+    set({ shiftStarted, wakeLock });
   },
   setMuted: (muted) => {
     try {
@@ -84,39 +80,6 @@ export const useAlertStore = create<AlertState>()((set) => ({
     set({ muted });
   },
 }));
-
-/**
- * Batches that turned Ready since the last look. A batch counts only when it was seen before
- * in another status, so opening the app never replays old alerts, and a drinks-only add-on
- * (Ready at once, BR-07) never rings.
- */
-export function newlyReady(
-  previous: ReadonlyMap<string, string>,
-  orders: readonly MyOrder[],
-  now: number,
-): ReadyAlert[] {
-  const alerts: ReadyAlert[] = [];
-  for (const order of orders) {
-    for (const batch of order.order_batches) {
-      const before = previous.get(batch.id);
-      if (batch.status === 'ready' && before !== undefined && before !== 'ready') {
-        alerts.push({
-          id: batch.id,
-          orderId: order.id,
-          tableId: order.table_id,
-          batchNo: batch.batch_no,
-          at: now,
-          read: false,
-        });
-      }
-    }
-  }
-  return alerts;
-}
-
-export function batchStatuses(orders: readonly MyOrder[]): Map<string, string> {
-  return new Map(orders.flatMap((o) => o.order_batches.map((b) => [b.id, b.status] as const)));
-}
 
 // ===== Sound, vibration, wake lock =====
 
@@ -187,4 +150,39 @@ export function playReadyTone(): void {
 /** Android browsers vibrate; iOS has no vibration API, so this does nothing there. */
 export function vibrateReady(): void {
   if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
+}
+
+/**
+ * Watches my orders and raises an alert for every batch that turns Ready (spec 6.1 step 4):
+ * a banner and the Alerts badge always, the tone after Start shift unless muted, and a
+ * vibration where the browser has one.
+ */
+export function useReadyAlerts(): void {
+  const { data } = useQuery(myOrdersQuery);
+  const previous = useRef<Map<string, string> | null>(null);
+
+  useEffect(() => {
+    if (!data) return;
+    if (previous.current) {
+      const fresh = newlyReady(previous.current, data, Date.now());
+      if (fresh.length > 0) {
+        const { push, muted, shiftStarted } = useAlertStore.getState();
+        push(fresh);
+        if (shiftStarted && !muted) playReadyTone();
+        vibrateReady();
+      }
+    }
+    previous.current = batchStatuses(data);
+  }, [data]);
+
+  // Keep the screen awake for the whole shift (R10).
+  const shiftStarted = useAlertStore((state) => state.shiftStarted);
+  useEffect(() => {
+    if (!shiftStarted) return;
+    const stop = reacquireWakeLockOnReturn();
+    return () => {
+      stop();
+      releaseWakeLock();
+    };
+  }, [shiftStarted]);
 }

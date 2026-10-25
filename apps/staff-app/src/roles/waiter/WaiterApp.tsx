@@ -1,4 +1,4 @@
-import { OfflineBanner, cn } from '@rms/ui';
+import { Badge, OfflineBanner, cn } from '@rms/ui';
 import { BellRing, ClipboardList, LayoutGrid, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Route, Routes, useMatch } from 'react-router';
@@ -6,9 +6,11 @@ import { NavLink, Route, Routes, useMatch } from 'react-router';
 import { useAuth } from '../../auth/auth-context';
 import { paths } from '../../paths';
 import { useConnection } from '../../shell/connection-context';
-import { Placeholder } from '../../shell/Placeholder';
 import { StaffHeader } from '../../shell/StaffHeader';
 import { useScreenAppearance } from '../../shell/theme-context';
+import { ReadyBanner, ShiftControl } from './AlertParts';
+import { useAlertStore, useReadyAlerts } from './alerts';
+import { AlertsScreen } from './AlertsScreen';
 import { useWaiterLive } from './live';
 import { OrdersScreen } from './OrdersScreen';
 import { waiterPaths, waiterRoutes } from './paths';
@@ -26,15 +28,6 @@ const tabs: {
   { to: waiterPaths.alerts, end: false, icon: BellRing, label: 'waiter.alerts' },
 ];
 
-function SimpleScreen({ icon, title, empty }: { icon: LucideIcon; title: string; empty: string }) {
-  return (
-    <>
-      <h1 className="sr-only">{title}</h1>
-      <Placeholder icon={icon} title={empty} />
-    </>
-  );
-}
-
 /** Waiter: phone first, touch density, bottom navigation (plan 4.5). */
 export function WaiterApp() {
   const { t } = useTranslation();
@@ -42,29 +35,23 @@ export function WaiterApp() {
   const { session } = useAuth();
   useScreenAppearance({ density: 'touch' });
   useWaiterLive(session?.user.id);
+  useReadyAlerts();
+  const unread = useAlertStore((s) => s.alerts.filter((a) => !a.read).length);
   // Order entry and order detail are full-screen tasks with their own bottom bar.
   const onTable = useMatch(`${paths.waiter}/table/*`) !== null;
 
   return (
     <div className="flex min-h-dvh flex-col bg-bg text-fg">
-      <StaffHeader />
+      <StaffHeader actions={<ShiftControl />} />
       <OfflineBanner online={state !== 'offline'} />
+      <ReadyBanner />
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4">
         <Routes>
           <Route index element={<TablesScreen />} />
           <Route path={waiterRoutes.table} element={<TableRoute adding={false} />} />
           <Route path={waiterRoutes.addItems} element={<TableRoute adding />} />
           <Route path={waiterRoutes.orders} element={<OrdersScreen />} />
-          <Route
-            path={waiterRoutes.alerts}
-            element={
-              <SimpleScreen
-                icon={BellRing}
-                title={t('waiter.alerts')}
-                empty={t('waiter.alertsEmpty')}
-              />
-            }
-          />
+          <Route path={waiterRoutes.alerts} element={<AlertsScreen />} />
         </Routes>
       </main>
       {!onTable && (
@@ -85,7 +72,20 @@ export function WaiterApp() {
                     )
                   }
                 >
-                  <Icon aria-hidden className="size-6" />
+                  <span className="relative">
+                    <Icon aria-hidden className="size-6" />
+                    {label === 'waiter.alerts' && unread > 0 && (
+                      <Badge
+                        variant="accent"
+                        className="absolute -end-3 -top-2 h-5 min-w-5 justify-center px-1.5"
+                      >
+                        <span aria-hidden>{unread}</span>
+                        <span className="sr-only">
+                          {t('waiter.alertsBadge', { count: unread })}
+                        </span>
+                      </Badge>
+                    )}
+                  </span>
                   {t(label)}
                 </NavLink>
               </li>

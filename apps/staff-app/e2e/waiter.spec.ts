@@ -242,9 +242,9 @@ async function chefDevice(browser: Browser, request: APIRequestContext) {
 }
 
 /** Free table, waiter1 sends a quick order from the UI; returns the order number. */
-async function sendOrder(page: Page, number: number, items: string[]) {
+async function sendOrder(page: Page, number: number, items: string[], signedIn = false) {
   freeTable(number);
-  await openWaiter(page);
+  if (!signedIn) await openWaiter(page);
   await tile(page, number).click();
   for (const item of items) await page.getByRole('button', { name: `Add ${item}` }).click();
   await page.getByRole('button', { name: 'Send to Kitchen' }).click();
@@ -319,4 +319,97 @@ test('orders tab: my open orders with status, opens the table', async ({ page })
   await card.click();
   await expect(page.getByRole('heading', { name: 'Table 7' })).toBeVisible();
   freeTable(7);
+});
+
+test('Ready alert: start shift, chef marks Preparing and Ready, tone, vibration and banner; mute', async ({
+  page,
+  browser,
+  request,
+}) => {
+  // Count the tones (oscillators) and vibrations the app asks for.
+  await page.addInitScript(() => {
+    const w = window as unknown as { tones: number; vibrations: number };
+    w.tones = 0;
+    w.vibrations = 0;
+    window.AudioContext = class extends AudioContext {
+      override createOscillator() {
+        w.tones += 1;
+        return super.createOscillator();
+      }
+    };
+    navigator.vibrate = () => {
+      w.vibrations += 1;
+      return true;
+    };
+  });
+  const counts = () =>
+    page.evaluate(() => {
+      const w = window as unknown as { tones: number; vibrations: number };
+      return { tones: w.tones, vibrations: w.vibrations };
+    });
+
+  freeTable(8);
+  await openWaiter(page);
+  await page.getByRole('button', { name: 'Start shift' }).click();
+  await expect(page.getByRole('button', { name: 'Mute alerts' })).toBeVisible();
+  const orderNumber = await sendOrder(page, 8, ['Chicken Malai Boti'], true);
+  await page.getByRole('link', { name: 'Back to tables' }).click();
+
+  const kitchen = await chefDevice(browser, request);
+  try {
+    await kitchen.setBatch(orderNumber, 1, 'preparing');
+    await kitchen.setBatch(orderNumber, 1, 'ready');
+    // Done criterion 2: the Ready alert reaches the waiter within 2 seconds.
+    const banner = page.getByText('Table 8 is ready');
+    await expect(banner).toBeVisible({ timeout: 2_000 });
+    await expect(page.getByText('First send is ready to serve')).toBeVisible();
+    expect(await counts()).toEqual({ tones: 2, vibrations: 1 });
+    await expect(page.getByRole('link', { name: /Alerts/ })).toContainText('1 new alert');
+    await shot(page, 'alert-banner');
+    await expectNoSeriousAxe(page);
+
+    await page.getByRole('button', { name: 'Open' }).click();
+    await expect(page.getByRole('heading', { name: 'Table 8' })).toBeVisible();
+    await expect(banner).toBeHidden();
+    await page.getByRole('button', { name: 'Mark served' }).click();
+    await expect(page.getByText('Table 8 marked served')).toBeVisible();
+    await page.getByRole('button', { name: 'Request bill' }).click();
+    await expect(page.getByText('The cashier has the bill request for table 8')).toBeVisible();
+    expect(
+      psql(`select o.status || ' ' || o.bill_requested from public.orders o
+             where o.order_number = '${orderNumber}'`),
+    ).toBe('served true');
+
+    // Muted: the next Ready shows the banner and vibrates, but plays no tone.
+    await page.getByRole('button', { name: 'Mute alerts' }).click();
+    await expect(page.getByRole('button', { name: 'Turn alert sound on' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await page.getByRole('link', { name: 'Add more items' }).click();
+    await page.getByRole('button', { name: 'Add Tandoori Roti' }).click();
+    await page.getByRole('button', { name: 'Send add-on' }).click();
+    await expect(page.getByText('Add-on 2 sent to the kitchen')).toBeVisible();
+    await kitchen.setBatch(orderNumber, 2, 'preparing');
+    await kitchen.setBatch(orderNumber, 2, 'ready');
+    await expect(page.getByText('Add-on 2 is ready to serve')).toBeVisible({ timeout: 2_000 });
+    expect(await counts()).toEqual({ tones: 2, vibrations: 2 });
+
+    // The bottom nav is hidden on a table's screens (a full-screen task).
+    await page.getByRole('link', { name: 'Back to tables' }).click();
+
+    await page
+      .getByRole('navigation', { name: 'Waiter' })
+      .getByRole('link', { name: /Alerts/ })
+      .click();
+    await expect(page.getByRole('heading', { name: 'Shift started' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Table 8 is ready/ })).toHaveCount(2);
+    await shot(page, 'alerts');
+    await expectNoSeriousAxe(page);
+    await page.getByRole('button', { name: 'Mark all as read' }).click();
+    await expect(page.getByText('New', { exact: true })).toHaveCount(0);
+  } finally {
+    await kitchen.close();
+    freeTable(8);
+  }
 });
