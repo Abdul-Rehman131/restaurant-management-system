@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir helpers.psql
 
-select plan(24);
+select plan(25);
 
 select tests.create_staff('oh.waiter', 'waiter') as waiter \gset
 select tests.create_staff('oh.waiter2', 'waiter') as waiter2 \gset
@@ -33,6 +33,10 @@ select throws_ok(
 select throws_ok(
   format($$ select private.replay('f', %L, gen_random_uuid()) $$, :'req'),
   'P0001', 'REQUEST_ID_CONFLICT', 'replay: the id used for another target is a conflict'
+);
+select throws_ok(
+  format($$ select private.replay('f', %L, %L, '{"status": "ready"}') $$, :'req', :'target'),
+  'P0001', 'REQUEST_ID_CONFLICT', 'replay: the id used with other arguments is a conflict'
 );
 select throws_ok($$ select private.replay('f', null, null) $$, 'P0001', 'REQUEST_ID_REQUIRED', 'replay: NULL id');
 select throws_ok(

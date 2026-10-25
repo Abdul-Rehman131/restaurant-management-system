@@ -31,7 +31,8 @@ declare
   v_batch_no smallint;
   v_batch_status public.batch_status;
 begin
-  v_replay := private.replay('add_items_to_order', p_request_id, p_order_id);
+  v_replay := private.replay('add_items_to_order', p_request_id, p_order_id,
+    jsonb_build_object('items', p_items));
   if v_replay is not null then
     return v_replay;
   end if;
@@ -76,7 +77,8 @@ begin
   perform private.sync_order_status(p_order_id, null, format('Add-on batch %s', v_batch_no));
 
   return private.remember('add_items_to_order', p_request_id, p_order_id,
-    private.order_summary(p_order_id, false) || jsonb_build_object('batch_no', v_batch_no));
+    private.order_summary(p_order_id, false) || jsonb_build_object('batch_no', v_batch_no),
+    jsonb_build_object('items', p_items));
 end;
 $$;
 

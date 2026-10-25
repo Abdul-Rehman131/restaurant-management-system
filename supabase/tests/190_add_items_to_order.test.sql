@@ -5,7 +5,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir helpers.psql
 
-select plan(40);
+select plan(41);
 
 update public.settings set tax_bps = 1600, service_charge_bps = 500;
 
@@ -58,12 +58,14 @@ select is(:'r1'::jsonb ->> 'total', '191180', 'the result carries the new total'
 select is((select status::text from public.orders where id = :'o1'), 'accepted', 'the order stays Accepted');
 
 -- ===== Idempotency (BR-15) =====
-select tests.call_as(:'waiter', tests.add(:'o1', jsonb_build_array(tests.line(:'naan')), :'req1')) as r1_again \gset
+select tests.call_as(:'waiter', tests.add(:'o1', jsonb_build_array(tests.line(:'naan'), tests.line(:'water', 1, 'chilled')), :'req1')) as r1_again \gset
 select is(:'r1_again'::jsonb ->> 'replayed', 'true', 'the same request id is a replay');
 select is(:'r1_again'::jsonb ->> 'batch_no', '2', 'the replay returns the same batch');
 select is((select count(*)::int from public.order_batches where order_id = :'o1'), 2, 'no second batch was written');
 select is(tests.outcome_as(:'cashier', tests.add(:'o1', jsonb_build_array(tests.line(:'naan')), :'req1')),
   'REQUEST_ID_CONFLICT', 'another user cannot reuse the request id');
+select is(tests.outcome_as(:'waiter', tests.add(:'o1', jsonb_build_array(tests.line(:'tikka')), :'req1')),
+  'REQUEST_ID_CONFLICT', 'the same request id with other items is a conflict');
 
 -- ===== G2: a kitchen add-on reopens a Ready order =====
 update public.order_batches set status = 'ready', ready_at = now() where order_id = :'o1';

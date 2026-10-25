@@ -11,6 +11,8 @@ create table private.request_log (
   function_name text not null,
   user_id uuid not null,
   target_id uuid,
+  -- The other arguments of the call: a retry must repeat them exactly.
+  args jsonb not null default '{}',
   result jsonb not null,
   created_at timestamptz not null default now()
 );
@@ -22,8 +24,13 @@ revoke all on private.request_log from public, anon, authenticated;
 -- request id, so a simultaneous retry waits for the first call. Returns the stored result
 -- with "replayed": true, or NULL when the request id is new.
 -- Errors: REQUEST_ID_REQUIRED, REQUEST_ID_CONFLICT (the id was used by another function,
--- another user, another target, or by create_order or record_payment).
-create function private.replay(p_function text, p_request_id uuid, p_target_id uuid)
+-- another user, another target or other arguments, or by create_order or record_payment).
+create function private.replay(
+  p_function text,
+  p_request_id uuid,
+  p_target_id uuid,
+  p_args jsonb default '{}'
+)
 returns jsonb
 language plpgsql
 volatile
@@ -48,7 +55,8 @@ begin
 
   if r.function_name <> p_function
      or r.user_id is distinct from auth.uid()
-     or r.target_id is distinct from p_target_id then
+     or r.target_id is distinct from p_target_id
+     or r.args is distinct from coalesce(p_args, '{}') then
     raise exception 'REQUEST_ID_CONFLICT' using errcode = 'P0001';
   end if;
   return r.result || jsonb_build_object('replayed', true);
@@ -60,7 +68,8 @@ create function private.remember(
   p_function text,
   p_request_id uuid,
   p_target_id uuid,
-  p_result jsonb
+  p_result jsonb,
+  p_args jsonb default '{}'
 )
 returns jsonb
 language plpgsql
@@ -68,8 +77,9 @@ volatile
 set search_path = ''
 as $$
 begin
-  insert into private.request_log (request_id, function_name, user_id, target_id, result)
-  values (p_request_id, p_function, auth.uid(), p_target_id, p_result - 'replayed');
+  insert into private.request_log (request_id, function_name, user_id, target_id, args, result)
+  values (p_request_id, p_function, auth.uid(), p_target_id, coalesce(p_args, '{}'),
+          p_result - 'replayed');
   return (p_result - 'replayed') || jsonb_build_object('replayed', false);
 end;
 $$;
