@@ -192,6 +192,19 @@ export function BillDetail() {
     markRequestRead(orderId);
   }, [orderId, markRequestRead]);
 
+  // The open-bills entry and the order read disagree only while data is changing; if no read
+  // is on its way (a refetch was cancelled by a newer one), ask for one, so the bill never
+  // waits on stale data.
+  const outOfSync =
+    !!bill.data &&
+    !!openBill.data &&
+    (openBill.data.total !== bill.data.total ||
+      openBill.data.payment_status !== bill.data.payment_status);
+  const fetching = bill.isFetching || openBill.isFetching;
+  useEffect(() => {
+    if (outOfSync && !fetching) void queryClient.invalidateQueries({ queryKey: cashierKeys.all });
+  }, [outOfSync, fetching, queryClient]);
+
   // Ctrl+P prints the receipt once something is paid (plan 4.8).
   useEffect(() => {
     if (!hasPayment) return;
@@ -255,6 +268,12 @@ export function BillDetail() {
     customer_name: detail.customer_name,
   });
   const due = openBill.data?.due ?? 0;
+  // The amount due comes from get_open_bills and the totals from the order read: two server
+  // answers. Right after a change (a cancelled line, a discount) one can arrive before the
+  // other; paying then would offer a stale amount (seen in the S4 check). Pay only when both
+  // agree; until then the pad waits. Two server values are compared, nothing is calculated.
+  const inSync =
+    openBill.data?.total === detail.total && openBill.data.payment_status === detail.payment_status;
   const payable =
     detail.payment_status === 'unpaid' && detail.status !== 'cancelled' && due > 0 && !paid;
 
@@ -331,7 +350,14 @@ export function BillDetail() {
       )}
       {portal}
 
-      {payable && <PaymentPad key={`${detail.id}-${String(due)}`} due={due} action={payment} />}
+      {payable &&
+        (inSync ? (
+          <PaymentPad key={`${detail.id}-${String(due)}`} due={due} action={payment} />
+        ) : (
+          <p role="status" className="rounded-lg border border-border p-4 text-fg-muted">
+            {t('cashier:updating')}
+          </p>
+        ))}
     </div>
   );
 }
