@@ -9,6 +9,7 @@ import {
   paymentStatus,
   replayed,
   tableStatus,
+  timestamp,
 } from './common';
 
 /**
@@ -87,3 +88,33 @@ export type RecordPaymentResponse = PaymentSummary;
 /** void_payment: Admin only (G8); the payment summary plus the voided payment. */
 export const voidPaymentResponse = z.extend(paymentSummary, { payment_id: id });
 export type VoidPaymentResponse = z.infer<typeof voidPaymentResponse>;
+
+/** One open order on the cashier's list, with server totals, paid and due. */
+export const openBill = z.object({
+  order_id: id,
+  order_number: z.string(),
+  type: orderType,
+  status: orderStatus,
+  payment_status: paymentStatus,
+  table_id: z.nullable(id),
+  table_number: z.nullable(z.int()),
+  waiter_id: z.nullable(id),
+  waiter_name: z.nullable(z.string()),
+  customer_name: z.nullable(z.string()),
+  customer_phone: z.nullable(z.string()),
+  bill_requested: z.boolean(),
+  bill_requested_at: z.nullable(timestamp),
+  created_at: timestamp,
+  subtotal: money,
+  discount: money,
+  service_charge: money,
+  tax: money,
+  total: money,
+  paid: money,
+  due: money,
+});
+export type OpenBill = z.infer<typeof openBill>;
+
+/** get_open_bills: Bill Requested first, then by age. */
+export const openBillsResponse = z.object({ bills: z.array(openBill) });
+export type OpenBillsResponse = z.infer<typeof openBillsResponse>;

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import * as z from 'zod/mini';
 
-import { addItemsToOrderResponse, createOrderResponse, recordPaymentResponse } from './orders';
+import {
+  addItemsToOrderResponse,
+  createOrderResponse,
+  openBillsResponse,
+  recordPaymentResponse,
+} from './orders';
 
 // Shapes as returned by the database (keys pinned by supabase/tests/990_rpc_contracts.test.sql).
 const orderSummaryFixture = {
@@ -84,5 +89,39 @@ describe('record_payment response', () => {
     expect(
       z.parse(recordPaymentResponse, { ...payment, table_status: null }).table_status,
     ).toBeNull();
+  });
+});
+
+describe('get_open_bills response', () => {
+  const bill = {
+    order_id: orderSummaryFixture.order_id,
+    order_number: orderSummaryFixture.order_number,
+    type: 'dine_in',
+    status: 'served',
+    payment_status: 'unpaid',
+    table_id: orderSummaryFixture.table_id,
+    table_number: 7,
+    waiter_id: '5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d',
+    waiter_name: 'Demo Waiter',
+    customer_name: null,
+    customer_phone: null,
+    bill_requested: true,
+    bill_requested_at: '2026-10-25T10:00:00+00:00',
+    created_at: '2026-10-25T09:00:00+00:00',
+    subtotal: 150000,
+    discount: 0,
+    service_charge: 7500,
+    tax: 24000,
+    total: 181500,
+    paid: 0,
+    due: 181500,
+  };
+
+  it('accepts a requested bill', () => {
+    expect(z.parse(openBillsResponse, { bills: [bill] }).bills[0]?.due).toBe(181500);
+  });
+
+  it('rejects a fractional amount due', () => {
+    expect(() => z.parse(openBillsResponse, { bills: [{ ...bill, due: 0.5 }] })).toThrow();
   });
 });
