@@ -2,6 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { create } from 'zustand';
 
+import {
+  playTones,
+  readFlag,
+  reacquireWakeLockOnReturn,
+  releaseWakeLock,
+  vibrate,
+  writeFlag,
+} from '../../lib/shift';
 import { myOrdersQuery } from './data';
 import { batchStatuses, newlyReady, type ReadyAlert } from './ready';
 
@@ -13,14 +21,6 @@ import { batchStatuses, newlyReady, type ReadyAlert } from './ready';
  */
 
 const MUTE_KEY = 'rms-waiter-muted';
-
-function storedMute(): boolean {
-  try {
-    return localStorage.getItem(MUTE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
 
 interface AlertState {
   alerts: ReadyAlert[];
@@ -43,7 +43,7 @@ export const useAlertStore = create<AlertState>()((set) => ({
   bannerId: null,
   shiftStarted: false,
   wakeLock: null,
-  muted: storedMute(),
+  muted: readFlag(MUTE_KEY),
   push: (fresh) => {
     set((state) => {
       const known = new Set(state.alerts.map((a) => a.id));
@@ -71,85 +71,22 @@ export const useAlertStore = create<AlertState>()((set) => ({
     set({ shiftStarted, wakeLock });
   },
   setMuted: (muted) => {
-    try {
-      if (muted) localStorage.setItem(MUTE_KEY, '1');
-      else localStorage.removeItem(MUTE_KEY);
-    } catch {
-      // Remembered for this session only.
-    }
+    writeFlag(MUTE_KEY, muted);
     set({ muted });
   },
 }));
 
-// ===== Sound, vibration, wake lock =====
-
-let audio: AudioContext | null = null;
-let wakeLock: WakeLockSentinel | null = null;
-
-/** Must run inside a tap: browsers only allow sound after a user gesture. */
-export async function startShift(): Promise<{ wakeLock: boolean }> {
-  try {
-    audio ??= new AudioContext();
-    await audio.resume();
-  } catch {
-    audio = null;
-  }
-  return { wakeLock: await requestWakeLock() };
-}
-
-async function requestWakeLock(): Promise<boolean> {
-  if (!('wakeLock' in navigator)) return false;
-  try {
-    wakeLock = await navigator.wakeLock.request('screen');
-    return true;
-  } catch {
-    // Denied (battery saver, not visible): the in-app sound still plays while the app is open.
-    return false;
-  }
-}
-
-/** The lock ends when the page is hidden; take it again when the waiter comes back. */
-export function reacquireWakeLockOnReturn(): () => void {
-  const onVisible = () => {
-    if (document.visibilityState === 'visible' && wakeLock?.released !== false) {
-      void requestWakeLock();
-    }
-  };
-  document.addEventListener('visibilitychange', onVisible);
-  return () => {
-    document.removeEventListener('visibilitychange', onVisible);
-  };
-}
-
-export function releaseWakeLock(): void {
-  void wakeLock?.release();
-  wakeLock = null;
-}
-
 /** The Ready tone: two rising notes, unlike the kitchen chime and the cashier's soft tone. */
 export function playReadyTone(): void {
-  if (!audio || audio.state !== 'running') return;
-  const start = audio.currentTime;
-  for (const [offset, frequency] of [
+  playTones([
     [0, 880],
     [0.18, 1320],
-  ] as const) {
-    const oscillator = audio.createOscillator();
-    const gain = audio.createGain();
-    oscillator.type = 'sine';
-    oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.0001, start + offset);
-    gain.gain.exponentialRampToValueAtTime(0.4, start + offset + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + offset + 0.3);
-    oscillator.connect(gain).connect(audio.destination);
-    oscillator.start(start + offset);
-    oscillator.stop(start + offset + 0.32);
-  }
+  ]);
 }
 
 /** Android browsers vibrate; iOS has no vibration API, so this does nothing there. */
 export function vibrateReady(): void {
-  if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
+  vibrate([200, 100, 200]);
 }
 
 /**

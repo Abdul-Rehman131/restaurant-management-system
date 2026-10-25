@@ -3,7 +3,8 @@ import { BellRing, Moon, Play, Sun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
-import { startShift, useAlertStore } from './alerts';
+import { startShift } from '../../lib/shift';
+import { useAlertStore } from './alerts';
 import { batchLabel, useTableNumber } from './format';
 import { waiterPaths } from './paths';
 
