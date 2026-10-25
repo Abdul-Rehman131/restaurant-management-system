@@ -11,6 +11,7 @@ import { StaffHeader } from '../../shell/StaffHeader';
 import { useScreenAppearance } from '../../shell/theme-context';
 import { useWaiterLive } from './live';
 import { waiterPaths, waiterRoutes } from './paths';
+import { TableRoute } from './TableRoute';
 import { TablesScreen } from './TablesScreen';
 
 const tabs: {
@@ -50,6 +51,8 @@ export function WaiterApp() {
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4">
         <Routes>
           <Route index element={<TablesScreen />} />
+          <Route path={waiterRoutes.table} element={<TableRoute adding={false} />} />
+          <Route path={waiterRoutes.addItems} element={<TableRoute adding />} />
           <Route
             path={waiterRoutes.orders}
             element={
