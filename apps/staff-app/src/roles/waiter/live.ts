@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { useLiveTopics, type LiveTopics } from '../../lib/live';
+import { menuKey } from '../../ordering/menu';
 import { waiterKeys } from './data';
 
 /**
@@ -19,7 +20,7 @@ export function useWaiterLive(userId: string | undefined): void {
               { order_changed: waiterKeys.myOrders, batch_changed: waiterKeys.myOrders },
             ],
             ['staff:tables', { table_changed: waiterKeys.tables }],
-            ['staff:menu', { menu_changed: waiterKeys.menu }],
+            ['staff:menu', { menu_changed: menuKey }],
           ]
         : null,
     [userId],
