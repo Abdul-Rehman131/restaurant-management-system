@@ -304,3 +304,19 @@ test('existing order: kitchen status live, Served, Request Bill, add-on batch, m
     freeTable(6);
   }
 });
+
+test('orders tab: my open orders with status, opens the table', async ({ page }) => {
+  const orderNumber = await sendOrder(page, 7, ['Chicken Corn Soup']);
+  await page.getByRole('link', { name: 'Back to tables' }).click();
+  await page
+    .getByRole('navigation', { name: 'Waiter' })
+    .getByRole('link', { name: 'Orders' })
+    .click();
+  const card = page.getByRole('link', { name: new RegExp(`Table 7 .*${orderNumber}`) });
+  await expect(card).toContainText('Accepted');
+  await shot(page, 'orders');
+  await expectNoSeriousAxe(page);
+  await card.click();
+  await expect(page.getByRole('heading', { name: 'Table 7' })).toBeVisible();
+  freeTable(7);
+});

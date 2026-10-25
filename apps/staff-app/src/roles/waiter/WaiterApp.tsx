@@ -10,6 +10,7 @@ import { Placeholder } from '../../shell/Placeholder';
 import { StaffHeader } from '../../shell/StaffHeader';
 import { useScreenAppearance } from '../../shell/theme-context';
 import { useWaiterLive } from './live';
+import { OrdersScreen } from './OrdersScreen';
 import { waiterPaths, waiterRoutes } from './paths';
 import { TableRoute } from './TableRoute';
 import { TablesScreen } from './TablesScreen';
@@ -53,16 +54,7 @@ export function WaiterApp() {
           <Route index element={<TablesScreen />} />
           <Route path={waiterRoutes.table} element={<TableRoute adding={false} />} />
           <Route path={waiterRoutes.addItems} element={<TableRoute adding />} />
-          <Route
-            path={waiterRoutes.orders}
-            element={
-              <SimpleScreen
-                icon={ClipboardList}
-                title={t('waiter.orders')}
-                empty={t('waiter.ordersEmpty')}
-              />
-            }
-          />
+          <Route path={waiterRoutes.orders} element={<OrdersScreen />} />
           <Route
             path={waiterRoutes.alerts}
             element={
