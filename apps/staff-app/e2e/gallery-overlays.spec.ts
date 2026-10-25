@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from './fixtures';
+import { animationsDone } from './support';
 
 // Overlays render in a portal only while open, so the static gallery check cannot see them.
 // Open each one and run axe again, in both themes and directions. Closing with Escape must
@@ -20,6 +21,10 @@ async function expectNoSeriousViolations(page: Page, label: string) {
 }
 
 const shotsDir = process.env['GALLERY_SHOTS'];
+
+/** The open overlay: every overlay in the gallery renders one of these roles while open. */
+const overlayLayer = (page: Page) =>
+  page.locator('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]');
 
 const overlays: { name: string; trigger: (page: Page) => Locator }[] = [
   { name: 'dialog', trigger: (page) => page.getByRole('button', { name: 'Dialog', exact: true }) },
@@ -49,8 +54,10 @@ for (const theme of ['light', 'dark'] as const) {
       for (const overlay of overlays) {
         const trigger = overlay.trigger(page);
         await trigger.click();
-        // Let the enter animation finish so axe sees final colours.
-        await page.waitForTimeout(300);
+        // Open means the overlay is in the page and its enter animation finished, so axe sees
+        // final colours and Escape reaches it.
+        await expect(overlayLayer(page).first(), `${overlay.name}: opens`).toBeVisible();
+        await animationsDone(page);
         if (shotsDir) {
           const name = `${testInfo.project.name}-${theme}-${dir}-${overlay.name.replace(' ', '-')}`;
           await page.screenshot({ path: `${shotsDir}/overlays/${name}.png` });
@@ -58,7 +65,8 @@ for (const theme of ['light', 'dark'] as const) {
         await expectNoSeriousViolations(page, overlay.name);
         await page.keyboard.press('Escape');
         await expect(trigger, `${overlay.name}: focus returns to the trigger`).toBeFocused();
-        await page.waitForTimeout(300);
+        await expect(overlayLayer(page), `${overlay.name}: closes`).toHaveCount(0);
+        await animationsDone(page);
       }
     });
   }

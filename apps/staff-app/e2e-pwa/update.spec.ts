@@ -4,6 +4,8 @@
 import { execSync } from 'node:child_process';
 import { expect, test } from '@playwright/test';
 
+import { animationsDone } from '../e2e/support';
+
 test('update available toast', async ({ page }) => {
   await page.goto('/login');
   await page.evaluate(async () => {
@@ -24,7 +26,7 @@ test('update available toast', async ({ page }) => {
   const toast = page.getByText('A new version of the app is ready.');
   await expect(toast).toBeVisible({ timeout: 30000 });
   if (process.env['SHOTS']) {
-    await page.waitForTimeout(400);
+    await animationsDone(page);
     await page.screenshot({ path: `${process.env['SHOTS']}/pwa-update-toast.png` });
   }
   await Promise.all([

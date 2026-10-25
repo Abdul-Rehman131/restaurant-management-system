@@ -278,6 +278,8 @@ test.describe('kitchen to waiter', () => {
     browser,
     request,
   }) => {
+    // Two signed-in devices and several server round trips: triple the time budget.
+    test.slow();
     freeTable(6);
     const orderNumber = await sendOrder(page, 5, ['Seekh Kebab (4 pcs)', 'Soft Drink (Can)']);
     const firstSend = page.getByRole('region', { name: 'First send' });
@@ -331,6 +333,8 @@ test.describe('kitchen to waiter', () => {
     browser,
     request,
   }) => {
+    // Two signed-in devices and several server round trips: triple the time budget.
+    test.slow();
     // Count the tones (oscillators) and vibrations the app asks for.
     await page.addInitScript(() => {
       const w = window as unknown as { tones: number; vibrations: number };

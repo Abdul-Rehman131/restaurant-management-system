@@ -46,7 +46,26 @@ export async function signInAs(page: Page, user: string) {
 export const liveDot = (page: Page) =>
   page.getByRole('status').filter({ hasText: 'Live' }).filter({ visible: true });
 
+/**
+ * Waits until every running animation that ends (enter fades, sheets, toasts) has finished: axe and
+ * screenshots then see final colours, and keys reach an overlay that is fully open. An event,
+ * not a fixed sleep (a 300 ms sleep lost an Escape under load in the S2 check).
+ */
+export async function animationsDone(page: Page) {
+  // Endless ones (skeleton pulse, spinners) never finish and are not waited for.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => null)),
+    ),
+  );
+}
+
 export async function expectNoSeriousAxe(page: Page) {
+  // A half-faded element has lower contrast than the final one (seen on the Ready banner).
+  await animationsDone(page);
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze();
