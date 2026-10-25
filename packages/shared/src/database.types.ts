@@ -924,6 +924,10 @@ export type Database = {
         };
         Returns: Json;
       };
+      set_item_availability: {
+        Args: { p_is_available: boolean; p_menu_item_id: string; p_request_id: string };
+        Returns: Json;
+      };
       set_order_status: {
         Args: {
           p_order_id: string;

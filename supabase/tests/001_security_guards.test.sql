@@ -24,6 +24,7 @@ as $$
     'public.record_payment(p_request_id uuid, p_order_id uuid, p_tenders jsonb)',
     'public.request_bill(p_request_id uuid, p_order_id uuid)',
     'public.set_batch_status(p_request_id uuid, p_batch_id uuid, p_status batch_status)',
+    'public.set_item_availability(p_request_id uuid, p_menu_item_id uuid, p_is_available boolean)',
     'public.set_order_status(p_request_id uuid, p_order_id uuid, p_status order_status, p_reason text)'
   ]::text[]
 $$;
