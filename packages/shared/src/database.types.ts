@@ -884,6 +884,7 @@ export type Database = {
           p_request_id: string;
           p_table_id: string;
           p_type: Database['public']['Enums']['order_type'];
+          p_waiter_id?: string;
         };
         Returns: Json;
       };

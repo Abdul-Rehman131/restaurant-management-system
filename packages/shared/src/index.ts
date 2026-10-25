@@ -16,3 +16,4 @@ export {
 } from './settings';
 export { Constants, type Database, type Enums } from './database.types';
 export { getSettingsResponse, parseSettings, type GetSettingsResponse } from './schemas/settings';
+export * as rpc from './schemas/rpc';
