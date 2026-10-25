@@ -1,5 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+
+import { expect, test } from './fixtures';
 
 // Overlays render in a portal only while open, so the static gallery check cannot see them.
 // Open each one and run axe again, in both themes and directions. Closing with Escape must

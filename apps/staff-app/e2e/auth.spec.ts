@@ -1,7 +1,9 @@
 import { execFileSync } from 'node:child_process';
 
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+
+import { expect, test } from './fixtures';
 
 // T8 against the LOCAL Supabase stack (`supabase start`, seed.sql demo logins). Runs on phone
 // and desktop. Screenshots go to $SHOTS when set. Rider screens are P3.
