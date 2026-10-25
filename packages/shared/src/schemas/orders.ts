@@ -41,6 +41,10 @@ export type CreateOrderResponse = OrderSummary;
 export const setOrderStatusResponse = orderSummary;
 export type SetOrderStatusResponse = OrderSummary;
 
+/** cancel_order: Cashier or Admin, with a reason (BR-09). */
+export const cancelOrderResponse = orderSummary;
+export type CancelOrderResponse = OrderSummary;
+
 /** add_items_to_order: the order summary plus the new batch (2 or more: an ADD-ON, BR-06). */
 export const addItemsToOrderResponse = z.extend(orderSummary, {
   batch_no: z.int().check(z.minimum(2)),

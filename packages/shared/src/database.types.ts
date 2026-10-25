@@ -880,6 +880,10 @@ export type Database = {
           username: string;
         }[];
       };
+      cancel_order: {
+        Args: { p_order_id: string; p_reason: string; p_request_id: string };
+        Returns: Json;
+      };
       create_order: {
         Args: {
           p_customer_name: string;
