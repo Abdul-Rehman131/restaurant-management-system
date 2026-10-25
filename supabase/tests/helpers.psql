@@ -139,6 +139,55 @@ as $$
     'menu_item_id', p_menu_item_id, 'quantity', p_quantity, 'notes', p_notes))
 $$;
 
+-- Runs p_sql as p_user (NULL: anon) in a subtransaction that is ALWAYS rolled back, so it
+-- never changes the fixtures, and returns the outcome:
+--   'ok'                 the statement succeeded
+--   'PERMISSION_DENIED'  Postgres refused (no EXECUTE grant, e.g. anon)
+--   the error message    our stable codes ('NOT_AUTHORIZED', 'ORDER_CLOSED', ...)
+-- Used for the role matrix of every function: one line per role.
+create or replace function tests.outcome_as(p_user uuid, p_sql text)
+returns text
+language plpgsql
+as $$
+declare
+  v_outcome text;
+begin
+  begin
+    if p_user is null then
+      perform tests.login_as_anon();
+    else
+      perform tests.login_as(p_user);
+    end if;
+    execute p_sql;
+    raise exception 'rolled back' using errcode = 'XTEST';
+  exception when others then
+    v_outcome := case
+      when sqlstate = 'XTEST' then 'ok'
+      when sqlstate = '42501' and sqlerrm like 'permission denied%' then 'PERMISSION_DENIED'
+      else sqlerrm
+    end;
+  end;
+  -- The rollback also undid the login; make sure we are the test owner again.
+  perform tests.logout();
+  return v_outcome;
+end;
+$$;
+
+-- Runs p_sql as p_user and KEEPS its effects; returns the statement's single jsonb value.
+create or replace function tests.call_as(p_user uuid, p_sql text)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_result jsonb;
+begin
+  perform tests.login_as(p_user);
+  execute p_sql into v_result;
+  perform tests.logout();
+  return v_result;
+end;
+$$;
+
 -- The API roles must be able to call the session helpers (test schema only, rolled back).
 grant usage on schema tests to anon, authenticated;
 grant execute on all functions in schema tests to anon, authenticated;
