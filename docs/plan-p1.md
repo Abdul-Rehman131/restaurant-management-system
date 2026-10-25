@@ -40,6 +40,19 @@ plus `create_order` gaining an optional `p_waiter_id` (ADR 002). Read-only RPCs 
 first and return `jsonb` with a Zod schema; mutations take a `request_id` and replay the stored
 result on a retry.
 
+## S1 as built: decisions where the spec is open
+- **Cancelling:** an order only from Pending, Accepted or Preparing (spec 6.4); after Ready, only lines. Every stored line was sent (G5), so `remove_or_cancel_item` is Cashier and Admin only, for a whole line. Cancelling the last live line cancels the order.
+- **Paid orders** take no new items, cancellation, discount or bill request: an Admin voids the payment first.
+- **Completion (BR-12, G9):** a Dine-In order paid before Served completes when served. A Take Away order paid before Ready stays Ready until the cashier hands it over (`set_order_status` to Completed).
+- **Kitchen:** Sent, then Preparing, then Ready; skipping Preparing is refused. A drinks-only add-on never reopens the order: it is Ready, or Served on a Served order.
+- **Bill:** adding items clears a pending bill request.
+- **Void:** a void on a Completed order reopens it (Dine-In Served with the bill requested; Take Away Ready). It is refused while a new order holds the table.
+- **Discount:** a fixed amount only (no percentage); 0 removes it; the reason is kept.
+- **Requests:** a request id is bound to its arguments; reusing it with other arguments is `REQUEST_ID_CONFLICT`.
+- **Report (M9):** sales are Completed orders; paid but unfulfilled orders count as open. Top-item sales are before discount.
+- **Added:** `get_menu_availability` (the chef's Sold Out list, no prices).
+- **Realtime topics:** `staff:orders`, `staff:kitchen`, `staff:waiter:<id>`, `staff:tables`, `staff:menu`. Payloads are ids only.
+
 ## Out of P1
 Online orders, deals and pg_cron jobs (P2); delivery, riders and reservations (P3); profit,
 expenses, shifts, the audit log viewer and `daily_summary` (P4).
