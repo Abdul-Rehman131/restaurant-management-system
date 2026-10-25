@@ -2,8 +2,12 @@
 -- Settings defaults: timezone Asia/Karachi (UTC+5, no DST), cut-off 04:00.
 begin;
 create extension if not exists pgtap with schema extensions;
+\ir helpers.psql
 
 select plan(16);
+
+-- Exact order numbers below: ignore any orders already in the database.
+select tests.clear_order_numbers();
 
 -- BR-04 edge cases, local Karachi time on the night of 24 -> 25 October 2026
 select is(private.business_date('2026-10-24 23:59:00+05'), date '2026-10-24', '23:59 belongs to the same day');

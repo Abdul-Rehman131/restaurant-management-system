@@ -7,6 +7,9 @@ create extension if not exists pgtap with schema extensions;
 
 select plan(42);
 
+-- Exact order numbers below: ignore any orders already in the database.
+select tests.clear_order_numbers();
+
 update public.settings set tax_bps = 1600, service_charge_bps = 500;
 
 select tests.create_staff('co.waiter', 'waiter') as waiter \gset
