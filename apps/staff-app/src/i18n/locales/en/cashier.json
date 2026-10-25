@@ -152,5 +152,6 @@
   "loadFailedBody": "Check the connection, then try again.",
   "retry": "Try again",
   "billGone": "This bill is closed",
-  "billGoneBody": "It was paid, completed or cancelled."
+  "billGoneBody": "It was paid, completed or cancelled.",
+  "review": "Review"
 }

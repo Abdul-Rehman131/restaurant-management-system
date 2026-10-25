@@ -482,3 +482,114 @@ test('the receipt has the right lines and totals, no cost price, and prints (Ctr
     cancelTakeAway('E2E Receipt');
   }
 });
+
+/** The kitchen moves every batch of an order to Ready (as the chef's tablet would). */
+async function kitchenReady(request: APIRequestContext, orderNumber: string) {
+  const chef = await apiAs(request, 'chef');
+  const queue = await chef.rpc<{ tickets: { batch_id: string; order_number: string }[] }>(
+    'get_kitchen_queue',
+  );
+  const tickets = queue.tickets.filter((t) => t.order_number === orderNumber);
+  expect(tickets.length).toBeGreaterThan(0);
+  for (const ticket of tickets) {
+    for (const status of ['preparing', 'ready']) {
+      await chef.rpc('set_batch_status', {
+        p_request_id: crypto.randomUUID(),
+        p_batch_id: ticket.batch_id,
+        p_status: status,
+      });
+    }
+  }
+}
+
+async function counterTakeAway(page: Page, name: string, items: string[]) {
+  await page.keyboard.press('n');
+  await expect(page.getByRole('heading', { name: 'New counter order' })).toBeVisible();
+  await page.getByLabel('Customer name').fill(name);
+  await page.getByLabel('Phone (optional)').fill('0300 1234567');
+  for (const item of items) await page.getByRole('button', { name: `Add ${item}` }).click();
+  await page.getByRole('button', { name: 'Send to Kitchen' }).click();
+  const sent = await page.getByText(/^Sent to the kitchen: ORD-/).textContent();
+  await expect(page.getByRole('heading', { name: `Take Away · ${name}`, level: 2 })).toBeVisible();
+  return (sent ?? '').replace('Sent to the kitchen: ', '');
+}
+
+const orderState = (orderNumber: string) =>
+  psql(
+    `select status || ' ' || payment_status from public.orders where order_number = '${orderNumber}'`,
+  );
+
+test('counter Take Away: kitchen Start and Ready, then payment completes it; or pay first and hand over', async ({
+  page,
+  request,
+}) => {
+  test.slow();
+  cancelTakeAway('E2E Counter');
+  try {
+    await openCashier(page);
+
+    // Pay after Ready: the payment completes it (S1 rules, BR-12).
+    const first = await counterTakeAway(page, 'E2E Counter Ali', ['Chicken Biryani']);
+    expect(orderState(first)).toBe('accepted unpaid');
+    await kitchenReady(request, first);
+    // The bill shows the server's status once the kitchen marks it Ready (live).
+    await expect(
+      page.locator('[data-slot="status-badge"][data-status="ready"]').first(),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Exact' }).click();
+    await page.getByRole('button', { name: /^Pay/ }).click();
+    await expect(page.getByText('The order is complete.')).toBeVisible();
+    expect(orderState(first)).toBe('completed paid');
+
+    // Pay first: it waits for the kitchen, then the cashier hands it over.
+    const second = await counterTakeAway(page, 'E2E Counter Sara', ['Vegetable Pulao']);
+    await page.getByRole('button', { name: 'Exact' }).click();
+    await page.getByRole('button', { name: /^Pay/ }).click();
+    await expect(
+      page.getByText('Paid. It completes when the food is served or handed over.'),
+    ).toBeVisible();
+    await kitchenReady(request, second);
+    await page.getByRole('button', { name: 'Hand over' }).click();
+    await expect(page.getByText('handed over and completed')).toBeVisible();
+    expect(orderState(second)).toBe('completed paid');
+  } finally {
+    cancelTakeAway('E2E Counter');
+  }
+});
+
+test('a counter Dine-In order with the waiter picker; the menu has no cost prices', async ({
+  page,
+}) => {
+  createTable(104);
+  const costs: string[] = [];
+  page.on('response', (response) => {
+    if (!response.url().includes(':54321/')) return;
+    void response.text().then(
+      (text) => {
+        if (/cost_price|cost_snapshot/.test(text)) costs.push(response.url());
+      },
+      () => null,
+    );
+  });
+  try {
+    await openCashier(page);
+    await page.getByRole('button', { name: 'New counter order' }).first().click();
+    await page.getByRole('radio', { name: 'Dine-In' }).click();
+    await page.getByLabel('Table', { exact: true }).selectOption({ label: 'Table 104' });
+    await page.getByLabel('Waiter (optional)').selectOption({ label: 'Demo Waiter Two' });
+    await page.getByRole('button', { name: 'Add Daal Makhani' }).click();
+    await shot(page, 'counter-order');
+    await expectNoSeriousAxe(page);
+    await page.getByRole('button', { name: 'Send to Kitchen' }).click();
+    await expect(page.getByRole('heading', { name: 'Table 104', level: 2 })).toBeVisible();
+    await expect(page.getByText('Waiter: Demo Waiter Two').first()).toBeVisible();
+    expect(
+      psql(`select p.username from public.orders o join public.profiles p on p.id = o.waiter_id
+             join public.restaurant_tables t on t.id = o.table_id
+            where t.number = 104 and t.is_active and o.status not in ('completed', 'cancelled')`),
+    ).toBe('waiter2');
+    expect(costs).toEqual([]);
+  } finally {
+    archiveTable(104);
+  }
+});

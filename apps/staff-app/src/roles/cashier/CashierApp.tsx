@@ -18,6 +18,7 @@ import { StaffHeader } from '../../shell/StaffHeader';
 import { useScreenAppearance } from '../../shell/theme-context';
 import { BillDetail } from './BillDetail';
 import { BillList } from './BillList';
+import { CounterOrder } from './CounterOrder';
 import { newBillRequests, requestedBills } from './bills';
 import { billsQuery } from './data';
 import { Kbd } from './Kbd';
@@ -294,6 +295,7 @@ export function CashierApp() {
               }
             />
             <Route path={cashierRoutes.bill} element={<BillDetail />} />
+            <Route path={cashierRoutes.newOrder} element={<CounterOrder />} />
           </Routes>
         </section>
       </div>
