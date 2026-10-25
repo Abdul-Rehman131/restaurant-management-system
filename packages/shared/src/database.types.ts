@@ -946,6 +946,10 @@ export type Database = {
         Returns: Json;
       };
       staff_login_email: { Args: { p_username: string }; Returns: string };
+      void_payment: {
+        Args: { p_payment_id: string; p_reason: string; p_request_id: string };
+        Returns: Json;
+      };
     };
     Enums: {
       app_role: 'admin' | 'cashier' | 'waiter' | 'chef' | 'rider';

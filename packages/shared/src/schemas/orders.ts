@@ -79,3 +79,7 @@ export type PaymentSummary = z.infer<typeof paymentSummary>;
 
 export const recordPaymentResponse = paymentSummary;
 export type RecordPaymentResponse = PaymentSummary;
+
+/** void_payment: Admin only (G8); the payment summary plus the voided payment. */
+export const voidPaymentResponse = z.extend(paymentSummary, { payment_id: id });
+export type VoidPaymentResponse = z.infer<typeof voidPaymentResponse>;
