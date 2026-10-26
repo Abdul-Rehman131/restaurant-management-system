@@ -1,5 +1,6 @@
 import { expect, test } from './fixtures';
 import {
+  createAdmin,
   PASSWORD,
   createStaff,
   expectNoSeriousAxe,
@@ -38,18 +39,22 @@ test('login screen: accessible, required fields, plain-language errors', async (
 
 for (const { user, home, heading } of roles) {
   test(`${user} signs in and lands on ${home}`, async ({ page }, info) => {
-    await signInAs(page, user);
+    // An Admin passes the MFA step (S5): a disposable one with its own factor.
+    const login = user === 'admin' ? await createAdmin() : user;
+    await signInAs(page, login);
     await expect(page).toHaveURL(new RegExp(`${home}$`));
     if (heading) await expect(page.getByRole('heading', { name: heading })).toBeVisible();
     // Restaurant name from the get_settings RPC (the kitchen bar shows it from md up).
     if (user !== 'chef' || info.project.name === 'desktop') {
-      await expect(page.getByText('Ember Kitchen (Demo)').first()).toBeVisible();
+      // The prefix only: admin.spec changes the name for a moment (it keeps this prefix).
+      await expect(page.getByText(/^Ember Kitchen/).first()).toBeVisible();
     }
     await expect(liveDot(page)).toBeVisible({ timeout: 10_000 });
     await page.evaluate(() => document.fonts.ready);
     if (shots)
       await page.screenshot({ path: `${shots}/${info.project.name}${home.replace('/', '-')}.png` });
     await expectNoSeriousAxe(page);
+    if (login !== user) setStaffActive(login, false);
   });
 }
 
@@ -134,8 +139,13 @@ test('deactivated while signed in: the next check signs the user out with "not a
 }) => {
   const username = createStaff('waiter');
   try {
+    // Deactivate only after the app's own first account check has answered: if that check
+    // ran after the switch, the app would sign out at once and the reload below would land on
+    // a fresh login page without the message (seen under load in the S5 runs).
+    const firstCheck = page.waitForResponse((response) => response.url().includes('/rpc/my_role'));
     await signInAs(page, username);
     await expect(page).toHaveURL(/\/waiter$/);
+    await firstCheck;
     setStaffActive(username, false);
     await page.reload();
     await expect(page).toHaveURL(/\/login$/);

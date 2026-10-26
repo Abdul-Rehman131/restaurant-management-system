@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { crc32, deflateSync } from 'node:zlib';
 
 import AxeBuilder from '@axe-core/playwright';
 import type { APIRequestContext, Page } from '@playwright/test';
@@ -13,11 +14,20 @@ import { totp } from './totp';
  * logins). The URL and publishable key come from apps/staff-app/.env.local, as for the app.
  */
 const env = loadEnv('development', fileURLToPath(new URL('..', import.meta.url)), 'VITE_');
-const supabaseUrl = env['VITE_SUPABASE_URL'] ?? '';
+export const supabaseUrl = env['VITE_SUPABASE_URL'] ?? '';
 const supabaseKey = env['VITE_SUPABASE_PUBLISHABLE_KEY'] ?? '';
 
 export const PASSWORD = 'demo-password-123';
 export const shots = process.env['SHOTS'];
+
+/** A screenshot to $SHOTS (only when set): no toast, animations done, fonts loaded. */
+export async function shot(page: Page, name: string) {
+  if (!shots) return;
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+  await animationsDone(page);
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path: `${shots}/${name}.png` });
+}
 
 /**
  * Signs in through the login screen and waits for Auth's answer. A password sign-in hashes the
@@ -38,12 +48,13 @@ export async function signIn(page: Page, user: string, password = PASSWORD) {
   await answer;
 }
 
-/** The seed Admin's TOTP secret, enrolled by global-setup.ts before the suite. */
-export function adminTotpSecret(): string {
-  const secret = process.env['E2E_ADMIN_TOTP_SECRET'];
-  if (!secret) throw new Error('E2E_ADMIN_TOTP_SECRET is missing: global-setup.ts did not run');
-  return secret;
-}
+/**
+ * TOTP secrets of the Admins this worker created (createAdmin). Every test that needs an Admin
+ * gets its own: when an Admin passes the MFA step, Auth ends that Admin's other password-only
+ * sessions, so two tests signing in as one shared Admin at the same moment would break each
+ * other's sign-in (seen in the S5 runs: "Session not found" on the code step).
+ */
+const totpSecrets = new Map<string, string>();
 
 /** The MFA step on the sign-in screen: a code from the factor's secret (S5, required). */
 export async function enterMfaCode(page: Page, secret: string) {
@@ -53,10 +64,21 @@ export async function enterMfaCode(page: Page, secret: string) {
   await expect(code).toBeHidden();
 }
 
-/** Signs in; the seed Admin also passes the required MFA step with a code. */
+/** Signs in; an Admin made by createAdmin also passes the required MFA step with a code. */
 export async function signInAs(page: Page, user: string) {
   await signIn(page, user);
-  if (user === 'admin') await enterMfaCode(page, adminTotpSecret());
+  const secret = totpSecrets.get(user);
+  if (secret) await enterMfaCode(page, secret);
+}
+
+/**
+ * A disposable Admin with a verified TOTP factor (MFA is required for Admin, S5). Returns the
+ * username; signInAs and apiAs use its factor. Archive it afterwards with setStaffActive.
+ */
+export async function createAdmin(): Promise<string> {
+  const username = createStaff('admin');
+  totpSecrets.set(username, await enrolTotp(username));
+  return username;
 }
 
 // ===== Auth API (no browser): tokens and TOTP factors =====
@@ -305,11 +327,10 @@ export async function apiAs(
   user: string,
   options: { aal: 'aal1' | 'aal2' } = { aal: 'aal2' },
 ) {
-  // The seed Admin's RPCs need aal2 (S5): the MFA step with the suite's factor.
+  // Admin RPCs need aal2 (S5): an Admin from createAdmin passes the MFA step with its factor.
+  const secret = totpSecrets.get(user);
   const token =
-    user === 'admin' && options.aal === 'aal2'
-      ? await aal2Token(user, adminTotpSecret())
-      : await passwordToken(user);
+    secret && options.aal === 'aal2' ? await aal2Token(user, secret) : await passwordToken(user);
   return {
     /** The access token, for calls that are not PostgREST (the staff-admin function). */
     token,
@@ -332,4 +353,28 @@ export async function apiAs(
       return body as T;
     },
   };
+}
+
+/** A small valid PNG (solid colour): the "phone photo" an Admin picks for a menu item. */
+export function png(width: number, height: number): Buffer {
+  const chunk = (type: string, data: Buffer) => {
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(body));
+    return Buffer.concat([length, body, crc]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header.writeUInt8(8, 8); // bit depth
+  header.writeUInt8(2, 9); // RGB
+  const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(width * 3, 0xc2)]);
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(Buffer.concat(Array.from({ length: height }, () => row)))),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
 }

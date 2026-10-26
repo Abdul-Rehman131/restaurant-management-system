@@ -4,8 +4,6 @@ import { defineConfig, devices } from '@playwright/test';
 // the Vite dev server. Role flows are added from T8/P1.
 export default defineConfig({
   testDir: './e2e',
-  // Enrols the seed Admin's TOTP factor (S5: MFA is required for Admin).
-  globalSetup: './e2e/global-setup.ts',
   fullyParallel: true,
   // One dev server serves every worker; keep it from being the bottleneck.
   workers: 3,
@@ -25,14 +23,19 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   // Each role spec runs on the device that role uses, so "skipped" counts only real skips:
-  // the waiter app on a phone, the kitchen on a landscape tablet, the cashier on a desktop;
-  // shared screens on all.
+  // the waiter app on a phone, the kitchen on a landscape tablet, the cashier and the admin
+  // flows on a desktop (admin-phone.spec: the admin screens at phone width); shared screens
+  // on all.
   projects: [
-    { name: 'phone', use: { ...devices['Pixel 7'] }, testIgnore: /(kitchen|cashier)\.spec\.ts/ },
+    {
+      name: 'phone',
+      use: { ...devices['Pixel 7'] },
+      testIgnore: /(kitchen|cashier|admin)\.spec\.ts/,
+    },
     {
       name: 'desktop',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } },
-      testIgnore: /(waiter|kitchen)\.spec\.ts/,
+      testIgnore: /(waiter|kitchen|admin-phone)\.spec\.ts/,
     },
     {
       name: 'tablet',

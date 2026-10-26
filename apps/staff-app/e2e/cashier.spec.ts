@@ -5,12 +5,14 @@ import {
   animationsDone,
   apiAs,
   archiveTable,
+  createAdmin,
   createTable,
   expectMenuTargets,
   expectNoSeriousAxe,
   liveDot,
   menuItemId,
   psql,
+  setStaffActive,
   shots,
   signInAs,
   tableId,
@@ -20,9 +22,10 @@ import {
 // Supabase stack. Every test owns its tables (101 and up, created and archived here) and its
 // Take Away customer names, so tests can run in parallel. Screenshots go to $SHOTS.
 
-async function openCashier(page: Page, user: 'cashier' | 'admin' = 'cashier') {
-  await signInAs(page, user);
-  if (user === 'admin') await page.goto('/cashier');
+/** Signs in as the cashier, or as an Admin (`admin`: a username from createAdmin). */
+async function openCashier(page: Page, admin?: string) {
+  await signInAs(page, admin ?? 'cashier');
+  if (admin) await page.goto('/cashier');
   await expect(page).toHaveURL(/\/cashier$/);
   await expect(liveDot(page)).toBeVisible();
 }
@@ -367,7 +370,8 @@ test('a cashier cannot discount or void; an admin can, and a void reopens the or
     // The admin voids the payment (with a reason): the order is unpaid again.
     await page.getByRole('button', { name: 'Account' }).click();
     await page.getByRole('menuitem', { name: 'Sign out' }).click();
-    await openCashier(page, 'admin');
+    const admin = await createAdmin();
+    await openCashier(page, admin);
     await openBill(page, 'E2E Admin');
     await page.getByRole('button', { name: 'Void' }).click();
     const voidDialog = page.getByRole('alertdialog', { name: 'Void this payment?' });
@@ -394,6 +398,7 @@ test('a cashier cannot discount or void; an admin can, and a void reopens the or
         `select discount || ' ' || discount_reason from public.orders where id = '${order.order_id}'`,
       ),
     ).toBe('20000 Regular guest');
+    setStaffActive(admin, false);
   } finally {
     cancelTakeAway('E2E Admin');
   }
@@ -443,7 +448,8 @@ test('the receipt has the right lines and totals, no cost price, and prints (Ctr
     await page.getByRole('button', { name: 'Preview receipt' }).click();
     const preview = page.getByRole('dialog', { name: 'Receipt' });
     const receipt = preview.locator('[data-receipt]');
-    await expect(receipt).toContainText('Ember Kitchen (Demo)');
+    // The prefix only: admin.spec changes the name for a moment (it keeps this prefix).
+    await expect(receipt).toContainText('Ember Kitchen');
     await expect(receipt).toContainText(`Order ${order.order_number}`);
     await expect(receipt).toContainText('Take Away · E2E Receipt Main');
     await expect(receipt).toContainText('Seekh Kebab (4 pcs)');
