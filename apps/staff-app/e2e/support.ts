@@ -77,6 +77,57 @@ export async function expectNoSeriousAxe(page: Page) {
   );
 }
 
+/**
+ * The menu picker's targets: the Add and quantity stepper buttons are at least `min` px each
+ * way (44 on touch, 40 on desk; CLAUDE.md rule 10), and none is partly covered by the search
+ * and chips bar. The list is scrolled so only a quarter of an Add button (10 to 12 px) shows
+ * below the category chips, then axe runs: on CI (other fonts, other row heights) a button left
+ * there by chance failed target-size as "partially obscured" while the list still scrolled
+ * under the bar (S4).
+ */
+export async function expectMenuTargets(page: Page, min: number) {
+  const targets = page.getByRole('button', {
+    name: /^(Add |Remove |Increase quantity$|Decrease quantity$)/,
+  });
+  expect(await page.getByRole('group', { name: /^Quantity of / }).count()).toBeGreaterThan(0);
+  for (const target of await targets.all()) {
+    const box = await target.boundingBox();
+    const name = await target.getAttribute('aria-label');
+    expect(box, `${name ?? ''} has a box`).not.toBeNull();
+    expect(
+      Math.min(box?.width ?? 0, box?.height ?? 0),
+      `${name ?? ''} size`,
+    ).toBeGreaterThanOrEqual(min);
+  }
+
+  const adds = page.getByRole('button', { name: /^Add / });
+  const add = adds.nth(Math.floor((await adds.count()) / 2));
+  await add.scrollIntoViewIfNeeded();
+  const straddles = await add.evaluate((button) => {
+    // The category chips: the targets that covered the button (axe counts targets only).
+    const chips = document.querySelector('nav[aria-label="Menu categories"]');
+    if (!chips) throw new Error('no menu bar');
+    let scroller = button.parentElement;
+    while (
+      scroller &&
+      !(
+        scroller.scrollHeight > scroller.clientHeight &&
+        /auto|scroll/.test(getComputedStyle(scroller).overflowY)
+      )
+    ) {
+      scroller = scroller.parentElement;
+    }
+    const edge = chips.getBoundingClientRect().bottom;
+    const before = button.getBoundingClientRect();
+    const target = edge - (before.height * 3) / 4;
+    (scroller ?? document.documentElement).scrollTop += before.top - target;
+    const after = button.getBoundingClientRect();
+    return after.top < edge && after.bottom > edge;
+  });
+  expect(straddles, 'an Add button sits across the search bar edge').toBe(true);
+  await expectNoSeriousAxe(page);
+}
+
 /** SQL as the database owner, through the CLI's container (local stack only). */
 export function psql(sql: string): string {
   return execFileSync(
@@ -97,6 +148,68 @@ export function freeTable(number: number) {
     update public.orders set status = 'cancelled', cancel_reason = 'e2e reset', cancelled_at = now()
      where id in (${open});
     update public.restaurant_tables set status = 'available' where number = ${String(number)} and is_active;`);
+}
+
+/**
+ * A disposable staff account for a test that changes the account (deactivation): never a
+ * shared demo login, so no other test can be affected. A login (as seed.sql makes them) plus
+ * its profile through public.create_staff_profile, the same path as real staff. Returns the
+ * username; archive it afterwards with archiveStaff (archive, never delete).
+ */
+export function createStaff(role: 'admin' | 'cashier' | 'waiter' | 'chef'): string {
+  const id = crypto.randomUUID();
+  const username = `e2e-${id.slice(0, 8)}`;
+  psql(`
+    insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+                            raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+                            confirmation_token, recovery_token, email_change_token_new, email_change)
+    values ('00000000-0000-0000-0000-000000000000', '${id}', 'authenticated', 'authenticated',
+            public.staff_login_email('${username}'),
+            extensions.crypt('${PASSWORD}', extensions.gen_salt('bf')), now(),
+            '{"provider": "email", "providers": ["email"]}', '{"full_name": "E2E ${username}"}',
+            now(), now(), '', '', '', '');
+    insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at,
+                                 created_at, updated_at)
+    values (gen_random_uuid(), '${id}', '${id}',
+            jsonb_build_object('sub', '${id}', 'email', public.staff_login_email('${username}'),
+                               'email_verified', true), 'email', now(), now(), now());
+    select public.create_staff_profile('${id}', '${username}', 'E2E ${username}', '${role}');`);
+  return username;
+}
+
+export function setStaffActive(username: string, active: boolean) {
+  psql(`update public.profiles set is_active = ${String(active)} where username = '${username}'`);
+}
+
+/**
+ * A table of the test's own (number 101 and up, section "E2E"), free and active; archive it
+ * afterwards with archiveTable (archive, never delete). Keeps tests off the seed tables.
+ */
+export function createTable(number: number) {
+  psql(`
+    update public.restaurant_tables set is_active = true, status = 'available'
+     where number = ${String(number)} and section = 'E2E'
+       and not exists (select 1 from public.restaurant_tables
+                        where number = ${String(number)} and is_active);
+    insert into public.restaurant_tables (number, capacity, section)
+    select ${String(number)}, 4, 'E2E'
+     where not exists (select 1 from public.restaurant_tables
+                        where number = ${String(number)} and is_active);`);
+  freeTable(number);
+}
+
+export function archiveTable(number: number) {
+  freeTable(number);
+  psql(`update public.restaurant_tables set is_active = false
+         where number = ${String(number)} and section = 'E2E'`);
+}
+
+/** The order number of the open order on a table, from the server (not from a toast). */
+export function openOrderNumber(number: number): string {
+  return psql(`select o.order_number from public.orders o
+                 join public.restaurant_tables t on t.id = o.table_id
+                where t.number = ${String(number)} and t.is_active
+                  and o.status not in ('completed', 'cancelled')`);
 }
 
 export function tableId(number: number): string {
@@ -121,6 +234,15 @@ export async function apiAs(request: APIRequestContext, user: string) {
   expect(login.ok()).toBe(true);
   const { access_token: token } = (await login.json()) as { access_token: string };
   return {
+    /** A PostgREST read as this user (RLS applies), e.g. 'payments?select=id'. */
+    async select<T = unknown>(path: string): Promise<T> {
+      const response = await request.get(`${supabaseUrl}/rest/v1/${path}`, {
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` },
+      });
+      const body: unknown = await response.json();
+      if (!response.ok()) throw new Error(`${path}: ${JSON.stringify(body)}`);
+      return body as T;
+    },
     async rpc<T = unknown>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
       const response = await request.post(`${supabaseUrl}/rest/v1/rpc/${fn}`, {
         headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` },

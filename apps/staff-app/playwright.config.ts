@@ -23,9 +23,10 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   // Each role spec runs on the device that role uses, so "skipped" counts only real skips:
-  // the waiter app on a phone, the kitchen on a landscape tablet; shared screens on all.
+  // the waiter app on a phone, the kitchen on a landscape tablet, the cashier on a desktop;
+  // shared screens on all.
   projects: [
-    { name: 'phone', use: { ...devices['Pixel 7'] }, testIgnore: /kitchen\.spec\.ts/ },
+    { name: 'phone', use: { ...devices['Pixel 7'] }, testIgnore: /(kitchen|cashier)\.spec\.ts/ },
     {
       name: 'desktop',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } },
@@ -35,9 +36,6 @@ export default defineConfig({
       name: 'tablet',
       use: { ...devices['Galaxy Tab S4 landscape'] },
       testMatch: /kitchen\.spec\.ts/,
-      // waiter2 is the kitchen tests' waiter; the desktop project switches it off once
-      // (auth.spec.ts), so the tablet runs after desktop (phone runs alongside).
-      dependencies: ['desktop'],
     },
   ],
   webServer: {

@@ -7,9 +7,9 @@ export type LiveTopics = readonly (readonly [topic: string, events: Record<strin
 /**
  * Live updates for a role screen (M8, plan 4.6 rule 7). The database broadcasts ids only on
  * private topics (migration s1_realtime_broadcasts); an event just invalidates the query it
- * touches, and the screen refetches through its normal, permission-checked reads. When a
- * channel joins again after a drop, everything under `refetchAll` refetches, so a missed
- * event loses nothing. Realtime loads after the shell (dynamic import, plan 4.10).
+ * touches, and the screen refetches through its normal, permission-checked reads. Whenever a
+ * channel joins (first time or again after a drop), everything under `refetchAll` refetches,
+ * so a missed event loses nothing. Realtime loads after the shell (dynamic import, plan 4.10).
  * `topics` must be stable (a module constant or memoised).
  */
 export function useLiveTopics(topics: LiveTopics | null, refetchAll: QueryKey): void {
@@ -30,12 +30,13 @@ export function useLiveTopics(topics: LiveTopics | null, refetchAll: QueryKey): 
             void queryClient.invalidateQueries({ queryKey });
           });
         }
-        let joined = false;
         channel.subscribe((status) => {
-          // Compared as text, like the heartbeat (no Realtime enum import).
-          if ((status as string) !== 'SUBSCRIBED') return;
-          if (joined) void queryClient.invalidateQueries({ queryKey: refetchAll });
-          joined = true;
+          // Compared as text, like the heartbeat (no Realtime enum import). Every join
+          // refetches, the first one too: a change between the screen's first read and the
+          // join is never broadcast to it (seen in the S4 check: a bill request was missed).
+          if ((status as string) === 'SUBSCRIBED') {
+            void queryClient.invalidateQueries({ queryKey: refetchAll });
+          }
         });
         return channel;
       });

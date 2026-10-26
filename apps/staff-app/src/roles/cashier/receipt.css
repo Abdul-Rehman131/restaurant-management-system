@@ -1,0 +1,23 @@
+/* The 80 mm receipt (plan 4.4 ReceiptPreview, 4.9, D3): browser printing, no extra software.
+   On paper only the receipt prints; on screen the print copy stays hidden. */
+.receipt-print-root {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 3mm;
+  }
+
+  body > *:not(.receipt-print-root) {
+    display: none !important;
+  }
+
+  .receipt-print-root {
+    display: block !important;
+    width: 74mm;
+    color: black;
+    background: white;
+  }
+}
