@@ -39,8 +39,13 @@ for (const [path, heading, name] of [
   test(`phone: ${heading} has no serious axe violations`, async ({ page }) => {
     const admin = await openAdmin(page, path, heading);
     try {
-      // The dashboard's chart library loads lazily: wait for the chart before the picture.
-      if (path === '/admin') await expect(page.locator('.recharts-surface').first()).toBeVisible();
+      // The dashboard's chart library loads lazily: wait for the chart (or, on a day without
+      // sales, the empty state) before the picture.
+      if (path === '/admin') {
+        await expect(
+          page.locator('.recharts-surface').or(page.getByText('No completed sales')).first(),
+        ).toBeVisible();
+      }
       await shot(page, name);
       await expectNoSeriousAxe(page);
     } finally {

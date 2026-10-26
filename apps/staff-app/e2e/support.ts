@@ -159,15 +159,24 @@ export async function animationsDone(page: Page) {
   );
 }
 
-export async function expectNoSeriousAxe(page: Page) {
+async function seriousAxe(page: Page) {
   // A half-faded element has lower contrast than the final one (seen on the Ready banner).
   await animationsDone(page);
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze();
-  const serious = results.violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  );
+  return results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+}
+
+export async function expectNoSeriousAxe(page: Page) {
+  let serious = await seriousAxe(page);
+  // Something can start animating while axe runs: a live update from a test running in
+  // parallel (a new kitchen ticket fading in, seen in S5) or a toast fading out. Its colour is
+  // between two states for that frame only. A contrast finding is therefore checked once more
+  // after the animations end; a colour that really is too low fails both times.
+  if (serious.length > 0 && serious.every((v) => v.id === 'color-contrast')) {
+    serious = await seriousAxe(page);
+  }
   expect(serious.map((v) => `${v.id}: ${v.help} (${v.nodes[0]?.target.join(' ') ?? ''})`)).toEqual(
     [],
   );
