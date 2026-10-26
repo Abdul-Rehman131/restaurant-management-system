@@ -97,7 +97,7 @@ export function TextField({
     'aria-describedby': describedBy || undefined,
   };
   return (
-    <div className={cn('grid gap-1.5', className)}>
+    <div className={cn('grid content-start gap-1.5', className)}>
       <Label htmlFor={id}>{label}</Label>
       {multiline ? (
         <Textarea {...shared} {...(props as ComponentProps<typeof Textarea>)} />

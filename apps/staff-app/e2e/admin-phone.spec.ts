@@ -39,6 +39,8 @@ for (const [path, heading, name] of [
   test(`phone: ${heading} has no serious axe violations`, async ({ page }) => {
     const admin = await openAdmin(page, path, heading);
     try {
+      // The dashboard's chart library loads lazily: wait for the chart before the picture.
+      if (path === '/admin') await expect(page.locator('.recharts-surface').first()).toBeVisible();
       await shot(page, name);
       await expectNoSeriousAxe(page);
     } finally {
@@ -87,6 +89,7 @@ test('phone: the item form with a photo', async ({ page }) => {
       buffer: png(1200, 900),
     });
     await expect(page.getByRole('img', { name: 'Preview of the new photo' })).toBeVisible();
+    await page.getByRole('img', { name: 'Preview of the new photo' }).scrollIntoViewIfNeeded();
     await shot(page, 'admin-item-form-phone');
     await expectNoSeriousAxe(page);
   } finally {

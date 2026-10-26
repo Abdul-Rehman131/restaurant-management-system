@@ -123,6 +123,7 @@ test('a new category and item with a photo reach the waiter screen within 2 s', 
       buffer: png(1600, 1200),
     });
     await expect(page.getByRole('img', { name: 'Preview of the new photo' })).toBeVisible();
+    await page.getByRole('img', { name: 'Preview of the new photo' }).scrollIntoViewIfNeeded();
     await shot(page, 'admin-item-form-desktop');
     await expectNoSeriousAxe(page);
     await page.getByRole('button', { name: 'Save' }).click();
@@ -530,14 +531,10 @@ test('Bill check matches the order totals for the same lines', async ({ page, re
   }
 });
 
-test('every admin screen: axe has no serious violations (desktop screenshots)', async ({
-  page,
-  request,
-}) => {
-  // Some completed sales today, so the dashboard has numbers.
+test('dashboard: numbers, charts with their tables, axe (desktop)', async ({ page, request }) => {
+  // Some completed sales today, so the dashboard has numbers. Drinks only (no kitchen): Ready
+  // at once, so the payment completes them (no open bills left for other tests).
   const cashier = await apiAs(request, 'cashier');
-  // Drinks only (no kitchen): Ready at once, so the payment completes them (no open bills
-  // left for other tests).
   for (const items of [['Mineral Water (500 ml)', 'Soft Drink (1.5 L)'], ['Soft Drink (Can)']]) {
     const order = await cashier.rpc<{ order_id: string; total: number }>('create_order', {
       p_request_id: crypto.randomUUID(),
@@ -560,29 +557,33 @@ test('every admin screen: axe has no serious violations (desktop screenshots)', 
   await expectNoSeriousAxe(page);
   await page.getByRole('tab', { name: 'Table' }).first().click();
   await expectNoSeriousAxe(page);
+});
 
-  for (const [path, heading, name] of [
-    ['/admin/menu', 'Menu', 'admin-menu-desktop'],
-    ['/admin/categories', 'Categories', 'admin-categories-desktop'],
-    ['/admin/tables', 'Tables', 'admin-tables-desktop'],
-    ['/admin/settings', 'Settings', 'admin-settings-desktop'],
-    ['/admin/bill-check', 'Bill check', 'admin-bill-check-empty-desktop'],
-    ['/admin/staff', 'Staff', 'admin-staff-desktop'],
-  ] as const) {
-    await page.goto(path);
+// One test per screen (each with its own Admin), so a slow machine never runs out of time.
+for (const [path, heading, name] of [
+  ['/admin/menu', 'Menu', 'admin-menu-desktop'],
+  ['/admin/categories', 'Categories', 'admin-categories-desktop'],
+  ['/admin/tables', 'Tables', 'admin-tables-desktop'],
+  ['/admin/settings', 'Settings', 'admin-settings-desktop'],
+  ['/admin/bill-check', 'Bill check', 'admin-bill-check-empty-desktop'],
+  ['/admin/staff', 'Staff', 'admin-staff-desktop'],
+  ['/admin/menu/new', 'New menu item', 'admin-item-form-empty-desktop'],
+] as const) {
+  test(`desktop: ${heading} has no serious axe violations`, async ({ page }) => {
+    await openAdmin(page, path);
     await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible();
     await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
     await shot(page, name);
     await expectNoSeriousAxe(page);
-  }
+  });
+}
 
-  // An item with a photo (the seed has none): the form with its preview.
-  await page.goto('/admin/menu/new');
-  await page.getByLabel('Name', { exact: true }).fill(`E2E Axe ${rand()}`);
-  await expectNoSeriousAxe(page);
-  // The collapsed sidebar (icon rail) too.
-  await page.goto('/admin');
+test('desktop: the collapsed sidebar (icon rail) has no serious axe violations', async ({
+  page,
+}) => {
+  await openAdmin(page);
   await page.getByRole('button', { name: 'Collapse menu' }).click();
   await expectNoSeriousAxe(page);
   await page.getByRole('button', { name: 'Expand menu' }).click();
+  await expect(page.getByRole('link', { name: 'Bill check' })).toBeVisible();
 });

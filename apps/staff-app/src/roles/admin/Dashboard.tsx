@@ -43,7 +43,7 @@ function Kpi({ label, children }: { label: string; children: ReactNode }) {
     <Card>
       <CardContent className="space-y-1 p-4">
         <p className="text-sm text-fg-muted">{label}</p>
-        <p className="text-3xl font-semibold tabular-nums">{children}</p>
+        <p className="text-2xl font-semibold break-words tabular-nums sm:text-3xl">{children}</p>
       </CardContent>
     </Card>
   );
@@ -123,6 +123,7 @@ function Report({ summary }: { summary: Summary }) {
           chart={
             <BarsChart
               points={summary.by_hour.map((h) => ({ label: hourLabel(h.hour), value: h.sales }))}
+              series={t('admin:dashboard.sales')}
               format={money}
             />
           }
@@ -160,6 +161,7 @@ function Report({ summary }: { summary: Summary }) {
                 label: t(`admin:orderType.${x.type}`),
                 value: x.sales,
               }))}
+              series={t('admin:dashboard.sales')}
               format={money}
             />
           }

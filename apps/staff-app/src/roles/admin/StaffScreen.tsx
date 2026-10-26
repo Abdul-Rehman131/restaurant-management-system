@@ -369,7 +369,7 @@ export function StaffScreen() {
     },
     { key: 'username', header: t('admin:staff.username'), cell: (s) => s.username },
     { key: 'role', header: t('admin:staff.role'), cell: (s) => t(`admin:role.${s.role}`) },
-    { key: 'phone', header: t('admin:staff.phone'), cell: (s) => s.phone ?? '' },
+    { key: 'phone', header: t('admin:staff.phoneColumn'), cell: (s) => s.phone ?? '' },
     {
       key: 'state',
       header: t('admin:staff.state'),

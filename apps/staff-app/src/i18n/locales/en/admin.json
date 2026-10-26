@@ -326,6 +326,7 @@
     "deactivateConfirm": "Deactivate",
     "deactivatePlaceholder": "For example: left the job",
     "reactivate": "Reactivate",
-    "reactivated": "{{name}} can sign in again."
+    "reactivated": "{{name}} can sign in again.",
+    "phoneColumn": "Phone"
   }
 }

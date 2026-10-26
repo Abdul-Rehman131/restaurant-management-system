@@ -34,10 +34,13 @@ export interface ChartPoint {
 
 export function BarsChart({
   points,
+  series,
   format,
   height = 240,
 }: {
   points: ChartPoint[];
+  /** The bars' name in the tooltip (e.g. "Sales"). */
+  series: string;
   format: (value: number) => string;
   height?: number;
 }) {
@@ -70,7 +73,13 @@ export function BarsChart({
             formatter={(value) => format(Number(value))}
             contentStyle={token.tooltip}
           />
-          <Bar dataKey="value" fill={token.bar} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Bar
+            dataKey="value"
+            name={series}
+            fill={token.bar}
+            radius={[4, 4, 0, 0]}
+            isAnimationActive={false}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>
