@@ -24,7 +24,12 @@ const staffRoles = [
   { name: 'role: waiter', entries: ['src/roles/waiter/WaiterApp.tsx'], budget: 120 * KB },
   { name: 'role: kitchen', entries: ['src/roles/kitchen/KitchenApp.tsx'], budget: 120 * KB },
   { name: 'role: cashier', entries: ['src/roles/cashier/CashierApp.tsx'], budget: 120 * KB },
-  { name: 'role: admin', entries: ['src/roles/admin/AdminApp.tsx'], budget: 250 * KB },
+  // Admin includes its lazily loaded charts (Recharts): the 250 KB covers both (plan 4.10).
+  {
+    name: 'role: admin (with charts)',
+    entries: ['src/roles/admin/AdminApp.tsx', 'src/roles/admin/DashboardCharts.tsx'],
+    budget: 250 * KB,
+  },
   // Not a role: Realtime, loaded right after the signed-in shell's first render.
   { name: 'realtime (after first paint)', entries: ['src/lib/realtime.ts'], budget: 30 * KB },
 ];

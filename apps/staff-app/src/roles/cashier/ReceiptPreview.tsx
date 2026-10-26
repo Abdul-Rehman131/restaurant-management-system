@@ -47,6 +47,9 @@ export function ReceiptView({ receipt }: { receipt: Receipt }) {
         <p className="text-base font-bold">{receipt.restaurantName}</p>
         {receipt.address && <p>{receipt.address}</p>}
         {receipt.phone && <p>{receipt.phone}</p>}
+        {receipt.taxRegistrationNumber && (
+          <p>{t('cashier:receiptTaxNumber', { number: receipt.taxRegistrationNumber })}</p>
+        )}
       </div>
       <div className="border-t border-dashed border-current pt-2">
         <p>{t('cashier:receiptOrder', { number: receipt.orderNumber })}</p>

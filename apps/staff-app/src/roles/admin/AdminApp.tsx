@@ -2,6 +2,7 @@
 // client, TanStack Query, settings) to the shell chunk instead of splitting them into shared
 // chunks the shell would download as extra files (plan 4.10 budgets).
 import '../../shell/SignedIn';
+import './i18n';
 
 import {
   Button,
@@ -16,7 +17,8 @@ import {
   cn,
 } from '@rms/ui';
 import {
-  BarChart3,
+  Calculator,
+  FolderOpen,
   LayoutDashboard,
   LayoutGrid,
   Menu,
@@ -33,19 +35,30 @@ import { NavLink, Route, Routes, useLocation } from 'react-router';
 
 import { paths } from '../../paths';
 import { useConnection } from '../../shell/connection-context';
-import { Placeholder } from '../../shell/Placeholder';
 import { StaffHeader } from '../../shell/StaffHeader';
 import { useScreenAppearance } from '../../shell/theme-context';
+import { BillCheckScreen } from './BillCheckScreen';
+import { CategoriesScreen } from './CategoriesScreen';
+import { Dashboard } from './Dashboard';
+import { ItemForm } from './ItemForm';
+import { useAdminLive } from './live';
+import { MenuScreen } from './MenuScreen';
+import { adminRoutes } from './paths';
+import { SettingsScreen } from './SettingsScreen';
+import { StaffScreen } from './StaffScreen';
+import { TablesScreen } from './TablesScreen';
 
-type SectionKey = 'dashboard' | 'menu' | 'tables' | 'staff' | 'settings' | 'reports';
+type SectionKey =
+  'dashboard' | 'menu' | 'categories' | 'tables' | 'staff' | 'settings' | 'billCheck';
 
 const sections: { key: SectionKey; to: string; icon: LucideIcon }[] = [
   { key: 'dashboard', to: '', icon: LayoutDashboard },
-  { key: 'menu', to: 'menu', icon: UtensilsCrossed },
-  { key: 'tables', to: 'tables', icon: LayoutGrid },
-  { key: 'staff', to: 'staff', icon: UsersRound },
-  { key: 'settings', to: 'settings', icon: Settings },
-  { key: 'reports', to: 'reports', icon: BarChart3 },
+  { key: 'menu', to: adminRoutes.menu, icon: UtensilsCrossed },
+  { key: 'categories', to: adminRoutes.categories, icon: FolderOpen },
+  { key: 'tables', to: adminRoutes.tables, icon: LayoutGrid },
+  { key: 'staff', to: adminRoutes.staff, icon: UsersRound },
+  { key: 'settings', to: adminRoutes.settings, icon: Settings },
+  { key: 'billCheck', to: adminRoutes.billCheck, icon: Calculator },
 ];
 
 const COLLAPSED_KEY = 'admin-sidebar-collapsed';
@@ -60,7 +73,7 @@ function readCollapsed(): boolean {
 
 /** Nav links. `rail`: icons only, the label for screen readers and as a tooltip. */
 function SectionLinks({ rail, onNavigate }: { rail: boolean; onNavigate?: () => void }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['admin']);
   return (
     <ul className="grid gap-1">
       {sections.map(({ key, to, icon: Icon }) => {
@@ -80,7 +93,7 @@ function SectionLinks({ rail, onNavigate }: { rail: boolean; onNavigate?: () => 
             }
           >
             <Icon aria-hidden className="size-5 shrink-0" />
-            <span className={cn(rail && 'sr-only')}>{t(`admin.${key}`)}</span>
+            <span className={cn(rail && 'sr-only')}>{t(`admin:nav.${key}`)}</span>
           </NavLink>
         );
         return (
@@ -88,7 +101,7 @@ function SectionLinks({ rail, onNavigate }: { rail: boolean; onNavigate?: () => 
             {rail ? (
               <Tooltip>
                 <TooltipTrigger asChild>{link}</TooltipTrigger>
-                <TooltipContent side="right">{t(`admin.${key}`)}</TooltipContent>
+                <TooltipContent side="right">{t(`admin:nav.${key}`)}</TooltipContent>
               </Tooltip>
             ) : (
               link
@@ -100,37 +113,18 @@ function SectionLinks({ rail, onNavigate }: { rail: boolean; onNavigate?: () => 
   );
 }
 
-function SectionScreen({ section }: { section: SectionKey }) {
-  const { t } = useTranslation();
-  const current = sections.find((s) => s.key === section) ?? sections[0];
-  const title = t(`admin.${section}`);
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      <div className="rounded-lg border border-border bg-surface">
-        {current && (
-          <Placeholder
-            icon={current.icon}
-            title={t('admin.sectionEmpty', { section: title })}
-            description={null}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
 /**
  * Admin: desk density, collapsible sidebar (icon rail at md, full at lg), a sheet on phones,
  * content up to 1280 px (plan 4.5).
  */
 export function AdminApp() {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['admin', 'rpc']);
   const { state } = useConnection();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [sheetOpen, setSheetOpen] = useState(false);
   useScreenAppearance({ density: 'desk' });
+  useAdminLive();
 
   const toggle = () => {
     setCollapsed((value) => {
@@ -153,14 +147,14 @@ export function AdminApp() {
                 variant="ghost"
                 size="icon"
                 className="md:hidden"
-                aria-label={t('admin.openMenu')}
+                aria-label={t('admin:openMenu')}
               >
                 <Menu aria-hidden />
               </Button>
             </SheetTrigger>
             <SheetContent side="start" className="w-72 max-w-[85vw]">
-              <SheetTitle>{t('admin.title')}</SheetTitle>
-              <nav aria-label={t('admin.nav')}>
+              <SheetTitle>{t('admin:title')}</SheetTitle>
+              <nav aria-label={t('admin:navLabel')}>
                 <SectionLinks
                   rail={false}
                   onNavigate={() => {
@@ -181,7 +175,7 @@ export function AdminApp() {
             !collapsed && 'lg:w-60',
           )}
         >
-          <nav aria-label={t('admin.nav')} className="flex-1">
+          <nav aria-label={t('admin:navLabel')} className="flex-1">
             {/* md: rail. lg: full unless collapsed. Two lists keep each one simple. */}
             <div className={cn(!collapsed && 'lg:hidden')}>
               <SectionLinks rail />
@@ -196,7 +190,7 @@ export function AdminApp() {
             variant="ghost"
             size="icon"
             className="hidden self-center lg:inline-flex"
-            aria-label={collapsed ? t('admin.expand') : t('admin.collapse')}
+            aria-label={collapsed ? t('admin:expand') : t('admin:collapse')}
             aria-expanded={!collapsed}
             onClick={toggle}
           >
@@ -209,10 +203,15 @@ export function AdminApp() {
         </aside>
         <main key={location.pathname} className="mx-auto w-full max-w-[1280px] flex-1 p-4 md:p-6">
           <Routes>
-            <Route index element={<SectionScreen section="dashboard" />} />
-            {sections.slice(1).map(({ key, to }) => (
-              <Route key={key} path={to} element={<SectionScreen section={key} />} />
-            ))}
+            <Route index element={<Dashboard />} />
+            <Route path={adminRoutes.menu} element={<MenuScreen />} />
+            <Route path={adminRoutes.newItem} element={<ItemForm />} />
+            <Route path={adminRoutes.item} element={<ItemForm />} />
+            <Route path={adminRoutes.categories} element={<CategoriesScreen />} />
+            <Route path={adminRoutes.tables} element={<TablesScreen />} />
+            <Route path={adminRoutes.staff} element={<StaffScreen />} />
+            <Route path={adminRoutes.settings} element={<SettingsScreen />} />
+            <Route path={adminRoutes.billCheck} element={<BillCheckScreen />} />
           </Routes>
         </main>
       </div>

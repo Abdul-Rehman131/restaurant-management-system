@@ -59,19 +59,5 @@
     "updateReady": "A new version of the app is ready.",
     "updateNow": "Update",
     "offlineReady": "The app is ready to work with a weak connection."
-  },
-  "admin": {
-    "title": "Admin",
-    "nav": "Admin sections",
-    "dashboard": "Dashboard",
-    "menu": "Menu",
-    "tables": "Tables",
-    "staff": "Staff",
-    "settings": "Settings",
-    "reports": "Reports",
-    "collapse": "Collapse menu",
-    "expand": "Expand menu",
-    "openMenu": "Open menu",
-    "sectionEmpty": "{{section}} arrives in Phase 1"
   }
 }

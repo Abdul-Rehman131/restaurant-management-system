@@ -154,5 +154,6 @@
   "billGone": "This bill is closed",
   "billGoneBody": "It was paid, completed or cancelled.",
   "review": "Review",
-  "updating": "Updating the bill…"
+  "updating": "Updating the bill…",
+  "receiptTaxNumber": "Tax reg. no. {{number}}"
 }

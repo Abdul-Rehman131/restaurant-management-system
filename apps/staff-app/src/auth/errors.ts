@@ -9,6 +9,8 @@ export function loginErrorFrom(error: unknown): LoginError {
   // 403 from the token endpoint comes only from our access-token hook: the staff account is
   // not active (migration access_token_hook).
   if (error.status === 403) return 'inactive';
+  // A deactivated login is also banned (staff-admin, S5): Auth refuses it before the hook.
+  if (error.code === 'user_banned') return 'inactive';
   if (error.code === 'invalid_credentials' || error.status === 400) return 'invalidCredentials';
   if (error.status === 429) return 'tooManyAttempts';
   if (error.name === 'AuthRetryableFetchError' || !error.status) return 'network';
