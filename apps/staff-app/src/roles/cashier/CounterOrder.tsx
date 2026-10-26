@@ -105,8 +105,8 @@ export function CounterOrder() {
   );
 
   return (
-    <div className="mx-auto flex min-h-full max-w-3xl flex-col px-4">
-      <div className="flex items-center gap-2 py-3">
+    <div className="mx-auto flex h-full max-w-3xl flex-col px-4">
+      <div className="flex shrink-0 items-center gap-2 py-3">
         <Link
           to={cashierPaths.bills}
           aria-label={t('cashier:back')}
@@ -117,7 +117,7 @@ export function CounterOrder() {
         <h2 className="text-2xl font-semibold">{t('cashier:counterTitle')}</h2>
       </div>
 
-      <div className="space-y-3 pb-3">
+      <div className="shrink-0 space-y-3 pb-3">
         <div
           role="radiogroup"
           aria-label={t('cashier:counterType')}
@@ -192,14 +192,12 @@ export function CounterOrder() {
 
       <MenuPicker
         draftKey={key}
-        className="top-0"
         onEdit={() => {
           setError(null);
         }}
       />
-      <div className="flex-1 pb-4" />
 
-      <div className="sticky bottom-0 z-30 -mx-4">
+      <div className="-mx-4 shrink-0">
         {error && (
           <div
             role="alert"

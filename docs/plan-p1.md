@@ -82,6 +82,7 @@ result on a retry.
 - **Live updates**: every Realtime join refetches, the first one too, so a change between the first read and the join is never missed (fixed in S4 for all roles).
 - **Keyboard**: shortcuts are ignored while typing in a field (except Ctrl+P) and while a dialog is open; Escape in a field leaves the field, otherwise it goes back to the list.
 - **e2e data**: cashier tests create and archive their own tables (101 and up); tests that change an account use a disposable one (`createStaff`).
+- **Menu picker layout** (waiter and counter): the search and chips stay on top and only the list scrolls, in its own focusable region between them and the Send bar. Nothing scrolls under a sticky bar, so no button is ever half covered (CI failed axe target-size on a half-covered Add button). e2e checks 44 px (touch) and 40 px (desk) targets and runs axe with a button half past the bar.
 
 ## Out of P1
 Online orders, deals and pg_cron jobs (P2); delivery, riders and reservations (P3); profit,

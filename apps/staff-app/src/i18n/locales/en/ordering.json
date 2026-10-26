@@ -2,6 +2,7 @@
   "searchLabel": "Search the menu",
   "searchPlaceholder": "Search menu…",
   "categories": "Menu categories",
+  "menuList": "Menu items",
   "all": "All",
   "soldOut": "Sold out",
   "add": "Add {{name}}",

@@ -21,10 +21,10 @@ import { BatchBadge, ScreenTitle } from './parts';
 import { waiterPaths } from './paths';
 
 /**
- * Order entry (plan 4.11): sticky search and category chips, the active menu (cached, so it
- * works offline for browsing), sold-out items greyed and not selectable, a sticky bar with the
- * item count and Send to Kitchen. For a new order on a free table, or an ADD-ON batch on my
- * open order (BR-06). The cart stays on the device until the server confirms.
+ * Order entry (plan 4.11): search and category chips on top, the active menu (cached, so it
+ * works offline for browsing) scrolling below them, sold-out items greyed and not selectable,
+ * a bottom bar with the item count and Send to Kitchen. For a new order on a free table, or an
+ * ADD-ON batch on my open order (BR-06). The cart stays on the device until the server confirms.
  */
 export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder | null }) {
   const { t } = useTranslation(['waiter', 'rpc']);
@@ -128,15 +128,12 @@ export function OrderEntry({ table, order }: { table: TableRow; order: MyOrder |
 
       <MenuPicker
         draftKey={key}
-        className="top-14"
         onEdit={() => {
           setError(null);
         }}
       />
 
-      <div className="flex-1 pb-4" />
-
-      <div className="sticky bottom-0 z-30 -mx-4">
+      <div className="-mx-4 shrink-0">
         {error && (
           <div
             role="alert"

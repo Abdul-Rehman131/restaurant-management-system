@@ -43,15 +43,21 @@ export function WaiterApp() {
   useWaiterLive(session?.user.id);
   useReadyAlerts();
   const unread = useAlertStore((s) => s.alerts.filter((a) => !a.read).length);
-  // Order entry and order detail are full-screen tasks with their own bottom bar.
+  // Order entry and order detail are full-screen tasks with their own bottom bar. They fill
+  // the viewport and scroll inside, so order entry's menu list scrolls below its search bar.
   const onTable = useMatch(`${paths.waiter}/table/*`) !== null;
 
   return (
-    <div className="flex min-h-dvh flex-col bg-bg text-fg">
+    <div className={cn('flex flex-col bg-bg text-fg', onTable ? 'h-dvh' : 'min-h-dvh')}>
       <StaffHeader actions={<ShiftControl />} />
       <OfflineBanner online={state !== 'offline'} />
       <ReadyBanner />
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4">
+      <main
+        className={cn(
+          'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4',
+          onTable && 'min-h-0 overflow-y-auto',
+        )}
+      >
         <Routes>
           <Route index element={<TablesScreen />} />
           <Route path={waiterRoutes.table} element={<TableRoute adding={false} />} />

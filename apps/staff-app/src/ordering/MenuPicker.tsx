@@ -28,17 +28,18 @@ const normalize = (text: string) => text.toLocaleLowerCase().normalize('NFKD');
  * active menu with their menu price (no cost price), Sold Out items greyed without a button
  * (BR-13), tap a row for +1 and a QtyStepper once it is in the cart. It edits the cart draft
  * `draftKey`; the caller owns Review and Send.
+ *
+ * It fills the rest of the caller's column (a flex column of bounded height): the search and
+ * chips stay on top and only the list scrolls, below them. Nothing scrolls under a sticky bar,
+ * so no button is ever half covered by one (axe target-size, plan 4.6 rule 9).
  */
 export function MenuPicker({
   draftKey,
   onEdit,
-  className,
 }: {
   draftKey: string;
   /** Called on every cart change (clears a stale error). */
   onEdit?: () => void;
-  /** Classes for the sticky search and chips bar, e.g. where it sticks (below the header). */
-  className: string;
 }) {
   const { t } = useTranslation(['ordering', 'rpc']);
   const menu = useQuery(menuQuery);
@@ -164,13 +165,8 @@ export function MenuPicker({
     );
 
   return (
-    <>
-      <div
-        className={cn(
-          'sticky z-20 -mx-4 space-y-2 border-b border-border bg-bg/95 px-4 pt-1 pb-2 backdrop-blur',
-          className,
-        )}
-      >
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="-mx-4 shrink-0 space-y-2 border-b border-border px-4 pt-1 pb-2">
         <label className="relative block">
           <span className="sr-only">{t('ordering:searchLabel')}</span>
           <Search
@@ -220,7 +216,16 @@ export function MenuPicker({
           </ul>
         </nav>
       </div>
-      {list}
-    </>
+      {/* Focusable, so the list scrolls from the keyboard too (axe scrollable-region-focusable). */}
+      <div
+        role="region"
+        aria-label={t('ordering:menuList')}
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrolling region must be reachable by keyboard
+        tabIndex={0}
+        className="-mx-4 min-h-48 flex-1 overflow-y-auto overscroll-contain px-4"
+      >
+        {list}
+      </div>
+    </div>
   );
 }
