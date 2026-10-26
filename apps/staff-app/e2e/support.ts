@@ -6,6 +6,7 @@ import type { APIRequestContext, Page } from '@playwright/test';
 import { loadEnv } from 'vite';
 
 import { expect } from './fixtures';
+import { totp } from './totp';
 
 /**
  * Helpers for role flows against the LOCAL Supabase stack (`supabase start`, seed.sql demo
@@ -37,10 +38,83 @@ export async function signIn(page: Page, user: string, password = PASSWORD) {
   await answer;
 }
 
-/** Admin has no TOTP factor in the seed: skip the set-up prompt (enforcement is S5). */
+/** The seed Admin's TOTP secret, enrolled by global-setup.ts before the suite. */
+export function adminTotpSecret(): string {
+  const secret = process.env['E2E_ADMIN_TOTP_SECRET'];
+  if (!secret) throw new Error('E2E_ADMIN_TOTP_SECRET is missing: global-setup.ts did not run');
+  return secret;
+}
+
+/** The MFA step on the sign-in screen: a code from the factor's secret (S5, required). */
+export async function enterMfaCode(page: Page, secret: string) {
+  const code = page.getByLabel('6-digit code');
+  await code.fill(totp(secret));
+  await page.getByRole('button', { name: 'Verify' }).click();
+  await expect(code).toBeHidden();
+}
+
+/** Signs in; the seed Admin also passes the required MFA step with a code. */
 export async function signInAs(page: Page, user: string) {
   await signIn(page, user);
-  if (user === 'admin') await page.getByRole('button', { name: 'Skip for now' }).click();
+  if (user === 'admin') await enterMfaCode(page, adminTotpSecret());
+}
+
+// ===== Auth API (no browser): tokens and TOTP factors =====
+async function authApi<T>(path: string, token: string | null, body: unknown): Promise<T> {
+  const response = await fetch(`${supabaseUrl}/auth/v1${path}`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseKey,
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  const data: unknown = await response.json();
+  if (!response.ok) throw new Error(`${path}: ${JSON.stringify(data)}`);
+  return data as T;
+}
+
+/** A password-only (aal1) access token. */
+export async function passwordToken(user: string, password = PASSWORD): Promise<string> {
+  const session = await authApi<{ access_token: string }>('/token?grant_type=password', null, {
+    email: `${user}@staff.invalid`,
+    password,
+  });
+  return session.access_token;
+}
+
+/** Steps a session up to aal2 with a code from the factor's secret. Returns the new token. */
+export async function verifyTotp(token: string, factorId: string, secret: string) {
+  const challenge = await authApi<{ id: string }>(`/factors/${factorId}/challenge`, token, {});
+  const session = await authApi<{ access_token: string }>(`/factors/${factorId}/verify`, token, {
+    challenge_id: challenge.id,
+    code: totp(secret),
+  });
+  return session.access_token;
+}
+
+/** Enrols and verifies a TOTP factor for the user through the API; returns its secret. */
+export async function enrolTotp(user: string, password = PASSWORD): Promise<string> {
+  const token = await passwordToken(user, password);
+  const factor = await authApi<{ id: string; totp: { secret: string } }>('/factors', token, {
+    factor_type: 'totp',
+    friendly_name: 'e2e',
+  });
+  await verifyTotp(token, factor.id, factor.totp.secret);
+  return factor.totp.secret;
+}
+
+/** An aal2 token for a user with a verified factor (the session's user lists its factors). */
+export async function aal2Token(user: string, secret: string, password = PASSWORD) {
+  const token = await passwordToken(user, password);
+  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` },
+  });
+  const { factors } = (await response.json()) as { factors?: { id: string; status: string }[] };
+  const factor = factors?.find((f) => f.status === 'verified');
+  if (!factor) throw new Error(`${user} has no verified factor`);
+  return verifyTotp(token, factor.id, secret);
 }
 
 export const liveDot = (page: Page) =>
@@ -226,14 +300,19 @@ export function menuItemId(name: string): string {
  * A staff member calling RPCs directly, as another device would (the chef's tablet, a second
  * waiter). Signs in with the Auth password grant, then calls PostgREST with that token.
  */
-export async function apiAs(request: APIRequestContext, user: string) {
-  const login = await request.post(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-    headers: { apikey: supabaseKey },
-    data: { email: `${user}@staff.invalid`, password: PASSWORD },
-  });
-  expect(login.ok()).toBe(true);
-  const { access_token: token } = (await login.json()) as { access_token: string };
+export async function apiAs(
+  request: APIRequestContext,
+  user: string,
+  options: { aal: 'aal1' | 'aal2' } = { aal: 'aal2' },
+) {
+  // The seed Admin's RPCs need aal2 (S5): the MFA step with the suite's factor.
+  const token =
+    user === 'admin' && options.aal === 'aal2'
+      ? await aal2Token(user, adminTotpSecret())
+      : await passwordToken(user);
   return {
+    /** The access token, for calls that are not PostgREST (the staff-admin function). */
+    token,
     /** A PostgREST read as this user (RLS applies), e.g. 'payments?select=id'. */
     async select<T = unknown>(path: string): Promise<T> {
       const response = await request.get(`${supabaseUrl}/rest/v1/${path}`, {

@@ -4,6 +4,8 @@ import { defineConfig, devices } from '@playwright/test';
 // the Vite dev server. Role flows are added from T8/P1.
 export default defineConfig({
   testDir: './e2e',
+  // Enrols the seed Admin's TOTP factor (S5: MFA is required for Admin).
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: true,
   // One dev server serves every worker; keep it from being the bottleneck.
   workers: 3,

@@ -19,6 +19,8 @@
 //   update          {user_id, full_name, phone, role}           -> staff
 //   set_active      {user_id, is_active, reason}                -> staff + sessions_revoked
 //   reset_password  {user_id}                                   -> staff + temporary_password
+//   reset_mfa       {user_id}                                   -> staff + sessions_revoked
+//                   (lost authenticator: the factors are removed; the next sign-in sets up anew)
 // A retried create or reset (same request id, the first answer lost) returns the same account
 // with a NEW temporary password: the first one was never seen.
 //
@@ -303,6 +305,22 @@ async function resetPassword(actor: string, requestId: string, input: Input) {
   return { ...result, temporary_password: password };
 }
 
+async function resetMfa(actor: string, requestId: string, input: Input) {
+  const result = await db<StaffResult>('staff_admin_mfa_reset', {
+    p_actor: actor,
+    p_request_id: requestId,
+    p_user_id: uuid(input, 'user_id'),
+  });
+  // Done again on a replay, so a retry finishes a removal that failed the first time.
+  const listed = await authAdmin('GET', `/${result.staff.id}/factors`);
+  if (!listed.ok) throw new HttpError(500, 'AUTH_ADMIN_FAILED');
+  for (const factor of (await listed.json()) as { id: string }[]) {
+    const removed = await authAdmin('DELETE', `/${result.staff.id}/factors/${factor.id}`);
+    if (!removed.ok) throw new HttpError(500, 'AUTH_ADMIN_FAILED');
+  }
+  return result;
+}
+
 Deno.serve(async (request) => {
   const origin = request.headers.get('Origin');
   if (request.method === 'OPTIONS') {
@@ -337,6 +355,9 @@ Deno.serve(async (request) => {
         break;
       case 'reset_password':
         result = await resetPassword(actor, requestId, input);
+        break;
+      case 'reset_mfa':
+        result = await resetMfa(actor, requestId, input);
         break;
       default:
         throw new HttpError(400, 'BAD_REQUEST');

@@ -5,7 +5,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir helpers.psql
 
-select plan(46);
+select plan(51);
 
 grant usage on schema tests to service_role;
 grant execute on all functions in schema tests to service_role;
@@ -75,6 +75,8 @@ select is(tests.outcome_as(:'admin', tests.active_sql(:'admin', :'waiter', false
   'PERMISSION_DENIED', 'nor staff_admin_set_active');
 select is(tests.outcome_as(:'admin', format($$ select public.staff_admin_password_reset(%L, gen_random_uuid(), %L) $$, :'admin', :'waiter')),
   'PERMISSION_DENIED', 'nor staff_admin_password_reset');
+select is(tests.outcome_as(:'admin', format($$ select public.staff_admin_mfa_reset(%L, gen_random_uuid(), %L) $$, :'admin', :'admin2')),
+  'PERMISSION_DENIED', 'nor staff_admin_mfa_reset');
 select is(tests.outcome_as(null, tests.active_sql(:'admin', :'waiter', false, 'x')), 'PERMISSION_DENIED', 'nor anon');
 
 -- The actor is re-checked: an active Admin.
@@ -182,6 +184,17 @@ select is(tests.outcome_service(format($$ select public.staff_admin_password_res
   'CANNOT_CHANGE_SELF', 'an Admin cannot reset their own password here');
 select is(tests.outcome_service(format($$ select public.staff_admin_password_reset(%L, gen_random_uuid(), %L) $$, :'admin', :'former')),
   'STAFF_INACTIVE', 'nor the password of a deactivated account');
+
+-- ===== MFA reset (lost authenticator) =====
+insert into auth.sessions (id, user_id) values (gen_random_uuid(), :'admin2');
+select tests.call_service(format($$ select public.staff_admin_mfa_reset(%L, gen_random_uuid(), %L) $$, :'admin', :'admin2')) as mfa \gset
+select is((:'mfa'::jsonb ->> 'sessions_revoked')::int, 1, 'an MFA reset revokes the sessions');
+select is((select user_id from public.audit_log where action = 'staff.mfa_reset' and target_id = :'admin2'), :'admin'::uuid,
+  'staff.mfa_reset is in the audit log with the acting Admin');
+select is(tests.outcome_service(format($$ select public.staff_admin_mfa_reset(%L, gen_random_uuid(), %L) $$, :'admin', :'admin')),
+  'CANNOT_CHANGE_SELF', 'an Admin cannot reset their own MFA here');
+select is(tests.outcome_service(format($$ select public.staff_admin_mfa_reset(%L, gen_random_uuid(), %L) $$, :'admin', :'former')),
+  'STAFF_INACTIVE', 'nor the MFA of a deactivated account');
 
 select * from finish();
 rollback;

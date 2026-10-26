@@ -15,8 +15,10 @@
 --   staff_admin_update          full name, phone, role
 --   staff_admin_set_active      deactivate (reason required; sessions revoked) or reactivate
 --   staff_admin_password_reset  audit + revoke sessions (the function sets the new password)
+--   staff_admin_mfa_reset       audit + revoke sessions (the function removes the TOTP
+--                               factors; the user sets up a new one at the next sign-in)
 --
--- Guards: no Admin can deactivate, demote or reset the password of their own account
+-- Guards: no Admin can deactivate, demote or reset the password or MFA of their own account
 -- (CANNOT_CHANGE_SELF: a second Admin does it), and the last active Admin can never be
 -- deactivated or demoted (LAST_ADMIN). Active Admin rows are locked first, so two Admins
 -- demoting each other at the same moment cannot both succeed.
@@ -126,7 +128,7 @@ set search_path = ''
 as $$
 begin
   perform private.act_as_admin(p_actor);
-  if p_function not in ('staff_admin_create', 'staff_admin_password_reset') then
+  if p_function not in ('staff_admin_create', 'staff_admin_password_reset', 'staff_admin_mfa_reset') then
     raise exception 'REQUEST_ID_CONFLICT' using errcode = 'P0001';
   end if;
   return private.replay(p_function, p_request_id, p_target_id, p_args);
@@ -349,6 +351,49 @@ begin
 end;
 $$;
 
+-- staff_admin_mfa_reset: for a lost authenticator. Audits the reset and revokes every session
+-- of the user; the Edge Function then removes the user's MFA factors, so the next sign-in sets
+-- up a new one. Returns {staff: {...}, sessions_revoked, replayed}.
+-- Errors: NOT_AUTHORIZED (42501), REQUEST_ID_REQUIRED, REQUEST_ID_CONFLICT, STAFF_NOT_FOUND,
+--   STAFF_INACTIVE, CANNOT_CHANGE_SELF.
+create function public.staff_admin_mfa_reset(p_actor uuid, p_request_id uuid, p_user_id uuid)
+returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  v_replay jsonb;
+  p public.profiles%rowtype;
+  v_revoked integer;
+begin
+  perform private.act_as_admin(p_actor);
+  v_replay := private.replay('staff_admin_mfa_reset', p_request_id, p_user_id, '{}');
+  if v_replay is not null then
+    return v_replay;
+  end if;
+
+  select * into p from public.profiles where id = p_user_id for update;
+  if not found then
+    raise exception 'STAFF_NOT_FOUND' using errcode = 'P0001';
+  end if;
+  if p.id = p_actor then
+    raise exception 'CANNOT_CHANGE_SELF' using errcode = 'P0001';
+  end if;
+  if not p.is_active then
+    raise exception 'STAFF_INACTIVE' using errcode = 'P0001';
+  end if;
+
+  v_revoked := private.revoke_sessions(p.id);
+  perform private.audit('staff.mfa_reset', 'profiles', p.id, null, null,
+    jsonb_build_object('sessions_revoked', v_revoked));
+
+  return private.remember('staff_admin_mfa_reset', p_request_id, p_user_id,
+    jsonb_build_object('staff', private.admin_staff(p.id), 'sessions_revoked', v_revoked), '{}');
+end;
+$$;
+
 -- Staff changes in the audit log (BR-24): staff.created, staff.updated (the changed values of
 -- full_name, phone, role), staff.deactivated / staff.reactivated (with the reason).
 create function private.audit_profiles()
@@ -392,8 +437,10 @@ revoke all on function public.staff_admin_create(uuid, uuid, uuid, text, text, t
 revoke all on function public.staff_admin_update(uuid, uuid, uuid, text, text, public.app_role) from public, anon, authenticated;
 revoke all on function public.staff_admin_set_active(uuid, uuid, uuid, boolean, text) from public, anon, authenticated;
 revoke all on function public.staff_admin_password_reset(uuid, uuid, uuid) from public, anon, authenticated;
+revoke all on function public.staff_admin_mfa_reset(uuid, uuid, uuid) from public, anon, authenticated;
 grant execute on function public.staff_admin_replay(uuid, uuid, text, uuid, jsonb) to service_role;
 grant execute on function public.staff_admin_create(uuid, uuid, uuid, text, text, text, public.app_role) to service_role;
 grant execute on function public.staff_admin_update(uuid, uuid, uuid, text, text, public.app_role) to service_role;
 grant execute on function public.staff_admin_set_active(uuid, uuid, uuid, boolean, text) to service_role;
 grant execute on function public.staff_admin_password_reset(uuid, uuid, uuid) to service_role;
+grant execute on function public.staff_admin_mfa_reset(uuid, uuid, uuid) to service_role;
