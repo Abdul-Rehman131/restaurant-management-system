@@ -1030,6 +1030,10 @@ export type Database = {
         };
         Returns: Json;
       };
+      staff_admin_mfa_reset: {
+        Args: { p_actor: string; p_request_id: string; p_user_id: string };
+        Returns: Json;
+      };
       staff_admin_password_reset: {
         Args: { p_actor: string; p_request_id: string; p_user_id: string };
         Returns: Json;
