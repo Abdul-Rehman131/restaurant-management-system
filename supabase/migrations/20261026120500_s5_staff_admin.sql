@@ -183,7 +183,10 @@ begin
 end;
 $$;
 
--- staff_admin_update: full name, phone and role. Returns {staff: {...}, replayed}.
+-- staff_admin_update: full name, phone and role. A role change revokes the user's sessions,
+-- so they sign in again and land on the new role's screens (the JWT role claim that picks the
+-- screens would otherwise stay stale until it expires). Returns {staff: {...},
+-- sessions_revoked, replayed}.
 -- Errors: NOT_AUTHORIZED (42501), REQUEST_ID_REQUIRED, REQUEST_ID_CONFLICT, STAFF_NOT_FOUND,
 --   FULL_NAME_INVALID, PHONE_INVALID, ROLE_REQUIRED, CANNOT_CHANGE_SELF, LAST_ADMIN.
 create function public.staff_admin_update(
@@ -204,6 +207,7 @@ declare
   v_args jsonb := jsonb_build_object('full_name', p_full_name, 'phone', p_phone, 'role', p_role);
   v_replay jsonb;
   p public.profiles%rowtype;
+  v_revoked integer := 0;
 begin
   perform private.act_as_admin(p_actor);
   v_replay := private.replay('staff_admin_update', p_request_id, p_user_id, v_args);
@@ -229,9 +233,12 @@ begin
      set full_name = btrim(p_full_name), phone = nullif(btrim(p_phone), ''), role = p_role
    where id = p.id
      and (full_name, phone, role) is distinct from (btrim(p_full_name), nullif(btrim(p_phone), ''), p_role);
+  if p.role <> p_role then
+    v_revoked := private.revoke_sessions(p.id);
+  end if;
 
   return private.remember('staff_admin_update', p_request_id, p_user_id,
-    jsonb_build_object('staff', private.admin_staff(p.id)), v_args);
+    jsonb_build_object('staff', private.admin_staff(p.id), 'sessions_revoked', v_revoked), v_args);
 end;
 $$;
 

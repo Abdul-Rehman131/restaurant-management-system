@@ -5,7 +5,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir helpers.psql
 
-select plan(45);
+select plan(46);
 
 grant usage on schema tests to service_role;
 grant execute on all functions in schema tests to service_role;
@@ -118,9 +118,11 @@ select is(tests.outcome_service(format($$ select public.staff_admin_create(%L, g
   'ROLE_REQUIRED', 'a role is required');
 
 -- ===== Update =====
+insert into auth.sessions (id, user_id) values (gen_random_uuid(), :'newbie');
 select tests.call_service(format($$ select public.staff_admin_update(%L, gen_random_uuid(), %L, 'Newbie Khan', null, 'cashier') $$,
   :'admin', :'newbie')) as upd \gset
 select is(:'upd'::jsonb -> 'staff' ->> 'role', 'cashier', 'the role is changed');
+select is((:'upd'::jsonb ->> 'sessions_revoked')::int, 1, 'and the sessions revoked (sign in again for the new screens)');
 select is(
   (select new_value from public.audit_log where action = 'staff.updated' and target_id = :'newbie'),
   '{"full_name": "Newbie Khan", "phone": null, "role": "cashier"}'::jsonb, 'staff.updated lists the changed values');
