@@ -77,6 +77,57 @@ export async function expectNoSeriousAxe(page: Page) {
   );
 }
 
+/**
+ * The menu picker's targets: the Add and quantity stepper buttons are at least `min` px each
+ * way (44 on touch, 40 on desk; CLAUDE.md rule 10), and none is partly covered by the search
+ * and chips bar. The list is scrolled so only a quarter of an Add button (10 to 12 px) shows
+ * below the category chips, then axe runs: on CI (other fonts, other row heights) a button left
+ * there by chance failed target-size as "partially obscured" while the list still scrolled
+ * under the bar (S4).
+ */
+export async function expectMenuTargets(page: Page, min: number) {
+  const targets = page.getByRole('button', {
+    name: /^(Add |Remove |Increase quantity$|Decrease quantity$)/,
+  });
+  expect(await page.getByRole('group', { name: /^Quantity of / }).count()).toBeGreaterThan(0);
+  for (const target of await targets.all()) {
+    const box = await target.boundingBox();
+    const name = await target.getAttribute('aria-label');
+    expect(box, `${name ?? ''} has a box`).not.toBeNull();
+    expect(
+      Math.min(box?.width ?? 0, box?.height ?? 0),
+      `${name ?? ''} size`,
+    ).toBeGreaterThanOrEqual(min);
+  }
+
+  const adds = page.getByRole('button', { name: /^Add / });
+  const add = adds.nth(Math.floor((await adds.count()) / 2));
+  await add.scrollIntoViewIfNeeded();
+  const straddles = await add.evaluate((button) => {
+    // The category chips: the targets that covered the button (axe counts targets only).
+    const chips = document.querySelector('nav[aria-label="Menu categories"]');
+    if (!chips) throw new Error('no menu bar');
+    let scroller = button.parentElement;
+    while (
+      scroller &&
+      !(
+        scroller.scrollHeight > scroller.clientHeight &&
+        /auto|scroll/.test(getComputedStyle(scroller).overflowY)
+      )
+    ) {
+      scroller = scroller.parentElement;
+    }
+    const edge = chips.getBoundingClientRect().bottom;
+    const before = button.getBoundingClientRect();
+    const target = edge - (before.height * 3) / 4;
+    (scroller ?? document.documentElement).scrollTop += before.top - target;
+    const after = button.getBoundingClientRect();
+    return after.top < edge && after.bottom > edge;
+  });
+  expect(straddles, 'an Add button sits across the search bar edge').toBe(true);
+  await expectNoSeriousAxe(page);
+}
+
 /** SQL as the database owner, through the CLI's container (local stack only). */
 export function psql(sql: string): string {
   return execFileSync(

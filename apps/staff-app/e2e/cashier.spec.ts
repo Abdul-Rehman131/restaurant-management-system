@@ -6,6 +6,7 @@ import {
   apiAs,
   archiveTable,
   createTable,
+  expectMenuTargets,
   expectNoSeriousAxe,
   liveDot,
   menuItemId,
@@ -582,6 +583,8 @@ test('a counter Dine-In order with the waiter picker; the menu has no cost price
     await page.getByRole('button', { name: 'Add Daal Makhani' }).click();
     await shot(page, 'counter-order');
     await expectNoSeriousAxe(page);
+    // Desk density: 40 px targets, never half under the search bar (failed on CI in S4).
+    await expectMenuTargets(page, 40);
     await page.getByRole('button', { name: 'Send to Kitchen' }).click();
     await expect(page.getByRole('heading', { name: 'Table 104', level: 2 })).toBeVisible();
     await expect(page.getByText('Waiter: Demo Waiter Two').first()).toBeVisible();
