@@ -1,4 +1,4 @@
-import { usePublicSettings } from '@rms/shared';
+import { amountToInput, parseAmount, usePublicSettings } from '@rms/shared';
 import { Button, Input, Label, MoneyText, cn } from '@rms/ui';
 import { Banknote, CircleAlert, CreditCard, Split } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import type { RpcAction } from '../../lib/useRpcAction';
 import { useConnection } from '../../shell/connection-context';
 import { Kbd } from './Kbd';
-import { amountToInput, changeDue, parseAmount, quickCash, toTenders, type Tender } from './pay';
+import { changeDue, quickCash, toTenders, type Tender } from './pay';
 import { useCashierStore } from './store';
 
 type Method = 'cash' | 'card' | 'split';

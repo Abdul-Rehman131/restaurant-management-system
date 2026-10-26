@@ -1,4 +1,4 @@
-import { usePublicSettings } from '@rms/shared';
+import { parseAmount, usePublicSettings } from '@rms/shared';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -24,7 +24,6 @@ import { useTranslation } from 'react-i18next';
 
 import type { RpcErrorKey } from '../../lib/rpc';
 import { useConnection } from '../../shell/connection-context';
-import { parseAmount } from './pay';
 
 /** The longest reason the server keeps (private.require_reason). */
 const MAX_REASON = 300;

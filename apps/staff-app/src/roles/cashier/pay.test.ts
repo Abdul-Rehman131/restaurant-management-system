@@ -1,46 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { amountToInput, changeDue, parseAmount, quickCash, toTenders } from './pay';
-
-describe('parseAmount (typed text to minor units, no floats)', () => {
-  it('reads whole and decimal amounts exactly', () => {
-    expect(parseAmount('1028.50', 2)).toBe(102850);
-    expect(parseAmount('1,028.5', 2)).toBe(102850);
-    expect(parseAmount(' 5 000 ', 2)).toBe(500000);
-    expect(parseAmount('0.10', 2)).toBe(10);
-    expect(parseAmount('.5', 2)).toBeNull();
-    expect(parseAmount('12.', 2)).toBe(1200);
-    expect(parseAmount('0', 2)).toBe(0);
-  });
-
-  it('avoids float rounding: 0.1 + 0.2 style inputs stay exact', () => {
-    expect(parseAmount('1.15', 2)).toBe(115);
-    expect(parseAmount('4.35', 2)).toBe(435);
-    expect(parseAmount('1.005', 3)).toBe(1005);
-  });
-
-  it('refuses signs, letters, too many decimals and absurd sizes', () => {
-    expect(parseAmount('-5', 2)).toBeNull();
-    expect(parseAmount('5e3', 2)).toBeNull();
-    expect(parseAmount('Rs 50', 2)).toBeNull();
-    expect(parseAmount('1.234', 2)).toBeNull();
-    expect(parseAmount('12.5', 0)).toBeNull();
-    expect(parseAmount('', 2)).toBeNull();
-    expect(parseAmount('1234567890123', 2)).toBeNull();
-  });
-
-  it('follows the currency: 0 and 3 minor units', () => {
-    expect(parseAmount('1200', 0)).toBe(1200);
-    expect(parseAmount('1.234', 3)).toBe(1234);
-  });
-
-  it('round-trips with amountToInput', () => {
-    expect(amountToInput(102850, 2)).toBe('1028.50');
-    expect(amountToInput(5, 2)).toBe('0.05');
-    expect(amountToInput(1200, 0)).toBe('1200');
-    expect(parseAmount(amountToInput(987654, 2), 2)).toBe(987654);
-  });
-});
+import { changeDue, quickCash, toTenders } from './pay';
 
 describe('quick cash and change', () => {
   it('Exact, then the next round 500 and 1000 (PKR, 2 minor units)', () => {

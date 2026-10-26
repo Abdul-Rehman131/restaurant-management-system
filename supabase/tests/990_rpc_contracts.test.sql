@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir helpers.psql
 
-select plan(16);
+select plan(33);
 
 create function tests.keys(p_value jsonb) returns text[] language sql immutable as $$
   select coalesce(array_agg(k order by k), '{}') from jsonb_object_keys(p_value) k
@@ -155,10 +155,74 @@ select is(
 -- salesSummaryResponse (schemas/reports.ts)
 select is(
   tests.keys(tests.call_as(:'admin', 'select public.get_sales_summary()')),
-  array['average_order_value', 'business_date', 'by_type', 'cancelled_count', 'discount', 'gross_sales', 'net_sales',
+  array['average_order_value', 'business_date', 'by_hour', 'by_type', 'cancelled_count', 'discount', 'gross_sales', 'net_sales',
         'open_count', 'orders_count', 'service_charge', 'tax', 'top_items'],
   'get_sales_summary returns the salesSummaryResponse keys'
 );
+
+select is(
+  tests.keys(tests.call_as(:'admin', 'select public.get_sales_summary()') -> 'by_hour' -> 0),
+  array['hour', 'orders', 'sales'], 'by_hour entries have the salesSummaryResponse keys'
+);
+
+-- ===== Admin (schemas/admin.ts) =====
+select tests.call_as(:'admin', $$ select public.save_category(gen_random_uuid(), null, 'RC Soups') $$) as cat \gset
+select is(tests.keys(:'cat'), array['category', 'created', 'replayed'], 'save_category returns saveCategoryResponse');
+select is(tests.keys(:'cat'::jsonb -> 'category'), array['active_items', 'id', 'is_active', 'name', 'sort_order'],
+  'categories have the adminCategory keys');
+select tests.call_as(:'admin', format(
+  $$ select public.save_menu_item(gen_random_uuid(), null, %L) $$,
+  jsonb_build_object('category_id', :'cat'::jsonb -> 'category' ->> 'id', 'name', 'RC Soup', 'price', 100))) as itm \gset
+select is(tests.keys(:'itm'), array['created', 'item', 'replayed'], 'save_menu_item returns saveMenuItemResponse');
+select is(tests.keys(:'itm'::jsonb -> 'item'),
+  array['category_id', 'cost_price', 'description', 'id', 'image_path', 'is_active', 'is_available', 'name',
+        'needs_kitchen', 'prep_time_min', 'price', 'sort_order', 'updated_at'],
+  'items have the adminMenuItem keys');
+select is(tests.keys(tests.call_as(:'admin', 'select public.admin_menu()')), array['categories', 'items'],
+  'admin_menu returns adminMenuResponse');
+select is(tests.keys(tests.call_as(:'admin', format($$ select public.reorder_menu_items(gen_random_uuid(), %L, %L) $$,
+  :'cat'::jsonb -> 'category' ->> 'id', array[:'itm'::jsonb -> 'item' ->> 'id']::uuid[]))),
+  array['category_id', 'item_ids', 'replayed'], 'reorder_menu_items returns reorderMenuItemsResponse');
+select is(tests.keys(tests.call_as(:'admin', format($$ select public.set_menu_item_active(gen_random_uuid(), %L, false, 'x') $$,
+  :'itm'::jsonb -> 'item' ->> 'id'))), array['item', 'replayed'], 'set_menu_item_active returns setMenuItemActiveResponse');
+select is(tests.keys(tests.call_as(:'admin', format($$ select public.set_category_active(gen_random_uuid(), %L, false, 'x') $$,
+  :'cat'::jsonb -> 'category' ->> 'id'))), array['category', 'replayed'], 'set_category_active returns setCategoryActiveResponse');
+select is(tests.keys(tests.call_as(:'admin', format($$ select public.reorder_categories(gen_random_uuid(), %L) $$,
+  (select array_agg(id) from public.categories where is_active)))), array['category_ids', 'replayed'],
+  'reorder_categories returns reorderCategoriesResponse');
+
+select tests.call_as(:'admin', $$ select public.save_table(gen_random_uuid(), null, 989, 4, 'RC') $$) as tbl \gset
+select is(tests.keys(:'tbl'), array['created', 'replayed', 'table'], 'save_table returns saveTableResponse');
+select is(tests.keys(:'tbl'::jsonb -> 'table'), array['capacity', 'id', 'is_active', 'number', 'section', 'status'],
+  'tables have the adminTable keys');
+select is(tests.keys(tests.call_as(:'admin', format($$ select public.set_table_active(gen_random_uuid(), %L, false, 'x') $$,
+  :'tbl'::jsonb -> 'table' ->> 'id'))), array['replayed', 'table'], 'set_table_active returns setTableActiveResponse');
+
+select is(tests.keys(tests.call_as(:'admin', $$ select public.update_settings(gen_random_uuid(), '{"tax_bps": 0}') $$)),
+  tests.keys_plus(tests.call_as(:'admin', 'select public.get_settings()'), array['replayed']),
+  'update_settings returns updateSettingsResponse (get_settings + replayed)');
+select is(tests.keys(tests.call_as(:'admin', $$ select public.preview_bill_totals('take_away', array[100]::bigint[], 0) $$)),
+  array['discount', 'line_count', 'service_charge', 'subtotal', 'tax', 'total', 'type'],
+  'preview_bill_totals returns billCheckResponse');
+
+-- Staff (service_role, through the Edge Function): staffAdminResponse without the password.
+grant usage on schema tests to service_role;
+grant execute on all functions in schema tests to service_role;
+create function tests.as_service(p_sql text) returns jsonb language plpgsql as $f$
+declare v jsonb;
+begin
+  perform set_config('request.jwt.claims', '{"role": "service_role"}', true);
+  execute 'set local role service_role';
+  execute p_sql into v;
+  perform tests.logout();
+  return v;
+end;
+$f$;
+select tests.as_service(format($$ select public.staff_admin_set_active(%L, gen_random_uuid(), %L, false, 'x') $$,
+  :'admin', :'cashier')) as off \gset
+select is(tests.keys(:'off'), array['replayed', 'sessions_revoked', 'staff'], 'staff_admin_set_active returns staffAdminResponse keys');
+select is(tests.keys(:'off'::jsonb -> 'staff'), array['created_at', 'full_name', 'id', 'is_active', 'phone', 'role', 'username'],
+  'staff rows have the adminStaff keys');
 
 select * from finish();
 rollback;

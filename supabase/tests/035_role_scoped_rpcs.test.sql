@@ -31,7 +31,7 @@ select restaurant_name as expected_name from public.settings \gset
 select tests.login_as(:'admin');
 select ok(tests.settings_keys() @> array['tax_bps', 'rounding_mode', 'receipt_footer', 'restaurant_name'], 'admin: full settings, including pricing rules');
 select is(public.get_settings() ->> 'restaurant_name', :'expected_name', 'admin: restaurant name comes from the settings table');
-select is(cardinality(tests.settings_keys()), 20, 'admin: all 20 settings fields');
+select is(cardinality(tests.settings_keys()), 21, 'admin: all 21 settings fields (tax_registration_number since S5)');
 select tests.logout();
 
 select tests.login_as(:'cashier');
