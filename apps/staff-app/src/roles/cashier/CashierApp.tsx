@@ -120,9 +120,11 @@ export function CashierApp() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const billMatch = useMatch(`${paths.cashier}/bill/:orderId`);
-  const newMatch = useMatch(`${paths.cashier}/new`);
+  const listMatch = useMatch(paths.cashier);
   const selectedId = billMatch?.params.orderId ?? null;
-  const inDetail = billMatch !== null || newMatch !== null;
+  // Everything below the list is the detail pane: a bill, a new order, or "not found" (S6: on a
+  // phone the pane is shown alone, so an unknown address must not leave it hidden).
+  const inDetail = listMatch === null;
   const announcedBill = bills.data?.find((bill) => bill.order_id === announced);
 
   // Keep the screen awake for the whole shift (R10).
