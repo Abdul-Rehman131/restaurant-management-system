@@ -32,25 +32,35 @@ export const router = createBrowserRouter([
           { index: true, element: <RoleHomeRedirect /> },
           { path: paths.notAvailable, element: <NotAvailableScreen /> },
           { path: paths.changePassword, lazy: () => import('./screens/ChangePasswordScreen') },
-          // One lazy chunk per role: a waiter never downloads the cashier or admin screens.
+          // One lazy chunk per role: a waiter never downloads the cashier or admin screens. Each
+          // role has its own error boundary (a crash or a chunk that fails to load shows the
+          // Reload screen), and unknown addresses inside a role show "not found" (S6).
           {
             path: `${paths.waiter}/*`,
             element: <RequireRole allow="waiter" />,
+            errorElement: <RouteErrorScreen />,
             children: [{ path: '*', lazy: () => import('./roles/waiter/WaiterApp') }],
           },
           {
             path: `${paths.kitchen}/*`,
             element: <RequireRole allow="chef" />,
-            children: [{ path: '*', lazy: () => import('./roles/kitchen/KitchenApp') }],
+            errorElement: <RouteErrorScreen />,
+            // One screen: anything below /kitchen is an unknown address.
+            children: [
+              { index: true, lazy: () => import('./roles/kitchen/KitchenApp') },
+              { path: '*', element: <NotFoundScreen /> },
+            ],
           },
           {
             path: `${paths.cashier}/*`,
             element: <RequireRole allow="cashier" />,
+            errorElement: <RouteErrorScreen />,
             children: [{ path: '*', lazy: () => import('./roles/cashier/CashierApp') }],
           },
           {
             path: `${paths.admin}/*`,
             element: <RequireRole allow="admin" />,
+            errorElement: <RouteErrorScreen />,
             children: [{ path: '*', lazy: () => import('./roles/admin/AdminApp') }],
           },
           { path: '*', element: <NotFoundScreen /> },

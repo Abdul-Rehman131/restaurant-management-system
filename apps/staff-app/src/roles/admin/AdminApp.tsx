@@ -34,6 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { NavLink, Route, Routes, useLocation } from 'react-router';
 
 import { paths } from '../../paths';
+import { RoleNotFound } from '../../screens/RoleNotFound';
 import { useConnection } from '../../shell/connection-context';
 import { StaffHeader } from '../../shell/StaffHeader';
 import { useScreenAppearance } from '../../shell/theme-context';
@@ -212,6 +213,7 @@ export function AdminApp() {
             <Route path={adminRoutes.staff} element={<StaffScreen />} />
             <Route path={adminRoutes.settings} element={<SettingsScreen />} />
             <Route path={adminRoutes.billCheck} element={<BillCheckScreen />} />
+            <Route path="*" element={<RoleNotFound home={paths.admin} />} />
           </Routes>
         </main>
       </div>

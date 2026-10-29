@@ -11,6 +11,7 @@ import { NavLink, Route, Routes, useMatch } from 'react-router';
 
 import { useAuth } from '../../auth/auth-context';
 import { paths } from '../../paths';
+import { RoleNotFound } from '../../screens/RoleNotFound';
 import { useConnection } from '../../shell/connection-context';
 import { StaffHeader } from '../../shell/StaffHeader';
 import { useScreenAppearance } from '../../shell/theme-context';
@@ -64,6 +65,7 @@ export function WaiterApp() {
           <Route path={waiterRoutes.addItems} element={<TableRoute adding />} />
           <Route path={waiterRoutes.orders} element={<OrdersScreen />} />
           <Route path={waiterRoutes.alerts} element={<AlertsScreen />} />
+          <Route path="*" element={<RoleNotFound home={paths.waiter} />} />
         </Routes>
       </main>
       {!onTable && (

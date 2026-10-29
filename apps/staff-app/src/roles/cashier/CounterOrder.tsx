@@ -190,6 +190,25 @@ export function CounterOrder() {
         )}
       </div>
 
+      {(tables.isError || waiters.isError) && (
+        <div
+          role="alert"
+          className="mb-3 flex flex-wrap items-center gap-3 rounded-md bg-danger-bg p-3 text-danger"
+        >
+          <CircleAlert aria-hidden className="size-5 shrink-0" />
+          <p className="flex-1 font-medium">{t('cashier:pickersFailed')}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void tables.refetch();
+              void waiters.refetch();
+            }}
+          >
+            {t('cashier:retry')}
+          </Button>
+        </div>
+      )}
       <MenuPicker
         draftKey={key}
         onEdit={() => {

@@ -13,6 +13,7 @@ import { Route, Routes, useMatch, useNavigate } from 'react-router';
 
 import { playTones, reacquireWakeLockOnReturn, releaseWakeLock, startShift } from '../../lib/shift';
 import { paths } from '../../paths';
+import { RoleNotFound } from '../../screens/RoleNotFound';
 import { useConnection } from '../../shell/connection-context';
 import { StaffHeader } from '../../shell/StaffHeader';
 import { useScreenAppearance } from '../../shell/theme-context';
@@ -296,6 +297,7 @@ export function CashierApp() {
             />
             <Route path={cashierRoutes.bill} element={<BillDetail />} />
             <Route path={cashierRoutes.newOrder} element={<CounterOrder />} />
+            <Route path="*" element={<RoleNotFound home={paths.cashier} />} />
           </Routes>
         </section>
       </div>
