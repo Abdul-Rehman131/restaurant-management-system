@@ -29,15 +29,14 @@
     "verifyBody": "Open your authenticator app and enter the 6-digit code for this account.",
     "setupTitle": "Set up two-step sign-in",
     "setupBody": "Admin accounts need a second step. Scan the code with an authenticator app, then enter the 6-digit code it shows.",
-    "setupLater": "This becomes required in Phase 1. You can skip it for now.",
     "qrAlt": "QR code to add this account to an authenticator app",
     "secretLabel": "Or enter this key by hand",
     "code": "6-digit code",
     "verify": "Verify",
-    "skip": "Skip for now",
     "signOut": "Use another account",
     "wrongCode": "That code did not work. Check the time on your phone and try again.",
-    "setupFailed": "Two-step sign-in could not be set up. Try again."
+    "setupFailed": "Two-step sign-in could not be set up. Try again.",
+    "lostDevice": "Lost the phone with your codes? Ask another admin to reset your two-step sign-in."
   },
   "shell": {
     "account": "Account",
@@ -60,19 +59,5 @@
     "updateReady": "A new version of the app is ready.",
     "updateNow": "Update",
     "offlineReady": "The app is ready to work with a weak connection."
-  },
-  "admin": {
-    "title": "Admin",
-    "nav": "Admin sections",
-    "dashboard": "Dashboard",
-    "menu": "Menu",
-    "tables": "Tables",
-    "staff": "Staff",
-    "settings": "Settings",
-    "reports": "Reports",
-    "collapse": "Collapse menu",
-    "expand": "Expand menu",
-    "openMenu": "Open menu",
-    "sectionEmpty": "{{section}} arrives in Phase 1"
   }
 }

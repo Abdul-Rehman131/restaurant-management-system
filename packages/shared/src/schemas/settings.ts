@@ -26,6 +26,7 @@ export const getSettingsResponse = z.object({
   address: z.optional(z.nullable(z.string())),
   phone: z.optional(z.nullable(z.string())),
   receipt_footer: z.optional(z.nullable(z.string())),
+  tax_registration_number: z.optional(z.nullable(z.string())),
   // pricing: admin, cashier
   tax_bps: z.optional(bps),
   service_charge_bps: z.optional(bps),
@@ -56,6 +57,9 @@ export function parseSettings(data: unknown): PublicSettings {
   };
   if (s.address !== undefined) settings.address = s.address;
   if (s.phone !== undefined) settings.phone = s.phone;
+  if (s.tax_registration_number !== undefined) {
+    settings.taxRegistrationNumber = s.tax_registration_number;
+  }
   if (s.tax_bps !== undefined) settings.taxBps = s.tax_bps;
   if (s.service_charge_bps !== undefined) settings.serviceChargeBps = s.service_charge_bps;
   return settings;

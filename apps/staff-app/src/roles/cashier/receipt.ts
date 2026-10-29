@@ -9,6 +9,7 @@ export interface ReceiptSettings {
   restaurantName: string;
   address?: string | null | undefined;
   phone?: string | null | undefined;
+  taxRegistrationNumber?: string | null | undefined;
   receiptFooter: string | null;
   timezone: string;
 }
@@ -48,6 +49,8 @@ export interface Receipt {
   restaurantName: string;
   address: string | null;
   phone: string | null;
+  /** Printed when set (settings.tax_registration_number, S5). */
+  taxRegistrationNumber: string | null;
   orderNumber: string;
   /** Date and time in the restaurant's time zone (settings.timezone), not the device's. */
   date: string;
@@ -100,6 +103,7 @@ export function buildReceipt(
     restaurantName: settings.restaurantName,
     address: settings.address ?? null,
     phone: settings.phone ?? null,
+    taxRegistrationNumber: settings.taxRegistrationNumber ?? null,
     orderNumber: order.order_number,
     date,
     time,

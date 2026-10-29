@@ -8,3 +8,4 @@ export * from './orders';
 export * from './kitchen';
 export * from './menu';
 export * from './reports';
+export * from './admin';

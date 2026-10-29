@@ -48,7 +48,7 @@ created only by an Admin; public sign-up is disabled.
 
 | Username  | Role                                            | Lands on                  |
 | --------- | ----------------------------------------------- | ------------------------- |
-| `admin`   | Admin (skip the two-step set-up prompt locally) | `/admin`                  |
+| `admin`   | Admin (two-step sign-in is required, see below) | `/admin`                  |
 | `cashier` | Cashier                                         | `/cashier`                |
 | `waiter1` | Waiter                                          | `/waiter`                 |
 | `waiter2` | Waiter                                          | `/waiter`                 |
@@ -58,6 +58,40 @@ created only by an Admin; public sign-up is disabled.
 The seed also has `former`, a deactivated waiter whose sign-in is refused. These accounts
 exist only after `pnpm db:reset` on a local stack. They are never created on staging or
 production, where staff accounts are made by an Admin.
+
+## Admin two-step sign-in (MFA)
+
+Every Admin must use two-step sign-in (TOTP, any authenticator app) since S5. At the first
+sign-in the app shows a QR code and a key; after that it asks for the 6-digit code each time.
+Until the code is entered, every Admin function answers `MFA_REQUIRED` (the database checks
+the session's `aal2`), so a stolen password alone opens nothing.
+
+- **Local demo `admin`:** set it up with your phone at the first sign-in. To start again, remove
+  its factor: `docker exec supabase_db_rms psql -U postgres -c "delete from auth.mfa_factors
+where user_id = (select id from auth.users where email = 'admin@staff.invalid')"`. The e2e
+  suite never touches it: each test makes its own disposable Admin and enrols it through the
+  Auth API.
+- **Lost phone (staging, production):** another Admin opens **Admin → Staff**, and uses **Reset
+  two-step sign-in** on that person (audited, signs them out); they set up a new authenticator
+  at the next sign-in. Keep at least two active Admins for this reason.
+- **No other Admin can sign in (emergency only):** the project owner removes the factor in the
+  Supabase dashboard: **Authentication → Users →** the Admin **→ MFA factors → delete**. This is
+  an account recovery step, not a schema or data change; record it in the team's log.
+
+## Staff accounts (`staff-admin` Edge Function)
+
+Admins create and manage staff in **Admin → Staff**: create (a temporary password is shown
+once), edit, reset password, reset two-step sign-in, deactivate (sessions end, the login is
+banned) and reactivate. All of it goes through
+[`supabase/functions/staff-admin`](supabase/functions/staff-admin/index.ts), the only code that
+holds the service key: it checks the caller with Auth, `my_role()` and `aal2`, then calls the
+`service_role`-only database functions (migration `s5_staff_admin`). The browser never gets the key.
+
+- **Local:** `pnpm db:start` serves the function. On Windows, file changes may not reach the
+  container: after editing it, run `docker restart supabase_edge_runtime_rms`.
+- **Allowed origins:** the function answers browsers only from `STAFF_APP_ORIGINS` (comma
+  separated; default `http://localhost:5173,http://127.0.0.1:5173`). Set it as a function
+  secret per environment ([docs/setup-checklist.md](docs/setup-checklist.md)).
 
 ## Commands
 
@@ -108,9 +142,9 @@ proposes weekly updates for actions and npm packages.
 | Job              | What it checks                                                                                                                               | Same check locally                                                                                                             |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `quality`        | ESLint, TypeScript, Prettier, Vitest, contrast of both themes                                                                                | `pnpm lint && pnpm typecheck && pnpm format:check && pnpm test`                                                                |
-| `database`       | Supabase (database container only), every migration from zero plus seed, pgTAP, schema lint, and that `database.types.ts` matches the schema | `pnpm db:reset && pnpm db:test && pnpm db:lint && pnpm db:types && git diff --exit-code packages/shared/src/database.types.ts` |
+| `database`       | Supabase (database & Storage only), every migration from zero plus seed, pgTAP, schema lint, and that `database.types.ts` matches the schema | `pnpm db:reset && pnpm db:test && pnpm db:lint && pnpm db:types && git diff --exit-code packages/shared/src/database.types.ts` |
 | `build-and-size` | Production build of both apps, then the bundle budgets (plan 4.10); a budget exceeded fails the job                                          | `pnpm build && pnpm size`                                                                                                      |
-| `e2e`            | Supabase (auth, REST, Realtime), Chromium, the Playwright suite on phone and desktop, then the PWA update test on a production preview       | `pnpm db:start`, then `pnpm e2e`, then `pnpm --filter @rms/staff-app build && pnpm --filter @rms/staff-app e2e:pwa`            |
+| `e2e`            | Supabase (auth, REST, Realtime, Storage, functions), Chromium, Playwright on phone and desktop, then the PWA update test on a prod build     | `pnpm db:start`, then `pnpm e2e`, then `pnpm --filter @rms/staff-app build && pnpm --filter @rms/staff-app e2e:pwa`            |
 | `secrets`        | gitleaks over the **full** git history                                                                                                       | [gitleaks](https://github.com/gitleaks/gitleaks) installed: `gitleaks git --redact -v .`                                       |
 | `ci`             | Passes only when every job above passed (or was skipped). **This is the one required status check.**                                         |                                                                                                                                |
 

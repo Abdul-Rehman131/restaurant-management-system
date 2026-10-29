@@ -142,6 +142,24 @@ These need the database functions from the migrations, so they come after step 2
     `waiter` and `chef` with confirmed `@staff.invalid` logins and prints each new password
     **once**: put them in the vault, then `Clear-Host`. Running it again skips existing accounts.
 
+### 4.7 S5: staff administration and Admin MFA (after the S5 migrations are deployed)
+The `menu-images` Storage bucket and its policies come from the migrations; nothing to click.
+
+23. Deploy the `staff-admin` Edge Function from your machine (the CLI reads
+    `[functions.staff-admin] verify_jwt = false` from `supabase/config.toml`; the function checks
+    the caller itself):
+    ```powershell
+    pnpm exec supabase functions deploy staff-admin --project-ref aqxmdmkforcucmktwmjj
+    ```
+24. Tell it which origins may call it (the staging staff app; comma separated if more):
+    ```powershell
+    pnpm exec supabase secrets set --project-ref aqxmdmkforcucmktwmjj STAFF_APP_ORIGINS=https://<staging staff domain>
+    ```
+    The service key is provided to Edge Functions by Supabase itself; never set it by hand.
+25. Sign in as the staging `admin`: the app asks to set up two-step sign-in (an authenticator
+    app). Then create a **second** Admin in Admin → Staff, so a lost phone can be reset by the
+    other Admin (README, "Admin two-step sign-in").
+
 ## 5. Sentry (postponed to T11)
 Nothing to do now. In T11: create an organisation and two React projects (`rms-staff`,
 `rms-web`), invite the developers, and put the DSNs into env vars only.

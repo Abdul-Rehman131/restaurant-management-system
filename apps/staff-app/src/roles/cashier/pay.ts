@@ -1,34 +1,9 @@
 /**
  * Payment pad rules (M7, BR-11), pure so they are unit-tested (pay.test.ts). Amounts are
- * integers in minor units (CLAUDE.md rule 5): typed text is parsed as a decimal string, never
- * through a float. The server checks every tender again (record_payment); these only help
- * the cashier type and see the change before paying.
+ * integers in minor units (CLAUDE.md rule 5): typed text is parsed by parseAmount
+ * (@rms/shared, shared with the admin price fields), never through a float. The server checks
+ * every tender again (record_payment); these only help the cashier type and see the change.
  */
-
-/** 12 digits of major units is far beyond any bill; it also keeps numbers exact. */
-const MAX_WHOLE_DIGITS = 12;
-
-/**
- * "1,028.50" -> 102850 (2 minor units). Grouping commas and spaces are allowed; a sign, letters
- * or more decimals than the currency has are not. Returns null when the text is not an amount.
- */
-export function parseAmount(text: string, minorUnits: number): number | null {
-  const cleaned = text.replace(/[\s,]/g, '');
-  const match = /^(\d+)(?:\.(\d*))?$/.exec(cleaned);
-  if (!match) return null;
-  const whole = match[1] ?? '';
-  const fraction = match[2] ?? '';
-  if (whole.length > MAX_WHOLE_DIGITS || fraction.length > minorUnits) return null;
-  const digits = (whole + fraction.padEnd(minorUnits, '0')).replace(/^0+(?=\d)/, '');
-  return Number(digits);
-}
-
-/** Minor units back to the text the field shows: 102850 -> "1028.50" (no grouping). */
-export function amountToInput(amount: number, minorUnits: number): string {
-  if (minorUnits === 0) return String(amount);
-  const text = String(amount).padStart(minorUnits + 1, '0');
-  return `${text.slice(0, -minorUnits)}.${text.slice(-minorUnits)}`;
-}
 
 /**
  * Quick-cash buttons (plan 4.9): Exact, then the next round 500 and 1000 of the currency's
