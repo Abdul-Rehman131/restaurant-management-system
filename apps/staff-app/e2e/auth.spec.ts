@@ -142,7 +142,9 @@ test('deactivated while signed in: the next check signs the user out with "not a
     // Deactivate only after the app's own first account check has answered: if that check
     // ran after the switch, the app would sign out at once and the reload below would land on
     // a fresh login page without the message (seen under load in the S5 runs).
-    const firstCheck = page.waitForResponse((response) => response.url().includes('/rpc/my_role'));
+    const firstCheck = page.waitForResponse((response) =>
+      response.url().includes('/rpc/my_account'),
+    );
     await signInAs(page, username);
     await expect(page).toHaveURL(/\/waiter$/);
     await firstCheck;
@@ -183,9 +185,9 @@ test('a session ended elsewhere shows "session ended"', async ({ page, context }
 });
 
 test('rider has no screens yet (P3) and stays signed in', async ({ page }) => {
-  // The account-status check (my_role) must not mistake "no screens yet" for "not active":
+  // The account-status check (my_account, S6) must not mistake "no screens yet" for "not active":
   // wait for its answer, then the rider must still be on the notice, not back at login.
-  const status = page.waitForResponse((r) => r.url().includes('/rest/v1/rpc/my_role'));
+  const status = page.waitForResponse((r) => r.url().includes('/rest/v1/rpc/my_account'));
   await signInAs(page, 'rider');
   await expect(page).toHaveURL(/\/not-available$/);
   expect((await status).ok()).toBe(true);
