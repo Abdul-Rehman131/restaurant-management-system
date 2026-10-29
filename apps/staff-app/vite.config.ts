@@ -21,6 +21,12 @@ export default defineConfig(({ command, mode }) => {
   const appName = env['VITE_APP_NAME']?.trim() || 'Staff App';
 
   return {
+    define: {
+      // The Sentry release: the commit Vercel or GitHub Actions built (src/lib/sentry.ts).
+      'import.meta.env.VITE_RELEASE': JSON.stringify(
+        process.env['VERCEL_GIT_COMMIT_SHA'] ?? process.env['GITHUB_SHA'] ?? 'local',
+      ),
+    },
     plugins: [
       react(),
       tailwindcss(),
