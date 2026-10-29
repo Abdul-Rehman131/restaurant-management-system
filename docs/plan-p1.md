@@ -99,6 +99,21 @@ result on a retry.
 - **Bundles**: the admin strings moved out of the shell's `common` namespace; the lazy chart chunk imports the signed-in shell like every role chunk, so React and friends are not split into extra shared files. The signed-in shell stays at 178.6 KB.
 - **e2e**: each test that needs an Admin makes its own disposable one and enrols TOTP through the Auth API. A shared Admin cannot work in parallel: when an Admin passes the code step, Auth ends that Admin's other password-only sessions. The seed `admin` is never used by tests. The settings test's temporary restaurant name keeps the "Ember Kitchen" prefix that other specs check.
 
+## S6 as built: hardening decisions
+- **Own password**: **Change password** in the Account menu for every role. New and reset accounts carry `profiles.must_change_password`. While it is set, `private.require_role` raises `PASSWORD_CHANGE_REQUIRED` and `my_role()` is NULL, so RLS reads return nothing. The app routes to `/account/password` through `my_account()`. The `account` Edge Function checks the rules (10 to 72 characters, not the current one, not the username), checks the current password with a sign-in, sets the new one with the person's own session, clears the flag and ends their other sessions. It is audited and replayable by request id. Auth's own minimum is 10 too.
+- **`my_role()` is now NULL for an Admin below aal2** (S5 left it unchanged). A stolen aal1 Admin token reads nothing through RLS, not only no RPC. The MFA screen uses `my_account()`, which still answers at aal1.
+- **Robustness**: an error boundary per role route (Reload screen), not-found pages inside each role with its navigation kept, and an error with Try again wherever a list can fail. No blank screens: `robustness.spec`.
+- **Sentry**: built only when `VITE_SENTRY_DSN` is set (a dynamic import, so the bundles do not change without it). It sends errors only: no tracing, no replay, no user, cookies, headers, bodies or query strings. Release = `VERCEL_GIT_COMMIT_SHA`, else `GITHUB_SHA`, else `local`. No DSN exists yet.
+- **Headers**: HSTS on both apps. The staff app has a `Content-Security-Policy-Report-Only`, to be enforced after the staging check.
+- **Scripts (local only)**: `sim:day` (50+ orders, 7 reconciliation checks), `load:smoke` (50 Realtime screens, 200 orders), `db:restore-check` (dump, restore, row counts). They share `scripts/local-stack.mjs`.
+- **Realtime limit**: local and hosted Free allow about 100 messages a second, counted per screen delivered to. With 50 kitchen screens, each order is about 500 messages, so `load:smoke` paces 200 orders over 20 minutes (3x, 84 messages a second, nothing missed). Faster runs are throttled (`too_many_requests`): 5x lost a third of the kitchen events. A real restaurant (a few kitchen screens) stays far below the limit.
+- **Accessibility sweep**: `a11y.spec` (every screen, light and dark, phone and desktop), `keyboard.spec` (cashier and admin, no mouse, focus visible at every stop), and kitchen sizes at tablet size in `kitchen.spec`. Fixes it found:
+  - Dialogs and sheets opened without a Radix Trigger now return focus to what opened them (`useReturnFocus` in `packages/ui`).
+  - The MFA code field takes focus.
+  - An unknown `/cashier` address on a phone shows "not found" instead of a hidden pane.
+  - Axe found no serious issue on any screen.
+- **Docs**: [p1-acceptance.md](p1-acceptance.md), [security-review.md](security-review.md), [backup-restore.md](backup-restore.md), [uat-script.md](uat-script.md), the role guides in [guides/](guides/), and the go-live additions in [setup-checklist.md](setup-checklist.md) 6.1 and 7.
+
 ## Out of P1
 Online orders, deals and pg_cron jobs (P2); delivery, riders and reservations (P3); profit,
 expenses, shifts, the audit log viewer and `daily_summary` (P4).
