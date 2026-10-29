@@ -30,7 +30,7 @@ export default defineConfig({
     {
       name: 'phone',
       use: { ...devices['Pixel 7'] },
-      testIgnore: /(kitchen|cashier|admin|robustness)\.spec\.ts/,
+      testIgnore: /(kitchen|cashier|admin|robustness|keyboard)\.spec\.ts/,
     },
     {
       name: 'desktop',
