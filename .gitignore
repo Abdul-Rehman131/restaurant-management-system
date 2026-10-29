@@ -38,3 +38,7 @@ Thumbs.db
 
 # logs
 *.log
+
+# Database backups (pnpm db:restore-check -- --keep, docs/backup-restore.md): never committed
+*.dump
+backups/
