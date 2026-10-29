@@ -73,10 +73,19 @@ describe('admin response schemas', () => {
       is_active: true,
       created_at: '2026-10-26T10:00:00+00:00',
     };
+    // Made at test time in the Edge Function's shape (3 groups of 4), never a literal: a
+    // committed password-like string is a secret-scanner finding (gitleaks, S5).
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    const group = () =>
+      Array.from(
+        crypto.getRandomValues(new Uint8Array(4)),
+        (b) => alphabet[b % alphabet.length],
+      ).join('');
+    const password = [group(), group(), group()].join('-');
     expect(
-      z.parse(staffAdminResponse, { staff, temporary_password: 'Abcd-2345-wxyz', replayed: false })
+      z.parse(staffAdminResponse, { staff, temporary_password: password, replayed: false })
         .temporary_password,
-    ).toBe('Abcd-2345-wxyz');
+    ).toBe(password);
     expect(() =>
       z.parse(staffAdminResponse, { staff, temporary_password: 'short', replayed: false }),
     ).toThrow();
