@@ -187,3 +187,48 @@ Nothing here is built yet. There is no production project, workflow, secret or d
 - [ ] Real staff accounts are created by the Admin in the app (P1), never by `seed:staging`;
       production never gets demo data.
 - [ ] Update the README rollback section with the production steps.
+
+### 6.1 Go-live additions (S6)
+The full owner test day is [uat-script.md](uat-script.md); its result decides go-live.
+
+- [ ] **Owner data collected** (never committed to Git; typed into the app by the Admin):
+      restaurant name, address, phone, tax registration number, receipt footer; currency,
+      tax % and service charge % and the pricing rules (D2, Q1: check 5 real bills with
+      Admin → Bill check); the business-day cut-off (D10); the menu with prices, cost prices
+      and photos (D5); the tables with numbers, seats and sections (D6); the staff list
+      (name, phone, role); the receipt printer model (D3).
+- [ ] **Paid plans**: Supabase **Pro** for `rms-prod` (daily backups, no pause) and the hosting
+      decision **D14** taken (Vercel Pro or Cloudflare Pages), both owned by the client.
+- [ ] **Auth hook enabled** on production (4.6, step 21) and checked: an inactive login is
+      refused at sign-in.
+- [ ] **Edge Functions deployed** to production: `staff-admin` and `account` (4.7 steps 23
+      and 24, with the production project ref and `STAFF_APP_ORIGINS` = the production domain).
+      Keep Auth's "Secure password change" setting **off** (the default): `account` checks
+      the current password itself.
+- [ ] **Sign-in rate limits** checked in Authentication → Rate Limits (sign-ins per 5 minutes
+      per IP; the default 30 is fine). See [security-review.md](security-review.md).
+- [ ] **Password policy** in Authentication → Providers → Email (staging and production):
+      minimum length **10** (as in `supabase/config.toml`), and **Leaked password protection**
+      on (a Pro plan feature).
+- [ ] **Staff accounts**: every person gets their own account from Admin → Staff (temporary
+      password, changed at the first sign-in). **Two Admins**, each with two-step sign-in,
+      so a lost phone can be reset. No shared logins.
+- [ ] **Printer test**: on the counter computer, print 3 receipts (Cash, Card, split) on the
+      80 mm printer from Chrome or Edge; check the width, the tax number and the footer.
+- [ ] **Monitoring**: optional Sentry (create a project, put its DSN in `VITE_SENTRY_DSN` for
+      the production build only) and an uptime check on the staff app and the Supabase
+      health endpoint.
+- [ ] **Content-Security-Policy**: `vercel.json` sends it as *Report-Only*. Open every screen
+      on staging with DevTools open; when the console shows no CSP reports, change the header
+      name to `Content-Security-Policy` (enforced) in a PR.
+- [ ] **Backup restore tested** on a fresh project ([backup-restore.md](backup-restore.md)).
+- [ ] **Parallel run** of 3 to 7 days (spec 12): the system and the paper slips together;
+      every night compare the dashboard's sales with the paper total and write both down.
+- [ ] **Rollback plan agreed** (README "Rollback", spec 12): paper slips are ready at the
+      counter; who decides to switch back; the previous version can be redeployed from Git.
+
+## 7. Weekly (while the restaurant is live)
+- [ ] **Backup** of production (Monday): the 10-minute manual backup in
+      [backup-restore.md](backup-restore.md), stored in the encrypted backup place; write
+      it in the backup log. The Pro plan's daily backups are the second copy.
+- [ ] Look at the Admin Staff list: anyone who left is deactivated; still two active Admins.
