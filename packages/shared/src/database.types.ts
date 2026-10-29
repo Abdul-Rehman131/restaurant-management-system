@@ -676,6 +676,7 @@ export type Database = {
           full_name: string;
           id: string;
           is_active: boolean;
+          must_change_password: boolean;
           phone: string | null;
           role: Database['public']['Enums']['app_role'];
           updated_at: string;
@@ -688,6 +689,7 @@ export type Database = {
           full_name: string;
           id: string;
           is_active?: boolean;
+          must_change_password?: boolean;
           phone?: string | null;
           role: Database['public']['Enums']['app_role'];
           updated_at?: string;
@@ -699,6 +701,7 @@ export type Database = {
           full_name?: string;
           id?: string;
           is_active?: boolean;
+          must_change_password?: boolean;
           phone?: string | null;
           role?: Database['public']['Enums']['app_role'];
           updated_at?: string;
@@ -854,6 +857,11 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      account_password_changed: {
+        Args: { p_keep_session: string; p_request_id: string; p_user_id: string };
+        Returns: Json;
+      };
+      account_password_replay: { Args: { p_request_id: string; p_user_id: string }; Returns: Json };
       add_items_to_order: {
         Args: { p_items: Json; p_order_id: string; p_request_id: string };
         Returns: Json;
@@ -928,6 +936,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      my_account: { Args: Record<PropertyKey, never>; Returns: Json };
       my_role: {
         Args: Record<PropertyKey, never>;
         Returns: Database['public']['Enums']['app_role'];

@@ -49,10 +49,10 @@ select is(tests.outcome_aal(:'admin', null, 'select public.get_settings()'), 'MF
   'a session without an aal claim counts as aal1');
 
 -- ===== What still works at aal1 =====
-select is(tests.outcome_aal(:'admin', 'aal1', 'select public.my_role()'), 'ok',
-  'my_role() works at aal1 (account-status check on the MFA screen)');
+select is(tests.outcome_aal(:'admin', 'aal1', 'select public.my_account()'), 'ok',
+  'my_account() works at aal1 (the account check on the MFA screen)');
 select tests.login_as(:'admin', 'aal1');
-select is(public.my_role()::text, 'admin', 'and still says admin');
+select is(public.my_role(), null, 'my_role() is NULL for an Admin at aal1 since S6: RLS reads refuse too');
 select tests.logout();
 
 -- ===== aal2, and other roles =====

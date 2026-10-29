@@ -31,6 +31,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <RoleHomeRedirect /> },
           { path: paths.notAvailable, element: <NotAvailableScreen /> },
+          { path: paths.changePassword, lazy: () => import('./screens/ChangePasswordScreen') },
           // One lazy chunk per role: a waiter never downloads the cashier or admin screens.
           {
             path: `${paths.waiter}/*`,

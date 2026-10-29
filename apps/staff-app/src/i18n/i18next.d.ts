@@ -3,6 +3,7 @@ import 'i18next';
 import type { UiResources } from '@rms/ui/i18n';
 
 import type devEn from '../dev/locales/en/dev.json';
+import type accountEn from './locales/en/account.json';
 import type adminEn from './locales/en/admin.json';
 import type cashierEn from './locales/en/cashier.json';
 import type kitchenEn from './locales/en/kitchen.json';
@@ -20,6 +21,7 @@ declare module 'i18next' {
     defaultNS: typeof defaultNS;
     resources: typeof en &
       UiResources & {
+        account: typeof accountEn;
         admin: typeof adminEn;
         cashier: typeof cashierEn;
         dev: typeof devEn;

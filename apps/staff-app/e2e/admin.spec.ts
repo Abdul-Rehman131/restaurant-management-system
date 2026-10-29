@@ -327,6 +327,13 @@ test('staff created here sign in; a deactivated one is refused and loses the ses
   const phone = await staff.newPage();
   try {
     await signIn(phone, username, password);
+    // A temporary password must be changed at the first sign-in (S6).
+    await expect(phone).toHaveURL(/\/account\/password$/);
+    const own = `river-${Math.random().toString(36).slice(2, 8)}-lamp`;
+    await phone.getByLabel('Temporary password').fill(password);
+    await phone.getByLabel('New password', { exact: true }).fill(own);
+    await phone.getByLabel('New password again').fill(own);
+    await phone.getByRole('button', { name: 'Save the new password' }).click();
     await expect(phone).toHaveURL(/\/waiter$/);
 
     // Deactivate with a reason: the open session ends at the next request.
@@ -345,7 +352,7 @@ test('staff created here sign in; a deactivated one is refused and loses the ses
     await phone.reload();
     await expect(phone).toHaveURL(/\/login/);
     await expect(phone.getByText(/not active any more/i)).toBeVisible();
-    await signIn(phone, username, password);
+    await signIn(phone, username, own);
     await expect(phone.getByText(/not active/i)).toBeVisible();
     await expect(phone).toHaveURL(/\/login/);
   } finally {

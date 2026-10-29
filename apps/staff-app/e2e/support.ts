@@ -71,6 +71,13 @@ export async function signInAs(page: Page, user: string) {
   if (secret) await enterMfaCode(page, secret);
 }
 
+/** The TOTP secret of an Admin made by createAdmin (for a sign-in the test drives itself). */
+export function totpSecretOf(user: string): string {
+  const secret = totpSecrets.get(user);
+  if (!secret) throw new Error(`${user} was not made by createAdmin`);
+  return secret;
+}
+
 /**
  * A disposable Admin with a verified TOTP factor (MFA is required for Admin, S5). Returns the
  * username; signInAs and apiAs use its factor. Archive it afterwards with setStaffActive.

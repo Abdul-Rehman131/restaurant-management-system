@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
   type Theme,
 } from '@rms/ui';
-import { CircleUserRound, LogOut } from 'lucide-react';
+import { CircleUserRound, KeyRound, LogOut } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -67,6 +67,14 @@ export function AccountMenu({ showTheme = true }: { showTheme?: boolean }) {
             <DropdownMenuSeparator />
           </>
         )}
+        <DropdownMenuItem
+          onSelect={() => {
+            void navigate(paths.changePassword);
+          }}
+        >
+          <KeyRound aria-hidden />
+          {t('shell.changePassword')}
+        </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => {
             void auth.signOut().then(() => navigate(paths.login, { replace: true }));

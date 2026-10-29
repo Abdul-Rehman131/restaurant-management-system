@@ -1,28 +1,38 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
-import { useAuth, type AppRole } from '../auth/auth-context';
+import { useAuth } from '../auth/auth-context';
 import { db } from '../lib/db';
 
+export const accountKey = ['my-account'] as const;
+
+export interface Account {
+  active: boolean;
+  /** A temporary password must be changed first (S6): every API call is refused until then. */
+  password_change: boolean;
+}
+
 /**
- * Is this staff account still active? public.my_role() is the source of truth: it returns NULL
- * the moment an Admin deactivates the account (every role may call it). Checked on sign-in and
- * again whenever the screen regains focus; NULL signs the user out with "not active".
+ * Is this staff account still active, and is a password change pending? public.my_account()
+ * is the source of truth (my_role() itself is NULL until the person may work, S6). Checked on
+ * sign-in and again whenever the screen regains focus; inactive signs the user out with "not
+ * active". `settled` is true once the first answer (or a failure, e.g. offline) is in.
  */
-export function useStaffStatus() {
+export function useStaffStatus(): { account: Account | undefined; settled: boolean } {
   const { signOut } = useAuth();
-  const { data } = useQuery({
-    queryKey: ['my-role'],
+  const { data, isPending, isError } = useQuery({
+    queryKey: accountKey,
     queryFn: async () => {
-      const { data: role, error } = await db.rpc('my_role');
+      const { data: account, error } = await db.rpc('my_account');
       if (error) throw error;
-      // The generated type omits NULL, but my_role() returns NULL for inactive staff.
-      return { role: role as AppRole | null };
+      return account as unknown as Account;
     },
     staleTime: 60_000,
   });
 
   useEffect(() => {
-    if (data && data.role === null) void signOut('inactive');
+    if (data && !data.active) void signOut('inactive');
   }, [data, signOut]);
+
+  return { account: data, settled: !isPending || isError };
 }
