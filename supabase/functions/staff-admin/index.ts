@@ -3,9 +3,10 @@
 // The browser (Admin screens) calls it with the Admin's access token. The service key exists
 // only here, in the function's environment, never in a browser bundle (CLAUDE.md rule 4).
 //
-//   1. The caller: Auth verifies the access token (GET /auth/v1/user), public.my_role() called
-//      WITH THE CALLER'S TOKEN must be 'admin' (profiles, so a deactivated Admin is refused at
-//      once), and the session must be aal2 (MFA).
+//   1. The caller: Auth verifies the access token (GET /auth/v1/user), public.my_account()
+//      called WITH THE CALLER'S TOKEN must say an active 'admin' (profiles, so a deactivated
+//      Admin is refused at once), the session must be aal2 (MFA), and no temporary password
+//      may be pending (PASSWORD_CHANGE_REQUIRED, S6).
 //      CORS: only STAFF_APP_ORIGINS get the CORS headers, and a request from any other Origin
 //      is refused here (the local gateway answers preflights itself; this check still holds).
 //   2. The database half runs in service_role-only functions (migration s5_staff_admin) with
@@ -111,7 +112,9 @@ async function verifyAdmin(request: Request): Promise<string> {
   const { id } = (await user.json()) as { id?: string };
   if (!id) throw new HttpError(401, 'NOT_SIGNED_IN');
 
-  const role = await fetch(`${supabaseUrl}/rest/v1/rpc/my_role`, {
+  // my_account(), not my_role(): since S6 my_role() is NULL for an Admin below aal2 or with a
+  // pending password change, which would hide the reason. Same order as require_role.
+  const account = await fetch(`${supabaseUrl}/rest/v1/rpc/my_account`, {
     method: 'POST',
     headers: {
       apikey: anonKey,
@@ -120,8 +123,14 @@ async function verifyAdmin(request: Request): Promise<string> {
     },
     body: '{}',
   });
-  if (!role.ok || (await role.json()) !== 'admin') throw new HttpError(403, 'NOT_AUTHORIZED');
+  const state = (account.ok ? await account.json() : null) as {
+    active?: boolean;
+    role?: string | null;
+    password_change?: boolean;
+  } | null;
+  if (!state?.active || state.role !== 'admin') throw new HttpError(403, 'NOT_AUTHORIZED');
   if (claims(token)['aal'] !== 'aal2') throw new HttpError(403, 'MFA_REQUIRED');
+  if (state.password_change) throw new HttpError(403, 'PASSWORD_CHANGE_REQUIRED');
   return id;
 }
 

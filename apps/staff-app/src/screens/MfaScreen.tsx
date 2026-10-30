@@ -31,6 +31,12 @@ export function MfaScreen() {
   const [factorId, setFactorId] = useState<string | null>(null);
   const [enrolment, setEnrolment] = useState<Enrolment | null>(null);
   const started = useRef(false);
+  // The one thing to do here: the code field takes focus, so a keyboard user types the code at
+  // once instead of tabbing from the top of the page (S6 sweep).
+  const codeInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    codeInput.current?.focus();
+  }, []);
   useScreenAppearance({ density: 'touch' });
 
   const setupMode = !auth.hasVerifiedFactor;
@@ -131,6 +137,7 @@ export function MfaScreen() {
           <Label htmlFor={codeId}>{t('mfa.code')}</Label>
           <Input
             id={codeId}
+            ref={codeInput}
             inputMode="numeric"
             autoComplete="one-time-code"
             pattern="[0-9]{6}"

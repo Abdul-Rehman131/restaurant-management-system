@@ -27,6 +27,7 @@ as $$
     'public.get_sales_summary(p_business_date date)',
     'public.get_settings()',
     'public.move_order_table(p_request_id uuid, p_order_id uuid, p_to_table_id uuid, p_waiter_id uuid)',
+    'public.my_account()',
     'public.my_role()',
     'public.preview_bill_totals(p_type order_type, p_line_amounts bigint[], p_discount bigint)',
     'public.record_payment(p_request_id uuid, p_order_id uuid, p_tenders jsonb)',

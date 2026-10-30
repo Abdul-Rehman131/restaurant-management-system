@@ -93,6 +93,15 @@ holds the service key: it checks the caller with Auth, `my_role()` and `aal2`, t
   separated; default `http://localhost:5173,http://127.0.0.1:5173`). Set it as a function
   secret per environment ([docs/setup-checklist.md](docs/setup-checklist.md)).
 
+## Own password
+
+Every staff member changes their password from the **Account** menu (**Change password**). A
+new or reset account must choose its own password at the first sign-in: the profile flag
+`must_change_password` blocks every database function until then (Admins included, after the
+MFA step). The change goes through [`supabase/functions/account`](supabase/functions/account/index.ts),
+which checks the current password and the rules (10 to 72 characters, not the current one, not
+the username) and signs the person out on their other devices. Deploy it like `staff-admin`.
+
 ## Commands
 
 | Command                                              | What it does                                                                                                                                                                                                                                      |
@@ -106,6 +115,9 @@ holds the service key: it checks the caller with Auth, `my_role()` and `aal2`, t
 | `pnpm db:lint`                                       | Lint the database schema and functions                                                                                                                                                                                                            |
 | `pnpm db:types`                                      | Regenerate `packages/shared/src/database.types.ts` from the local DB                                                                                                                                                                              |
 | `pnpm seed:staging`                                  | Create the staging staff accounts by hand (see Deployment); `-- --local` tries it locally                                                                                                                                                         |
+| `pnpm sim:day`                                       | A simulated restaurant day (50+ orders through the real RPCs) with a reconciliation and a PASS/FAIL report; local stack only                                                                                                                      |
+| `pnpm load:smoke`                                    | Smoke load: 50 Realtime kitchen screens and 200 orders in a compressed hour (`COMPRESS`, default 3), p50/p95 per RPC and the kitchen event; local only (about 20 minutes)                                                                         |
+| `pnpm db:restore-check`                              | Backup check: dump the local DB, restore it into a fresh database, compare row counts ([docs/backup-restore.md](docs/backup-restore.md))                                                                                                          |
 | `pnpm brand:icons`                                   | Regenerate favicon and PWA icons from `packages/ui/brand/logo-mark.svg`                                                                                                                                                                           |
 | `pnpm build && pnpm size`                            | Build, then check the initial-JS bundle budgets (plan 4.10)                                                                                                                                                                                       |
 | `pnpm --filter @rms/ui test`                         | Contrast check for both themes (text 4.5:1, UI 3:1); also runs in `pnpm test`                                                                                                                                                                     |

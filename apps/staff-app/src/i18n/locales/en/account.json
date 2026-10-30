@@ -1,0 +1,32 @@
+{
+  "title": "Change your password",
+  "body": "Choose a new password. You stay signed in on this device; other devices are signed out.",
+  "forcedTitle": "Choose your own password",
+  "forcedBody": "You signed in with a temporary password. Choose your own before you start.",
+  "current": "Current password",
+  "currentTemporary": "Temporary password",
+  "new": "New password",
+  "confirm": "New password again",
+  "ruleLength": "At least 10 characters (72 at most)",
+  "ruleNotCurrent": "Not the same as the current password",
+  "ruleNoUsername": "Does not contain your username",
+  "ruleMatch": "Both new passwords match",
+  "ruleMet": ": done",
+  "ruleNotMet": ": not yet",
+  "save": "Save the new password",
+  "cancel": "Cancel",
+  "signOut": "Sign out",
+  "changed": "Your password is changed.",
+  "error": {
+    "PASSWORD_TOO_SHORT": "The new password is too short. Use at least 10 characters.",
+    "PASSWORD_TOO_LONG": "The new password is too long. Use at most 72 characters.",
+    "PASSWORD_SAME": "The new password must be different from the current one.",
+    "PASSWORD_HAS_USERNAME": "The new password must not contain your username.",
+    "CURRENT_PASSWORD_WRONG": "The current password is not right. Check it and try again.",
+    "MFA_REQUIRED": "Enter the code from your authenticator app first.",
+    "NOT_SIGNED_IN": "You are signed out. Sign in again, then change your password.",
+    "NOT_AUTHORIZED": "This account can't change its password. Ask your manager.",
+    "network": "The connection dropped. Check it, then tap Save again: nothing is changed twice.",
+    "unknown": "The password could not be changed. Try again; if it keeps happening, tell your manager."
+  }
+}

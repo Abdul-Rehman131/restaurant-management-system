@@ -3,6 +3,7 @@ export const paths = {
   home: '/',
   login: '/login',
   mfa: '/login/mfa',
+  changePassword: '/account/password',
   notAvailable: '/not-available',
   waiter: '/waiter',
   kitchen: '/kitchen',

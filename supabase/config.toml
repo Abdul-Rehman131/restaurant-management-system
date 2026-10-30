@@ -181,7 +181,9 @@ enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+minimum_password_length = 10
+# S6: the same 10 as the account function's rule, so a password set straight through the Auth
+# API can't be shorter. Set it in the hosted projects too (setup-checklist.md 6.1).
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
 password_requirements = ""
@@ -424,4 +426,9 @@ enabled = true
 # RMS (S5): staff administration. The function verifies the caller itself (Auth /user, aal2,
 # my_role() = admin), so the gateway JWT check is off: it would also block the CORS preflight.
 [functions.staff-admin]
+verify_jwt = false
+
+# RMS (S6): own password change. The function verifies the caller itself (Auth /user,
+# my_account(), aal2 for Admins), so the gateway JWT check is off, as for staff-admin.
+[functions.account]
 verify_jwt = false

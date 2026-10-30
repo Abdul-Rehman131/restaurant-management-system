@@ -17,6 +17,7 @@
     "@hookform/resolvers": "5.9.1",
     "@rms/shared": "workspace:*",
     "@rms/ui": "workspace:*",
+    "@sentry/react": "11.8.0",
     "@supabase/auth-js": "2.117.3",
     "@supabase/postgrest-js": "2.117.3",
     "@supabase/realtime-js": "2.117.3",

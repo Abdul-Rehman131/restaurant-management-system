@@ -1,9 +1,11 @@
-import { devices, type Browser, type Page } from '@playwright/test';
+import { devices, type Browser, type Locator, type Page } from '@playwright/test';
 
 import { expect, test } from './fixtures';
 import {
   animationsDone,
   apiAs,
+  archiveTable,
+  createTable,
   expectNoSeriousAxe,
   freeTable,
   liveDot,
@@ -384,5 +386,79 @@ test('offline: the banner shows and every kitchen action is disabled', async ({
     await expect(start).toBeEnabled();
   } finally {
     cancelTakeAway('E2E Offline');
+  }
+});
+
+/** The smaller side of an element's box, in CSS px. */
+async function minSide(locator: Locator) {
+  const box = await locator.boundingBox();
+  return Math.min(box?.width ?? 0, box?.height ?? 0);
+}
+
+/** A switch's hit area: its box grown by the invisible ::before layer that widens it (ui Switch). */
+const hitSide = (locator: Locator) =>
+  locator.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const before = getComputedStyle(element, '::before');
+    const grow = (inset: string) => (inset === 'auto' ? 0 : Math.max(0, -parseFloat(inset)));
+    return Math.min(
+      box.width + grow(before.left) + grow(before.right),
+      box.height + grow(before.top) + grow(before.bottom),
+    );
+  });
+
+const fontPx = (locator: Locator) =>
+  locator.evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
+
+test('tablet: ticket text readable from a distance; buttons at least 56 px, 44 in the header and sheet', async ({
+  page,
+  request,
+}) => {
+  // S6 accessibility sweep: sizes at the kitchen's real device (a landscape tablet). Own table
+  // 171, so no other kitchen test sees this ticket.
+  createTable(171);
+  try {
+    const waiter = await apiAs(request, 'waiter2');
+    await waiter.rpc('create_order', {
+      p_request_id: crypto.randomUUID(),
+      p_type: 'dine_in',
+      p_table_id: tableId(171),
+      p_customer_name: '',
+      p_customer_phone: '',
+      p_items: [{ menu_item_id: menuItemId('Chicken Corn Soup'), quantity: 2, notes: 'no pepper' }],
+    });
+    await openKitchen(page);
+    const card = ticket(page, /Table 171\b/);
+    await expect(card).toContainText('Chicken Corn Soup');
+
+    // Item lines 24 px and up, the note 20 px and up (display density, readable at about 3 m).
+    expect(await fontPx(card.getByRole('listitem').first())).toBeGreaterThanOrEqual(24);
+    expect(await fontPx(card.getByText('no pepper'))).toBeGreaterThanOrEqual(20);
+
+    // The ticket's own buttons (Start, then Ready) are 56 px: tapped with wet hands.
+    const start = card.getByRole('button', { name: 'Start Table 171' });
+    expect(await minSide(start)).toBeGreaterThanOrEqual(56);
+    await start.click();
+    const ready = card.getByRole('button', { name: 'Ready Table 171' });
+    await expect(ready).toBeVisible();
+    expect(await minSide(ready)).toBeGreaterThanOrEqual(56);
+
+    // Header buttons and the Sold Out sheet's switches: the 44 px minimum (CLAUDE.md rule 10).
+    for (const button of await page.getByRole('banner').getByRole('button').all()) {
+      if (!(await button.isVisible())) continue;
+      const name = (await button.getAttribute('aria-label')) ?? (await button.innerText());
+      expect(await minSide(button), name).toBeGreaterThanOrEqual(44);
+    }
+    await page.getByRole('button', { name: 'Sold out list' }).click();
+    const sheet = page.getByRole('dialog');
+    await expect(sheet).toBeVisible();
+    const switches = sheet.getByRole('switch');
+    await expect(switches.first()).toBeVisible();
+    for (const toggle of (await switches.all()).slice(0, 10)) {
+      expect(await hitSide(toggle), 'Sold out switch').toBeGreaterThanOrEqual(44);
+    }
+    await expectNoSeriousAxe(page);
+  } finally {
+    archiveTable(171);
   }
 });

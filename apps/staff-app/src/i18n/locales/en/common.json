@@ -47,7 +47,6 @@
     "themeSystem": "Same as device",
     "signOut": "Sign out",
     "loading": "Loading the app",
-    "comingInP1": "This screen arrives in Phase 1.",
     "notAvailableTitle": "No screens for this role yet",
     "notAvailableBody": "Rider screens arrive in Phase 3. Sign out to use another account.",
     "notFoundTitle": "This page does not exist",
@@ -58,6 +57,7 @@
     "reload": "Reload",
     "updateReady": "A new version of the app is ready.",
     "updateNow": "Update",
-    "offlineReady": "The app is ready to work with a weak connection."
+    "offlineReady": "The app is ready to work with a weak connection.",
+    "changePassword": "Change password"
   }
 }

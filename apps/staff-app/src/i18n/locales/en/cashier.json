@@ -155,5 +155,6 @@
   "billGoneBody": "It was paid, completed or cancelled.",
   "review": "Review",
   "updating": "Updating the bill…",
-  "receiptTaxNumber": "Tax reg. no. {{number}}"
+  "receiptTaxNumber": "Tax reg. no. {{number}}",
+  "pickersFailed": "The tables and waiters could not be loaded. Check the connection."
 }
