@@ -11,6 +11,22 @@
 //   $env:SUPABASE_SECRET_KEY = Read-Host -MaskInput 'Staging secret key'   # PowerShell
 //   pnpm seed:staging            (add -- --local to try it on the local stack)
 //   Remove-Item Env:SUPABASE_SECRET_KEY
+//
+// Password reset for ONE existing account nobody can reset in the app (for example the only
+// Admin, password unknown). Opt-in, one named account, nothing else is created or changed:
+//   pnpm seed:staging -- --reset-password=admin --dry-run   checks the key and the account only
+//   pnpm seed:staging -- --reset-password=admin             new temporary password, shown ONCE
+// Same effect as an Admin's reset: the account must change it at the next sign-in, every session
+// ends, and the audit log records an operator reset (public.ops_password_reset). Two-step sign-in
+// is not touched: an Admin still needs the authenticator code after signing in.
+//
+// Demo data for a client demo (opt-in, staging only): the clearly fake "Ember Kitchen (Demo)"
+// brand with demo rates, 6 categories and 30 items (bottled drinks skip the kitchen, one item is
+// Sold Out) and 12 tables in 2 sections, the same content as the local seed:
+//   pnpm seed:staging -- --demo-data --dry-run   reports what it would add; changes nothing
+//   pnpm seed:staging -- --demo-data             adds what is missing (safe to run twice)
+// It only adds; it never changes or archives a row, and it refuses to run at all if the project
+// has any data that is not demo data (public.ops_demo_data, OWNER_DATA_PRESENT).
 import { randomBytes } from 'node:crypto';
 
 import { staffLoginEmail } from '../packages/shared/src/auth.ts';
@@ -20,7 +36,17 @@ import { staffLoginEmail } from '../packages/shared/src/auth.ts';
 const STAGING_REF = 'aqxmdmkforcucmktwmjj';
 const local = process.argv.includes('--local');
 const url = local ? 'http://127.0.0.1:54321' : `https://${STAGING_REF}.supabase.co`;
-console.log(`seed-staging: ${url}`);
+
+// Every argument must be known: a typo must never fall through to "create the accounts".
+const resetArgs = process.argv.slice(2).filter((a) => a.startsWith('--reset-password'));
+const dryRun = process.argv.includes('--dry-run');
+const demoData = process.argv.includes('--demo-data');
+const unknown = process.argv
+  .slice(2)
+  .filter(
+    (a) =>
+      !['--local', '--dry-run', '--demo-data'].includes(a) && !a.startsWith('--reset-password'),
+  );
 
 const staff = [
   { username: 'admin', fullName: 'Staging Admin', role: 'admin' },
@@ -29,18 +55,48 @@ const staff = [
   { username: 'chef', fullName: 'Staging Chef', role: 'chef' },
 ] as const;
 
-function fail(message: string): never {
-  console.error(`seed-staging: ${message}`);
-  process.exit(1);
+/**
+ * Every failure is thrown and reported by the handler at the end, which sets the exit code.
+ * Never process.exit(): on Windows it can crash Node (a libuv assertion) while stderr or
+ * fetch's connections are still closing, which hides the real message behind a crash.
+ */
+class Stop extends Error {}
+function stop(message: string): never {
+  throw new Stop(message);
 }
 
-const key = process.env['SUPABASE_SECRET_KEY']?.trim();
-if (!key) fail('set SUPABASE_SECRET_KEY in this shell first (see the top of this file).');
-if (key.startsWith('sb_publishable_')) fail('that is the publishable key; use the secret key.');
+/** The arguments, checked before anything connects. */
+function parseArguments(): { resetUser: string | undefined } {
+  if (unknown.length > 0) stop(`unknown argument ${unknown.join(' ')}`);
+  if (resetArgs.length > 1) stop('--reset-password takes ONE account per run.');
+  const resetUser = resetArgs[0]
+    ?.match(/^--reset-password=(.+)$/)?.[1]
+    ?.trim()
+    .toLowerCase();
+  if (resetArgs.length === 1 && !resetUser) stop('use --reset-password=<username>.');
+  if (resetUser && !staffLoginEmail(resetUser)) stop(`invalid username ${resetUser}`);
+  if (demoData && resetArgs.length > 0) {
+    stop('use --demo-data and --reset-password in separate runs.');
+  }
+  if (dryRun && !resetUser && !demoData) {
+    stop('--dry-run only applies to --reset-password=<username> or --demo-data.');
+  }
+  const mode = resetUser ? `reset password: ${resetUser}` : demoData ? 'demo data' : '';
+  console.log(`seed-staging: ${url}${mode ? ` (${mode}${dryRun ? ', dry run' : ''})` : ''}`);
+  return { resetUser };
+}
 
-// New keys (sb_secret_...) go in `apikey` only; a legacy service_role JWT also needs Bearer.
-const headers: Record<string, string> = { apikey: key, 'Content-Type': 'application/json' };
-if (key.startsWith('eyJ')) headers['Authorization'] = `Bearer ${key}`;
+const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+/** The secret key, from this shell only; never printed. */
+function useSecretKey(): void {
+  const key = process.env['SUPABASE_SECRET_KEY']?.trim();
+  if (!key) stop('set SUPABASE_SECRET_KEY in this shell first (see the top of this file).');
+  if (key.startsWith('sb_publishable_')) stop('that is the publishable key; use the secret key.');
+  // New keys (sb_secret_...) go in `apikey` only; a legacy service_role JWT also needs Bearer.
+  headers['apikey'] = key;
+  if (key.startsWith('eyJ')) headers['Authorization'] = `Bearer ${key}`;
+}
 
 async function call(path: string, init: RequestInit = {}) {
   const res = await fetch(`${url}${path}`, { ...init, headers: { ...headers, ...init.headers } });
@@ -49,67 +105,173 @@ async function call(path: string, init: RequestInit = {}) {
   return { ok: res.ok, status: res.status, body };
 }
 
+/**
+ * --demo-data: one call to public.ops_demo_data (service_role only), which adds the missing
+ * demo rows in one transaction, or refuses as a whole when there is real data.
+ */
+async function loadDemoData() {
+  const result = await call('/rest/v1/rpc/ops_demo_data', {
+    method: 'POST',
+    body: JSON.stringify({ p_dry_run: dryRun }),
+  });
+  if (!result.ok) {
+    const error = (result.body ?? {}) as { message?: string; details?: string };
+    if (error.message === 'OWNER_DATA_PRESENT') {
+      stop(
+        `this project already has data that is not demo data (${error.details ?? ''}). ` +
+          'Nothing was changed. Demo data is only for an empty staging project.',
+      );
+    }
+    stop(
+      `loading demo data failed (HTTP ${result.status} ${error.message ?? ''}). ` +
+        'Are the migrations deployed (demo_data)?',
+    );
+  }
+  const r = result.body as {
+    settings: string;
+    categories_added: number;
+    menu_items_added: number;
+    tables_added: number;
+  };
+  const verb = dryRun ? 'would add' : 'added';
+  console.log(
+    `  settings     ${dryRun && r.settings === 'set to demo' ? 'would be set to demo' : r.settings}`,
+  );
+  console.log(`  categories   ${verb} ${String(r.categories_added)} (of 6)`);
+  console.log(`  menu items   ${verb} ${String(r.menu_items_added)} (of 30)`);
+  console.log(`  tables       ${verb} ${String(r.tables_added)} (of 12)`);
+  console.log(
+    dryRun
+      ? '\nDry run: nothing changed. Run it again without --dry-run to add these.'
+      : '\nDone. Running it again adds nothing. Staff accounts: pnpm seed:staging (no flag).',
+  );
+}
+
 // 20 random bytes, URL-safe: about 27 characters, typeable on a phone.
 const newPassword = () => randomBytes(20).toString('base64url');
 
-const created: { username: string; role: string; password: string }[] = [];
-
-for (const s of staff) {
-  const email = staffLoginEmail(s.username);
-  if (!email) fail(`invalid username ${s.username}`);
-
-  const existing = await call(`/rest/v1/profiles?select=id&username=eq.${s.username}`);
-  if (!existing.ok) fail(`reading profiles failed (HTTP ${existing.status}). Check the key.`);
-  if (Array.isArray(existing.body) && existing.body.length > 0) {
-    console.log(`  exists   ${s.username} (password unchanged)`);
-    continue;
+/**
+ * --reset-password=<username>: the database half first (ops_password_reset: temporary-password
+ * flag, sessions ended, audited), then the new password in Auth. If the second step fails, the
+ * old password still works and must be changed at sign-in; run it again.
+ */
+async function resetPassword(username: string) {
+  const found = await call(
+    `/rest/v1/profiles?select=id,role,is_active&username=eq.${encodeURIComponent(username)}`,
+  );
+  if (!found.ok) stop(`reading profiles failed (HTTP ${found.status}). Check the key.`);
+  const profile = (found.body as { id: string; role: string; is_active: boolean }[])[0];
+  if (!profile) stop(`no account named ${username}; nothing changed.`);
+  if (!profile.is_active) stop(`${username} is deactivated; reactivate it first. Nothing changed.`);
+  if (dryRun) {
+    console.log(`  found    ${username} (${profile.role}, active)`);
+    console.log('\nDry run: the key works and the account exists. Nothing changed.');
+    return;
   }
 
-  const password = newPassword();
-  const user = await call('/auth/v1/admin/users', {
+  const reset = await call('/rest/v1/rpc/ops_password_reset', {
     method: 'POST',
-    body: JSON.stringify({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { full_name: s.fullName },
-    }),
+    body: JSON.stringify({ p_request_id: crypto.randomUUID(), p_user_id: profile.id }),
   });
-  if (!user.ok) {
-    fail(
-      `creating the login for ${s.username} failed (HTTP ${user.status}). If the login exists ` +
-        'without a profile (an earlier run stopped half-way), remove that user in the dashboard ' +
-        'under Authentication → Users and run this again.',
+  if (!reset.ok) {
+    const code = (reset.body as { message?: string } | null)?.message ?? '';
+    stop(`the reset failed (HTTP ${reset.status} ${code}). Are the migrations deployed?`);
+  }
+  const password = newPassword();
+  const auth = await call(`/auth/v1/admin/users/${profile.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ password }),
+  });
+  if (!auth.ok) {
+    stop(
+      `setting the new password failed (HTTP ${auth.status}). The old password still works and ` +
+        'must be changed at the next sign-in; run this again.',
     );
   }
-  const userId = (user.body as { id: string }).id;
-
-  // public.create_staff_profile(): service_role only (migration create_staff_profile).
-  const profile = await call('/rest/v1/rpc/create_staff_profile', {
-    method: 'POST',
-    body: JSON.stringify({
-      p_user_id: userId,
-      p_username: s.username,
-      p_full_name: s.fullName,
-      p_role: s.role,
-    }),
-  });
-  if (!profile.ok) {
-    // Do not leave a login without a profile behind.
-    await call(`/auth/v1/admin/users/${userId}`, { method: 'DELETE' });
-    fail(`creating the profile for ${s.username} failed (HTTP ${profile.status}); login removed.`);
-  }
-  console.log(`  created  ${s.username}`);
-  created.push({ username: s.username, role: s.role, password });
+  console.log(`  reset    ${username} (${profile.role})`);
+  console.log('\nNew temporary password, shown ONCE. Put it in the vault now; it is not stored:');
+  console.log(`  ${username.padEnd(8)} ${profile.role.padEnd(8)} ${password}`);
+  console.log(
+    '\nAt the next sign-in the app asks for a new password (an Admin enters the code first).',
+  );
+  console.log('Clear the terminal afterwards (cls / Clear-Host).');
 }
 
-if (created.length > 0) {
-  console.log(
-    '\nNew passwords, shown ONCE. Put them in the vault now; they are not stored anywhere:',
-  );
-  for (const c of created)
-    console.log(`  ${c.username.padEnd(8)} ${c.role.padEnd(8)} ${c.password}`);
-  console.log('\nClear the terminal afterwards (cls / Clear-Host).');
-} else {
-  console.log('\nNothing to create.');
+/** Default: create the four staging accounts that do not exist yet; existing ones are left alone. */
+async function createAccounts() {
+  const created: { username: string; role: string; password: string }[] = [];
+
+  for (const s of staff) {
+    const email = staffLoginEmail(s.username);
+    if (!email) stop(`invalid username ${s.username}`);
+
+    const existing = await call(`/rest/v1/profiles?select=id&username=eq.${s.username}`);
+    if (!existing.ok) stop(`reading profiles failed (HTTP ${existing.status}). Check the key.`);
+    if (Array.isArray(existing.body) && existing.body.length > 0) {
+      console.log(`  exists   ${s.username} (password unchanged)`);
+      continue;
+    }
+
+    const password = newPassword();
+    const user = await call('/auth/v1/admin/users', {
+      method: 'POST',
+      body: JSON.stringify({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: s.fullName },
+      }),
+    });
+    if (!user.ok) {
+      stop(
+        `creating the login for ${s.username} failed (HTTP ${user.status}). If the login exists ` +
+          'without a profile (an earlier run stopped half-way), remove that user in the dashboard ' +
+          'under Authentication → Users and run this again.',
+      );
+    }
+    const userId = (user.body as { id: string }).id;
+
+    // public.create_staff_profile(): service_role only (migration create_staff_profile).
+    const profile = await call('/rest/v1/rpc/create_staff_profile', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_user_id: userId,
+        p_username: s.username,
+        p_full_name: s.fullName,
+        p_role: s.role,
+      }),
+    });
+    if (!profile.ok) {
+      // Do not leave a login without a profile behind.
+      await call(`/auth/v1/admin/users/${userId}`, { method: 'DELETE' });
+      stop(
+        `creating the profile for ${s.username} failed (HTTP ${profile.status}); login removed.`,
+      );
+    }
+    console.log(`  created  ${s.username}`);
+    created.push({ username: s.username, role: s.role, password });
+  }
+
+  if (created.length > 0) {
+    console.log(
+      '\nNew passwords, shown ONCE. Put them in the vault now; they are not stored anywhere:',
+    );
+    for (const c of created)
+      console.log(`  ${c.username.padEnd(8)} ${c.role.padEnd(8)} ${c.password}`);
+    console.log('\nClear the terminal afterwards (cls / Clear-Host).');
+  } else {
+    console.log('\nNothing to create.');
+  }
+}
+
+try {
+  const { resetUser } = parseArguments();
+  useSecretKey();
+  if (resetUser) await resetPassword(resetUser);
+  else if (demoData) await loadDemoData();
+  else await createAccounts();
+} catch (error) {
+  if (!(error instanceof Stop)) throw error;
+  console.error(`seed-staging: ${error.message}`);
+  process.exitCode = 1;
 }

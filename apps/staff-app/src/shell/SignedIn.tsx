@@ -30,9 +30,18 @@ export function RequireAuth() {
   return <SignedInShell />;
 }
 
-/** Providers for every signed-in screen, plus the account-still-active check. */
+/**
+ * Providers for every signed-in screen, plus the account check: inactive signs out, and a
+ * temporary password must be changed before any other screen (S6; the server refuses every
+ * call until then). Screens wait for the first answer, unless it fails (offline).
+ */
 function SignedInShell() {
-  useStaffStatus();
+  const { account, settled } = useStaffStatus();
+  const { pathname } = useLocation();
+  if (!settled) return <FullScreenLoading />;
+  if (account?.password_change && pathname !== paths.changePassword) {
+    return <Navigate to={paths.changePassword} replace />;
+  }
   return (
     <SettingsProvider>
       <ConnectionProvider>

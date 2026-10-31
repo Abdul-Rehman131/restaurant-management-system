@@ -22,11 +22,25 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
+  // Each role spec runs on the device that role uses, so "skipped" counts only real skips:
+  // the waiter app on a phone, the kitchen on a landscape tablet, the cashier and the admin
+  // flows on a desktop (admin-phone.spec: the admin screens at phone width); shared screens
+  // on all.
   projects: [
-    { name: 'phone', use: { ...devices['Pixel 7'] } },
+    {
+      name: 'phone',
+      use: { ...devices['Pixel 7'] },
+      testIgnore: /(kitchen|cashier|admin|robustness|keyboard)\.spec\.ts/,
+    },
     {
       name: 'desktop',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } },
+      testIgnore: /(waiter|kitchen|admin-phone)\.spec\.ts/,
+    },
+    {
+      name: 'tablet',
+      use: { ...devices['Galaxy Tab S4 landscape'] },
+      testMatch: /kitchen\.spec\.ts/,
     },
   ],
   webServer: {

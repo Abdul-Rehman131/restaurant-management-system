@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
 
-import { needsMfaStep, skipMfaSetup, useAuth } from '../auth/auth-context';
+import { needsMfaStep, useAuth } from '../auth/auth-context';
 import { auth as supabaseAuth } from '../lib/supabase';
 import { paths } from '../paths';
 import { useScreenAppearance } from '../shell/theme-context';
@@ -16,9 +16,9 @@ interface Enrolment {
 }
 
 /**
- * Admin's second step. With a verified TOTP factor: enter the code (session becomes aal2).
- * Without one: a minimal set-up (QR code, key, first code), skippable until P1 enforces it
- * (aal2 checks on admin writes).
+ * Admin's second step, required (S5). With a verified TOTP factor: enter the code (the session
+ * becomes aal2). Without one: set it up first (QR code, key, first code). Recovery when the
+ * phone is lost: another Admin, or the factor is removed through Supabase (README).
  */
 export function MfaScreen() {
   const { t } = useTranslation();
@@ -31,6 +31,12 @@ export function MfaScreen() {
   const [factorId, setFactorId] = useState<string | null>(null);
   const [enrolment, setEnrolment] = useState<Enrolment | null>(null);
   const started = useRef(false);
+  // The one thing to do here: the code field takes focus, so a keyboard user types the code at
+  // once instead of tabbing from the top of the page (S6 sweep).
+  const codeInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    codeInput.current?.focus();
+  }, []);
   useScreenAppearance({ density: 'touch' });
 
   const setupMode = !auth.hasVerifiedFactor;
@@ -117,7 +123,6 @@ export function MfaScreen() {
               </code>
             </div>
           )}
-          <p className="text-center text-sm text-fg-muted">{t('mfa.setupLater')}</p>
         </div>
       )}
 
@@ -132,6 +137,7 @@ export function MfaScreen() {
           <Label htmlFor={codeId}>{t('mfa.code')}</Label>
           <Input
             id={codeId}
+            ref={codeInput}
             inputMode="numeric"
             autoComplete="one-time-code"
             pattern="[0-9]{6}"
@@ -146,17 +152,6 @@ export function MfaScreen() {
         <Button type="submit" size="lg" loading={busy} disabled={code.length !== 6 || !factorId}>
           {t('mfa.verify')}
         </Button>
-        {setupMode && (
-          <Button
-            variant="outline"
-            onClick={() => {
-              skipMfaSetup();
-              void navigate(paths.home, { replace: true });
-            }}
-          >
-            {t('mfa.skip')}
-          </Button>
-        )}
         <Button
           variant="ghost"
           onClick={() => {
@@ -165,6 +160,7 @@ export function MfaScreen() {
         >
           {t('mfa.signOut')}
         </Button>
+        {!setupMode && <p className="text-center text-sm text-fg-muted">{t('mfa.lostDevice')}</p>}
       </form>
     </AuthCard>
   );

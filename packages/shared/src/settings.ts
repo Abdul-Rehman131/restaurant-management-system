@@ -18,6 +18,8 @@ export interface PublicSettings {
   /** Contact group: admin, cashier and waiter only. */
   address?: string | null;
   phone?: string | null;
+  /** Printed on the receipt when set (contact group). */
+  taxRegistrationNumber?: string | null;
   /** Pricing group, in basis points (1600 = 16%): admin and cashier only. */
   taxBps?: number;
   serviceChargeBps?: number;

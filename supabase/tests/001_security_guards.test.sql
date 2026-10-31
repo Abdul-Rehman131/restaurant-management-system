@@ -14,6 +14,7 @@ language sql
 as $$
   select array[
     'public.add_items_to_order(p_request_id uuid, p_order_id uuid, p_items jsonb)',
+    'public.admin_menu()',
     'public.admin_menu_item_costs()',
     'public.admin_order_item_costs(p_order_id uuid)',
     'public.admin_staff_directory()',
@@ -26,13 +27,24 @@ as $$
     'public.get_sales_summary(p_business_date date)',
     'public.get_settings()',
     'public.move_order_table(p_request_id uuid, p_order_id uuid, p_to_table_id uuid, p_waiter_id uuid)',
+    'public.my_account()',
     'public.my_role()',
+    'public.preview_bill_totals(p_type order_type, p_line_amounts bigint[], p_discount bigint)',
     'public.record_payment(p_request_id uuid, p_order_id uuid, p_tenders jsonb)',
     'public.remove_or_cancel_item(p_request_id uuid, p_order_item_id uuid, p_reason text)',
+    'public.reorder_categories(p_request_id uuid, p_category_ids uuid[])',
+    'public.reorder_menu_items(p_request_id uuid, p_category_id uuid, p_item_ids uuid[])',
     'public.request_bill(p_request_id uuid, p_order_id uuid)',
+    'public.save_category(p_request_id uuid, p_category_id uuid, p_name text)',
+    'public.save_menu_item(p_request_id uuid, p_menu_item_id uuid, p_item jsonb)',
+    'public.save_table(p_request_id uuid, p_table_id uuid, p_number integer, p_capacity integer, p_section text)',
     'public.set_batch_status(p_request_id uuid, p_batch_id uuid, p_status batch_status)',
+    'public.set_category_active(p_request_id uuid, p_category_id uuid, p_is_active boolean, p_reason text)',
     'public.set_item_availability(p_request_id uuid, p_menu_item_id uuid, p_is_available boolean)',
+    'public.set_menu_item_active(p_request_id uuid, p_menu_item_id uuid, p_is_active boolean, p_reason text)',
     'public.set_order_status(p_request_id uuid, p_order_id uuid, p_status order_status, p_reason text)',
+    'public.set_table_active(p_request_id uuid, p_table_id uuid, p_is_active boolean, p_reason text)',
+    'public.update_settings(p_request_id uuid, p_changes jsonb)',
     'public.void_payment(p_request_id uuid, p_payment_id uuid, p_reason text)'
   ]::text[]
 $$;

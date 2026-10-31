@@ -676,6 +676,7 @@ export type Database = {
           full_name: string;
           id: string;
           is_active: boolean;
+          must_change_password: boolean;
           phone: string | null;
           role: Database['public']['Enums']['app_role'];
           updated_at: string;
@@ -688,6 +689,7 @@ export type Database = {
           full_name: string;
           id: string;
           is_active?: boolean;
+          must_change_password?: boolean;
           phone?: string | null;
           role: Database['public']['Enums']['app_role'];
           updated_at?: string;
@@ -699,6 +701,7 @@ export type Database = {
           full_name?: string;
           id?: string;
           is_active?: boolean;
+          must_change_password?: boolean;
           phone?: string | null;
           role?: Database['public']['Enums']['app_role'];
           updated_at?: string;
@@ -782,6 +785,7 @@ export type Database = {
           service_charge_on_take_away: boolean;
           tax_bps: number;
           tax_on_service_charge: boolean;
+          tax_registration_number: string | null;
           timezone: string;
           updated_at: string;
         };
@@ -808,6 +812,7 @@ export type Database = {
           service_charge_on_take_away?: boolean;
           tax_bps?: number;
           tax_on_service_charge?: boolean;
+          tax_registration_number?: string | null;
           timezone?: string;
           updated_at?: string;
         };
@@ -833,6 +838,7 @@ export type Database = {
           service_charge_on_take_away?: boolean;
           tax_bps?: number;
           tax_on_service_charge?: boolean;
+          tax_registration_number?: string | null;
           timezone?: string;
           updated_at?: string;
         };
@@ -851,10 +857,16 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      account_password_changed: {
+        Args: { p_keep_session: string; p_request_id: string; p_user_id: string };
+        Returns: Json;
+      };
+      account_password_replay: { Args: { p_request_id: string; p_user_id: string }; Returns: Json };
       add_items_to_order: {
         Args: { p_items: Json; p_order_id: string; p_request_id: string };
         Returns: Json;
       };
+      admin_menu: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_menu_item_costs: {
         Args: Record<PropertyKey, never>;
         Returns: {
@@ -924,9 +936,20 @@ export type Database = {
         };
         Returns: Json;
       };
+      my_account: { Args: Record<PropertyKey, never>; Returns: Json };
       my_role: {
         Args: Record<PropertyKey, never>;
         Returns: Database['public']['Enums']['app_role'];
+      };
+      ops_demo_data: { Args: { p_dry_run?: boolean }; Returns: Json };
+      ops_password_reset: { Args: { p_request_id: string; p_user_id: string }; Returns: Json };
+      preview_bill_totals: {
+        Args: {
+          p_discount?: number;
+          p_line_amounts: number[];
+          p_type: Database['public']['Enums']['order_type'];
+        };
+        Returns: Json;
       };
       record_payment: {
         Args: { p_order_id: string; p_request_id: string; p_tenders: Json };
@@ -936,7 +959,33 @@ export type Database = {
         Args: { p_order_item_id: string; p_reason: string; p_request_id: string };
         Returns: Json;
       };
+      reorder_categories: {
+        Args: { p_category_ids: string[]; p_request_id: string };
+        Returns: Json;
+      };
+      reorder_menu_items: {
+        Args: { p_category_id: string; p_item_ids: string[]; p_request_id: string };
+        Returns: Json;
+      };
       request_bill: { Args: { p_order_id: string; p_request_id: string }; Returns: Json };
+      save_category: {
+        Args: { p_category_id: string; p_name: string; p_request_id: string };
+        Returns: Json;
+      };
+      save_menu_item: {
+        Args: { p_item: Json; p_menu_item_id: string; p_request_id: string };
+        Returns: Json;
+      };
+      save_table: {
+        Args: {
+          p_capacity: number;
+          p_number: number;
+          p_request_id: string;
+          p_section: string;
+          p_table_id: string;
+        };
+        Returns: Json;
+      };
       set_batch_status: {
         Args: {
           p_batch_id: string;
@@ -945,8 +994,26 @@ export type Database = {
         };
         Returns: Json;
       };
+      set_category_active: {
+        Args: {
+          p_category_id: string;
+          p_is_active: boolean;
+          p_reason: string;
+          p_request_id: string;
+        };
+        Returns: Json;
+      };
       set_item_availability: {
         Args: { p_is_available: boolean; p_menu_item_id: string; p_request_id: string };
+        Returns: Json;
+      };
+      set_menu_item_active: {
+        Args: {
+          p_is_active: boolean;
+          p_menu_item_id: string;
+          p_reason: string;
+          p_request_id: string;
+        };
         Returns: Json;
       };
       set_order_status: {
@@ -958,7 +1025,63 @@ export type Database = {
         };
         Returns: Json;
       };
+      set_table_active: {
+        Args: { p_is_active: boolean; p_reason: string; p_request_id: string; p_table_id: string };
+        Returns: Json;
+      };
+      staff_admin_create: {
+        Args: {
+          p_actor: string;
+          p_full_name: string;
+          p_phone: string;
+          p_request_id: string;
+          p_role: Database['public']['Enums']['app_role'];
+          p_user_id: string;
+          p_username: string;
+        };
+        Returns: Json;
+      };
+      staff_admin_mfa_reset: {
+        Args: { p_actor: string; p_request_id: string; p_user_id: string };
+        Returns: Json;
+      };
+      staff_admin_password_reset: {
+        Args: { p_actor: string; p_request_id: string; p_user_id: string };
+        Returns: Json;
+      };
+      staff_admin_replay: {
+        Args: {
+          p_actor: string;
+          p_args: Json;
+          p_function: string;
+          p_request_id: string;
+          p_target_id: string;
+        };
+        Returns: Json;
+      };
+      staff_admin_set_active: {
+        Args: {
+          p_actor: string;
+          p_is_active: boolean;
+          p_reason: string;
+          p_request_id: string;
+          p_user_id: string;
+        };
+        Returns: Json;
+      };
+      staff_admin_update: {
+        Args: {
+          p_actor: string;
+          p_full_name: string;
+          p_phone: string;
+          p_request_id: string;
+          p_role: Database['public']['Enums']['app_role'];
+          p_user_id: string;
+        };
+        Returns: Json;
+      };
       staff_login_email: { Args: { p_username: string }; Returns: string };
+      update_settings: { Args: { p_changes: Json; p_request_id: string }; Returns: Json };
       void_payment: {
         Args: { p_payment_id: string; p_reason: string; p_request_id: string };
         Returns: Json;

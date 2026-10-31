@@ -1,0 +1,19 @@
+# gitleaks configuration (CI job `secrets`, gitleaks 8.30.1 reads this file from the repo root).
+# Every default rule stays on. Exceptions are for proven false positives only, each scoped as
+# narrowly as gitleaks allows (rule AND file AND commit), with the reason next to it. Never add
+# a wildcard for a whole folder or rule. A real secret is rotated first, never allowlisted.
+
+[extend]
+useDefault = true
+
+# S5: a made-up temporary password in a Zod schema test (staffAdminResponse), committed in
+# 4cceecd before the test was changed to generate the value at run time. It was never a
+# password of any account (the schema test calls no server), so it is safe. Only this rule,
+# this file and this one commit: the same rule in the same file in any later commit is still
+# reported.
+[[allowlists]]
+description = "S5 schema test: fake temporary password, removed from the source since"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^packages/shared/src/schemas/admin\.test\.ts$''']
+commits = ["4cceecd1db431734e5847f824e223b7cf8598179"]

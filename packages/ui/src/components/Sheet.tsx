@@ -3,6 +3,7 @@ import { Dialog as DialogPrimitive } from 'radix-ui';
 import type { ComponentProps } from 'react';
 
 import { cn } from '../lib/cn';
+import { useReturnFocus } from '../lib/return-focus';
 import { DialogCloseButton, DialogOverlay } from './Dialog';
 
 /**
@@ -42,6 +43,7 @@ export function SheetContent({
   side,
   ...props
 }: ComponentProps<typeof DialogPrimitive.Content> & VariantProps<typeof sheetVariants>) {
+  const returnFocus = useReturnFocus(props);
   return (
     <DialogPrimitive.Portal>
       <DialogOverlay />
@@ -49,6 +51,7 @@ export function SheetContent({
         data-slot="sheet-content"
         className={cn(sheetVariants({ side }), className)}
         {...props}
+        {...returnFocus}
       >
         {children}
         <DialogCloseButton />

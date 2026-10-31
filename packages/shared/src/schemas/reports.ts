@@ -18,5 +18,9 @@ export const salesSummaryResponse = z.object({
   top_items: z.array(
     z.object({ menu_item_id: id, name: z.string(), quantity: count, sales: money }),
   ),
+  /** 24 hours in business-day order, from the cut-off hour (S5). */
+  by_hour: z.array(
+    z.object({ hour: z.int().check(z.minimum(0), z.maximum(23)), orders: count, sales: money }),
+  ),
 });
 export type SalesSummaryResponse = z.infer<typeof salesSummaryResponse>;

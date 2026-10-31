@@ -4,6 +4,7 @@ import type { ComponentProps, HTMLAttributes } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { cn } from '../lib/cn';
+import { useReturnFocus } from '../lib/return-focus';
 import { buttonVariants } from './Button';
 
 /** Backdrop for Dialog, AlertDialog, Sheet and Drawer. */
@@ -54,6 +55,7 @@ export function DialogContent({
   showClose = true,
   ...props
 }: ComponentProps<typeof DialogPrimitive.Content> & { showClose?: boolean }) {
+  const returnFocus = useReturnFocus(props);
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -61,6 +63,7 @@ export function DialogContent({
         data-slot="dialog-content"
         className={cn(dialogPanelClasses, className)}
         {...props}
+        {...returnFocus}
       >
         {children}
         {showClose && <DialogCloseButton />}
@@ -107,6 +110,7 @@ export function AlertDialogContent({
   className,
   ...props
 }: ComponentProps<typeof AlertDialogPrimitive.Content>) {
+  const returnFocus = useReturnFocus(props);
   return (
     <AlertDialogPrimitive.Portal>
       <AlertDialogPrimitive.Overlay className={overlayClasses} />
@@ -114,6 +118,7 @@ export function AlertDialogContent({
         data-slot="alert-dialog-content"
         className={cn(dialogPanelClasses, className)}
         {...props}
+        {...returnFocus}
       />
     </AlertDialogPrimitive.Portal>
   );

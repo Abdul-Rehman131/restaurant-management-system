@@ -43,28 +43,11 @@ export const roleHome: Record<AppRole, string> = {
   rider: paths.notAvailable,
 };
 
-const MFA_SKIP_KEY = 'mfa-setup-skipped';
-
-/** Admin chose "Skip for now" on the MFA set-up screen (this tab only; enforcement is P1). */
-export function mfaSetupSkipped(): boolean {
-  try {
-    return sessionStorage.getItem(MFA_SKIP_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
-export function skipMfaSetup(): void {
-  try {
-    sessionStorage.setItem(MFA_SKIP_KEY, '1');
-  } catch {
-    // Storage blocked: the prompt simply shows again next time.
-  }
-}
-
-/** Admin must finish the MFA step (or set-up prompt) before any screen. */
+/**
+ * Admin must reach aal2 before any screen (S5: not skippable). Without a verified TOTP factor
+ * the MFA screen enrols one first. The database refuses every Admin RPC below aal2 too
+ * (MFA_REQUIRED), so this only decides where the screen goes.
+ */
 export function needsMfaStep(auth: AuthState): boolean {
-  if (auth.role !== 'admin') return false;
-  if (auth.hasVerifiedFactor) return auth.aal !== 'aal2';
-  return !mfaSetupSkipped();
+  return auth.role === 'admin' && auth.aal !== 'aal2';
 }

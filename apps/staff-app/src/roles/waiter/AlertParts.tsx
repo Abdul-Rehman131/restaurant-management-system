@@ -1,53 +1,26 @@
-import { Button, cn } from '@rms/ui';
-import { BellRing, Play, Volume2, VolumeX, X } from 'lucide-react';
+import { Button } from '@rms/ui';
+import { BellRing, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
-import { startShift, useAlertStore } from './alerts';
+import { ShiftControl } from '../../shift/ShiftControl';
+import { useAlertStore } from './alerts';
 import { batchLabel, useTableNumber } from './format';
 import { waiterPaths } from './paths';
 
-/** Header control: Start shift (a tap unlocks sound, R10), then the visible mute toggle. */
-export function ShiftControl() {
-  const { t } = useTranslation(['waiter', 'rpc']);
-  const shiftStarted = useAlertStore((state) => state.shiftStarted);
+/** Header control: Start shift / Shift on and the Ready tone's mute toggle (shared control). */
+export function WaiterShift() {
+  const { t } = useTranslation('waiter');
   const muted = useAlertStore((state) => state.muted);
   const setMuted = useAlertStore((state) => state.setMuted);
-  const setShiftStarted = useAlertStore((state) => state.setShiftStarted);
-
-  if (!shiftStarted) {
-    return (
-      <Button
-        size="sm"
-        variant="outline"
-        className="min-h-11"
-        onClick={() => {
-          void startShift().then(({ wakeLock }) => {
-            setShiftStarted(true, wakeLock);
-          });
-        }}
-      >
-        <Play aria-hidden />
-        {t('waiter:startShift')}
-      </Button>
-    );
-  }
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className={cn('min-h-11', muted && 'text-danger')}
-      aria-pressed={muted}
-      aria-label={muted ? t('waiter:unmute') : t('waiter:mute')}
-      onClick={() => {
-        setMuted(!muted);
-      }}
-    >
-      {muted ? <VolumeX aria-hidden /> : <Volume2 aria-hidden />}
-      <span aria-hidden className="text-sm">
-        {muted ? t('waiter:muted') : t('waiter:soundOn')}
-      </span>
-    </Button>
+    <ShiftControl
+      shift="waiter"
+      muted={muted}
+      onMutedChange={setMuted}
+      muteLabel={t('mute')}
+      unmuteLabel={t('unmute')}
+    />
   );
 }
 

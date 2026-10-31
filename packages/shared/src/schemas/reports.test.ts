@@ -28,6 +28,11 @@ describe('get_sales_summary response', () => {
         sales: 30000,
       },
     ],
+    by_hour: Array.from({ length: 24 }, (_, i) => ({
+      hour: (i + 4) % 24,
+      orders: i === 8 ? 3 : 0,
+      sales: i === 8 ? 88750 : 0,
+    })),
   };
 
   it('accepts the daily report', () => {

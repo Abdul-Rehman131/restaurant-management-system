@@ -20,10 +20,12 @@ concurrency:
 
 env:
   TURBO_TELEMETRY_DISABLED: '1'
-  # Services the database job does not need (`supabase start -x`).
-  SUPABASE_DB_ONLY: gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
-  # The e2e job needs auth, REST, Realtime and the gateway; not storage, studio or functions.
-  SUPABASE_E2E_SKIP: storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+  # Services the database job does not need (`supabase start -x`). Storage stays: its own
+  # migrations create the storage schema that the menu-images bucket and its policies use (S5).
+  SUPABASE_DB_ONLY: gotrue,realtime,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+  # The e2e job needs auth, REST, Realtime, Storage (menu photos), Edge Functions (staff-admin)
+  # and the gateway; not studio, image transforms or mail.
+  SUPABASE_E2E_SKIP: imgproxy,mailpit,postgres-meta,studio,logflare,vector,supavisor
 
 jobs:
   # Docs-only changes skip the heavy jobs (database, build-and-size, e2e).
