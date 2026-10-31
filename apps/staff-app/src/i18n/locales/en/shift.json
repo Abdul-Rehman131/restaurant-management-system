@@ -1,0 +1,19 @@
+{
+  "start": "Start shift",
+  "on": "Shift on",
+  "menu": "Shift on: options",
+  "end": "End shift",
+  "started": "Shift started",
+  "startedSound": "A sound plays for new work. Keep this app open.",
+  "startedMuted": "Sound is muted on this device. Turn it on with the speaker button.",
+  "ended": "Shift ended. The screen may turn off again.",
+  "wake": {
+    "checking": "Checking whether the screen can stay awake…",
+    "on": "The screen stays awake while this app is open.",
+    "unsupported": "This browser can't keep the screen awake. Keep the app open and set the screen to stay on in the device settings.",
+    "insecure": "The screen can only be kept awake on the app's secure (https) address. Keep the screen on yourself for now.",
+    "denied": "The device did not allow keeping the screen awake (battery saver?). Keep the screen on yourself.",
+    "timeout": "The device did not answer, so the screen may turn off. Keep the screen on yourself."
+  },
+  "wakeTitle": "Screen may turn off"
+}

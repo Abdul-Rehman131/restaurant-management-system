@@ -6,17 +6,19 @@ import './i18n';
 
 import { Badge, Button, EmptyState, OfflineBanner, cn } from '@rms/ui';
 import { useQuery } from '@tanstack/react-query';
-import { Keyboard, MousePointerClick, Play, Plus, Volume2, VolumeX } from 'lucide-react';
+import { Keyboard, MousePointerClick, Plus } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Route, Routes, useMatch, useNavigate } from 'react-router';
 
-import { playTones, reacquireWakeLockOnReturn, releaseWakeLock, startShift } from '../../lib/shift';
+import { playTones } from '../../lib/shift';
 import { paths } from '../../paths';
 import { RoleNotFound } from '../../screens/RoleNotFound';
 import { useConnection } from '../../shell/connection-context';
 import { StaffHeader } from '../../shell/StaffHeader';
 import { useScreenAppearance } from '../../shell/theme-context';
+import { useShiftLifecycle } from '../../shift/lifecycle';
+import { ShiftControl } from '../../shift/ShiftControl';
 import { BillDetail } from './BillDetail';
 import { BillList } from './BillList';
 import { CounterOrder } from './CounterOrder';
@@ -36,42 +38,19 @@ function playSoftTone() {
   ]);
 }
 
-function ShiftControl() {
-  const { t } = useTranslation(['cashier', 'rpc']);
-  const shiftStarted = useCashierStore((s) => s.shiftStarted);
+/** Start shift / Shift on and the bill-request tone's mute toggle (the shared shift control). */
+function CashierShift() {
+  const { t } = useTranslation('cashier');
   const muted = useCashierStore((s) => s.muted);
   const setMuted = useCashierStore((s) => s.setMuted);
-  const setShiftStarted = useCashierStore((s) => s.setShiftStarted);
-  if (!shiftStarted) {
-    return (
-      <Button
-        variant="outline"
-        onClick={() => {
-          void startShift().then(({ wakeLock }) => {
-            setShiftStarted(wakeLock);
-          });
-        }}
-      >
-        <Play aria-hidden />
-        {t('cashier:startShift')}
-      </Button>
-    );
-  }
   return (
-    <Button
-      variant="ghost"
-      className={cn(muted && 'text-danger')}
-      aria-pressed={muted}
-      aria-label={muted ? t('cashier:unmute') : t('cashier:mute')}
-      onClick={() => {
-        setMuted(!muted);
-      }}
-    >
-      {muted ? <VolumeX aria-hidden /> : <Volume2 aria-hidden />}
-      <span aria-hidden className="max-lg:hidden">
-        {muted ? t('cashier:muted') : t('cashier:soundOn')}
-      </span>
-    </Button>
+    <ShiftControl
+      shift="cashier"
+      muted={muted}
+      onMutedChange={setMuted}
+      muteLabel={t('mute')}
+      unmuteLabel={t('unmute')}
+    />
   );
 }
 
@@ -116,7 +95,6 @@ export function CashierApp() {
   const announced = useCashierStore((s) => s.lastRequest);
   const bills = useQuery(billsQuery);
   const unread = useCashierStore((s) => s.unreadRequests.size);
-  const shiftStarted = useCashierStore((s) => s.shiftStarted);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const billMatch = useMatch(`${paths.cashier}/bill/:orderId`);
@@ -127,15 +105,8 @@ export function CashierApp() {
   const inDetail = listMatch === null;
   const announcedBill = bills.data?.find((bill) => bill.order_id === announced);
 
-  // Keep the screen awake for the whole shift (R10).
-  useEffect(() => {
-    if (!shiftStarted) return;
-    const stop = reacquireWakeLockOnReturn();
-    return () => {
-      stop();
-      releaseWakeLock();
-    };
-  }, [shiftStarted]);
+  // Keep the screen awake for the whole shift (R10), also after a reload.
+  useShiftLifecycle('cashier');
 
   // Keyboard shortcuts (plan 4.8). Typing in a field never triggers one, except Ctrl+P.
   useEffect(() => {
@@ -226,7 +197,7 @@ export function CashierApp() {
                 {t('cashier:billRequestsBadge', { count: unread })}
               </Badge>
             )}
-            <ShiftControl />
+            <CashierShift />
             <Button
               variant="ghost"
               size="icon"

@@ -15,8 +15,6 @@ export interface BillShortcuts {
 }
 
 interface CashierState {
-  shiftStarted: boolean;
-  wakeLock: boolean | null;
   /** Per device, remembered (plan 4.6 rule 6). */
   muted: boolean;
   /** Print the receipt right after a payment (plan 4.9), per device. */
@@ -28,7 +26,6 @@ interface CashierState {
   /** The latest new bill request, announced politely. */
   lastRequest: string | null;
   shortcuts: BillShortcuts;
-  setShiftStarted: (wakeLock: boolean) => void;
   setMuted: (muted: boolean) => void;
   setAutoPrint: (autoPrint: boolean) => void;
   rememberRequests: (ids: Iterable<string>, unread: boolean) => void;
@@ -38,17 +35,12 @@ interface CashierState {
 }
 
 export const useCashierStore = create<CashierState>()((set) => ({
-  shiftStarted: false,
-  wakeLock: null,
   muted: readFlag(MUTE_KEY),
   autoPrint: readFlag(AUTO_PRINT_KEY),
   knownRequests: null,
   unreadRequests: new Set(),
   lastRequest: null,
   shortcuts: {},
-  setShiftStarted: (wakeLock) => {
-    set({ shiftStarted: true, wakeLock });
-  },
   setMuted: (muted) => {
     writeFlag(MUTE_KEY, muted);
     set({ muted });

@@ -143,9 +143,6 @@
     "close": "Close or back",
     "help": "Show this list"
   },
-  "startShift": "Start shift",
-  "soundOn": "Sound on",
-  "muted": "Muted",
   "mute": "Mute the bill-request tone",
   "unmute": "Turn the bill-request tone on",
   "loadFailed": "This could not be loaded",

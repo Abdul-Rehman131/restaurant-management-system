@@ -2,14 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { create } from 'zustand';
 
-import {
-  playTones,
-  readFlag,
-  reacquireWakeLockOnReturn,
-  releaseWakeLock,
-  vibrate,
-  writeFlag,
-} from '../../lib/shift';
+import { playTones, readFlag, vibrate, writeFlag } from '../../lib/shift';
+import { useShiftLifecycle } from '../../shift/lifecycle';
+import { shiftOn } from '../../shift/store';
 import { myOrdersQuery } from './data';
 import { newlyReady, readyBatches, type ReadyAlert } from './ready';
 
@@ -32,15 +27,11 @@ interface AlertState {
   remember: (ids: Iterable<string>) => void;
   /** The alert shown in the banner, until it is opened or dismissed. */
   bannerId: string | null;
-  shiftStarted: boolean;
-  /** Whether the screen is kept awake (null before Start shift). */
-  wakeLock: boolean | null;
   muted: boolean;
   push: (alerts: ReadyAlert[]) => void;
   dismissBanner: () => void;
   markRead: (id: string) => void;
   markAllRead: () => void;
-  setShiftStarted: (started: boolean, wakeLock: boolean | null) => void;
   setMuted: (muted: boolean) => void;
 }
 
@@ -51,8 +42,6 @@ export const useAlertStore = create<AlertState>()((set) => ({
     set((state) => ({ known: new Set([...(state.known ?? []), ...ids]) }));
   },
   bannerId: null,
-  shiftStarted: false,
-  wakeLock: null,
   muted: readFlag(MUTE_KEY),
   push: (fresh) => {
     set((state) => {
@@ -76,9 +65,6 @@ export const useAlertStore = create<AlertState>()((set) => ({
   },
   markAllRead: () => {
     set((state) => ({ alerts: state.alerts.map((a) => ({ ...a, read: true })), bannerId: null }));
-  },
-  setShiftStarted: (shiftStarted, wakeLock) => {
-    set({ shiftStarted, wakeLock });
   },
   setMuted: (muted) => {
     writeFlag(MUTE_KEY, muted);
@@ -109,7 +95,7 @@ export function useReadyAlerts(): void {
 
   useEffect(() => {
     if (!data) return;
-    const { known, remember, push, muted, shiftStarted } = useAlertStore.getState();
+    const { known, remember, push, muted } = useAlertStore.getState();
     if (!known) {
       remember(readyBatches(data));
       return;
@@ -118,18 +104,10 @@ export function useReadyAlerts(): void {
     if (fresh.length === 0) return;
     remember(fresh.map((alert) => alert.id));
     push(fresh);
-    if (shiftStarted && !muted) playReadyTone();
+    if (shiftOn('waiter') && !muted) playReadyTone();
     vibrateReady();
   }, [data]);
 
-  // Keep the screen awake for the whole shift (R10).
-  const shiftStarted = useAlertStore((state) => state.shiftStarted);
-  useEffect(() => {
-    if (!shiftStarted) return;
-    const stop = reacquireWakeLockOnReturn();
-    return () => {
-      stop();
-      releaseWakeLock();
-    };
-  }, [shiftStarted]);
+  // Keep the screen awake for the whole shift (R10), also after a reload.
+  useShiftLifecycle('waiter');
 }
