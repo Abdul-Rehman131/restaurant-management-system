@@ -13,10 +13,10 @@
   "dependencies": {
     "@rms/shared": "workspace:*",
     "@rms/ui": "workspace:*",
-    "i18next": "26.5.7",
+    "i18next": "26.5.10",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "react-i18next": "17.1.5"
+    "react-i18next": "17.1.7"
   },
   "devDependencies": {
     "@rms/config": "workspace:*",
