@@ -14,7 +14,7 @@
     "e2e:pwa": "playwright test -c e2e-pwa/playwright.pwa.config.ts"
   },
   "dependencies": {
-    "@hookform/resolvers": "5.9.1",
+    "@hookform/resolvers": "6.0.0",
     "@rms/shared": "workspace:*",
     "@rms/ui": "workspace:*",
     "@sentry/react": "11.8.0",
