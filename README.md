@@ -200,7 +200,9 @@ proposes weekly updates for actions and npm packages.
   secret key in your shell for that one command (steps in
   [docs/setup-checklist.md](docs/setup-checklist.md), 4.6). It creates `admin`, `cashier`,
   `waiter` and `chef` and prints each new password once. `pnpm seed:staging -- --local` tries
-  it on the local stack.
+  it on the local stack. A lost staging password that no Admin can reset in the app:
+  `pnpm seed:staging -- --reset-password=<username>` (one account, `--dry-run` first; checklist
+  4.6, step 22).
 
 ## Rollback (staging)
 

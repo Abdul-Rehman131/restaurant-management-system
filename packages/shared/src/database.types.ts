@@ -941,6 +941,7 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: Database['public']['Enums']['app_role'];
       };
+      ops_password_reset: { Args: { p_request_id: string; p_user_id: string }; Returns: Json };
       preview_bill_totals: {
         Args: {
           p_discount?: number;

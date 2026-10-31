@@ -142,6 +142,27 @@ These need the database functions from the migrations, so they come after step 2
     `waiter` and `chef` with confirmed `@staff.invalid` logins and prints each new password
     **once**: put them in the vault, then `Clear-Host`. Running it again skips existing accounts.
 
+    **Lost a staging password and no Admin can reset it in the app** (for example the only
+    Admin): reset ONE named account from your machine. Needs the migration
+    `staging_password_reset` deployed (the CI deploy does it on `develop`).
+    ```powershell
+    $env:SUPABASE_SECRET_KEY = Read-Host -MaskInput 'Staging secret key'
+    pnpm seed:staging -- --reset-password=admin --dry-run   # checks the key and the account; changes nothing
+    pnpm seed:staging -- --reset-password=admin             # new temporary password, shown once
+    Remove-Item Env:SUPABASE_SECRET_KEY
+    ```
+    - It works exactly like an Admin's **Reset password**: the account is signed out
+      everywhere, gets a new random temporary password printed **once** (vault, then
+      `Clear-Host`; it is stored nowhere), and must choose its own password at the next
+      sign-in. The audit log records it as an operator reset.
+    - One account per run; any other or misspelled argument stops the script before it
+      connects. A deactivated account is refused (reactivate it first). Staging only, like the
+      rest of the script.
+    - Two-step sign-in is **not** reset: an Admin still enters the authenticator code. If that
+      phone is lost too, remove the factor in the dashboard (Authentication → Users → the user →
+      MFA factors), as in the README's "Admin two-step sign-in".
+    - Only when no Admin can do it. Otherwise use Admin → Staff → **Reset password**.
+
 ### 4.7 S5: staff administration and Admin MFA (after the S5 migrations are deployed)
 The `menu-images` Storage bucket and its policies come from the migrations; nothing to click.
 
