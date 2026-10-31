@@ -51,7 +51,7 @@
     "i18next": "26.5.7",
     "react": "19.3.1",
     "react-i18next": "17.1.5",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "vite": "8.3.5"
   }
 }

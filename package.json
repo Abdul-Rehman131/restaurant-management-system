@@ -37,6 +37,6 @@
     "prettier-plugin-tailwindcss": "0.8.1",
     "supabase": "2.122.0",
     "turbo": "2.11.10",
-    "typescript": "6.0.3"
+    "typescript": "7.0.2"
   }
 }
