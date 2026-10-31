@@ -1,11 +1,14 @@
 import { Button, Input, Label, Skeleton } from '@rms/ui';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
 
-import { needsMfaStep, skipMfaSetup, useAuth } from '../auth/auth-context';
-import { auth as supabaseAuth } from '../lib/supabase';
+import { useAuth } from '../auth/auth-context';
+import { supabaseKey, supabaseUrl } from '../lib/env';
+import { accessToken, auth as supabaseAuth } from '../lib/supabase';
 import { paths } from '../paths';
+import { accountKey } from '../shell/account-key';
 import { useScreenAppearance } from '../shell/theme-context';
 import { AuthCard, Notice } from './AuthCard';
 
@@ -16,14 +19,43 @@ interface Enrolment {
 }
 
 /**
- * Admin's second step. With a verified TOTP factor: enter the code (session becomes aal2).
- * Without one: a minimal set-up (QR code, key, first code), skippable until P1 enforces it
- * (aal2 checks on admin writes).
+ * Is the second step pending for this session? The server decides (my_account().mfa_step: an
+ * Admin below aal2 while settings.require_admin_mfa is on). A plain request, so this screen
+ * does not load the data client. If the answer cannot be read, assume it is pending: the
+ * database refuses Admin calls anyway.
+ */
+async function mfaStepPending(): Promise<boolean> {
+  try {
+    const token = await accessToken();
+    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/my_account`, {
+      method: 'POST',
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${token ?? ''}`,
+        'Content-Type': 'application/json',
+      },
+      body: '{}',
+    });
+    if (!response.ok) return true;
+    const account = (await response.json()) as { mfa_step?: boolean };
+    return account.mfa_step !== false;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Admin's second step, required (S5) while settings.require_admin_mfa is on (a staging demo
+ * may switch it off; then this screen is never shown and sends the person home). With a verified TOTP factor: enter the code (the session
+ * becomes aal2). Without one: set it up first (QR code, key, first code). Recovery when the
+ * phone is lost: another Admin, or the factor is removed through Supabase (README).
  */
 export function MfaScreen() {
   const { t } = useTranslation();
   const auth = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [pending, setPending] = useState<boolean | null>(null);
   const codeId = useId();
   const [code, setCode] = useState('');
   const [error, setError] = useState<'wrongCode' | 'setupFailed' | null>(null);
@@ -31,6 +63,12 @@ export function MfaScreen() {
   const [factorId, setFactorId] = useState<string | null>(null);
   const [enrolment, setEnrolment] = useState<Enrolment | null>(null);
   const started = useRef(false);
+  // The one thing to do here: the code field takes focus, so a keyboard user types the code at
+  // once instead of tabbing from the top of the page (S6 sweep).
+  const codeInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    codeInput.current?.focus();
+  }, []);
   useScreenAppearance({ density: 'touch' });
 
   const setupMode = !auth.hasVerifiedFactor;
@@ -39,6 +77,10 @@ export function MfaScreen() {
     if (auth.status !== 'signedIn' || started.current) return;
     started.current = true;
     void (async () => {
+      // Nothing to set up or enter when the step is not required (no factor is enrolled).
+      const stepPending = await mfaStepPending();
+      setPending(stepPending);
+      if (!stepPending) return;
       const { data, error: listError } = await supabaseAuth.mfa.listFactors();
       if (listError) {
         setError('setupFailed');
@@ -71,7 +113,7 @@ export function MfaScreen() {
   }, [auth.status]);
 
   if (auth.status === 'signedOut') return <Navigate to={paths.login} replace />;
-  if (auth.status === 'signedIn' && !needsMfaStep(auth)) {
+  if (auth.status === 'signedIn' && (auth.aal === 'aal2' || pending === false)) {
     return <Navigate to={paths.home} replace />;
   }
 
@@ -86,6 +128,8 @@ export function MfaScreen() {
       setCode('');
       return;
     }
+    // The cached account still says the step is pending: ask again on the next screen.
+    queryClient.removeQueries({ queryKey: accountKey });
     void navigate(paths.home, { replace: true });
   };
 
@@ -117,7 +161,6 @@ export function MfaScreen() {
               </code>
             </div>
           )}
-          <p className="text-center text-sm text-fg-muted">{t('mfa.setupLater')}</p>
         </div>
       )}
 
@@ -132,6 +175,7 @@ export function MfaScreen() {
           <Label htmlFor={codeId}>{t('mfa.code')}</Label>
           <Input
             id={codeId}
+            ref={codeInput}
             inputMode="numeric"
             autoComplete="one-time-code"
             pattern="[0-9]{6}"
@@ -146,17 +190,6 @@ export function MfaScreen() {
         <Button type="submit" size="lg" loading={busy} disabled={code.length !== 6 || !factorId}>
           {t('mfa.verify')}
         </Button>
-        {setupMode && (
-          <Button
-            variant="outline"
-            onClick={() => {
-              skipMfaSetup();
-              void navigate(paths.home, { replace: true });
-            }}
-          >
-            {t('mfa.skip')}
-          </Button>
-        )}
         <Button
           variant="ghost"
           onClick={() => {
@@ -165,6 +198,7 @@ export function MfaScreen() {
         >
           {t('mfa.signOut')}
         </Button>
+        {!setupMode && <p className="text-center text-sm text-fg-muted">{t('mfa.lostDevice')}</p>}
       </form>
     </AuthCard>
   );

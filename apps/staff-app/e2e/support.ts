@@ -1,22 +1,33 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { crc32, deflateSync } from 'node:zlib';
 
 import AxeBuilder from '@axe-core/playwright';
 import type { APIRequestContext, Page } from '@playwright/test';
 import { loadEnv } from 'vite';
 
 import { expect } from './fixtures';
+import { totp } from './totp';
 
 /**
  * Helpers for role flows against the LOCAL Supabase stack (`supabase start`, seed.sql demo
  * logins). The URL and publishable key come from apps/staff-app/.env.local, as for the app.
  */
 const env = loadEnv('development', fileURLToPath(new URL('..', import.meta.url)), 'VITE_');
-const supabaseUrl = env['VITE_SUPABASE_URL'] ?? '';
+export const supabaseUrl = env['VITE_SUPABASE_URL'] ?? '';
 const supabaseKey = env['VITE_SUPABASE_PUBLISHABLE_KEY'] ?? '';
 
 export const PASSWORD = 'demo-password-123';
 export const shots = process.env['SHOTS'];
+
+/** A screenshot to $SHOTS (only when set): no toast, animations done, fonts loaded. */
+export async function shot(page: Page, name: string) {
+  if (!shots) return;
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+  await animationsDone(page);
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path: `${shots}/${name}.png` });
+}
 
 /**
  * Signs in through the login screen and waits for Auth's answer. A password sign-in hashes the
@@ -37,10 +48,102 @@ export async function signIn(page: Page, user: string, password = PASSWORD) {
   await answer;
 }
 
-/** Admin has no TOTP factor in the seed: skip the set-up prompt (enforcement is S5). */
+/**
+ * TOTP secrets of the Admins this worker created (createAdmin). Every test that needs an Admin
+ * gets its own: when an Admin passes the MFA step, Auth ends that Admin's other password-only
+ * sessions, so two tests signing in as one shared Admin at the same moment would break each
+ * other's sign-in (seen in the S5 runs: "Session not found" on the code step).
+ */
+const totpSecrets = new Map<string, string>();
+
+/** The MFA step on the sign-in screen: a code from the factor's secret (S5, required). */
+export async function enterMfaCode(page: Page, secret: string) {
+  const code = page.getByLabel('6-digit code');
+  await code.fill(totp(secret));
+  await page.getByRole('button', { name: 'Verify' }).click();
+  await expect(code).toBeHidden();
+}
+
+/** Signs in; an Admin made by createAdmin also passes the required MFA step with a code. */
 export async function signInAs(page: Page, user: string) {
   await signIn(page, user);
-  if (user === 'admin') await page.getByRole('button', { name: 'Skip for now' }).click();
+  const secret = totpSecrets.get(user);
+  if (secret) await enterMfaCode(page, secret);
+}
+
+/** The TOTP secret of an Admin made by createAdmin (for a sign-in the test drives itself). */
+export function totpSecretOf(user: string): string {
+  const secret = totpSecrets.get(user);
+  if (!secret) throw new Error(`${user} was not made by createAdmin`);
+  return secret;
+}
+
+/**
+ * A disposable Admin with a verified TOTP factor (MFA is required for Admin, S5). Returns the
+ * username; signInAs and apiAs use its factor. Archive it afterwards with setStaffActive.
+ */
+export async function createAdmin(): Promise<string> {
+  const username = createStaff('admin');
+  totpSecrets.set(username, await enrolTotp(username));
+  return username;
+}
+
+// ===== Auth API (no browser): tokens and TOTP factors =====
+async function authApi<T>(path: string, token: string | null, body: unknown): Promise<T> {
+  const response = await fetch(`${supabaseUrl}/auth/v1${path}`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseKey,
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  const data: unknown = await response.json();
+  if (!response.ok) throw new Error(`${path}: ${JSON.stringify(data)}`);
+  return data as T;
+}
+
+/** A password-only (aal1) access token. */
+export async function passwordToken(user: string, password = PASSWORD): Promise<string> {
+  const session = await authApi<{ access_token: string }>('/token?grant_type=password', null, {
+    email: `${user}@staff.invalid`,
+    password,
+  });
+  return session.access_token;
+}
+
+/** Steps a session up to aal2 with a code from the factor's secret. Returns the new token. */
+export async function verifyTotp(token: string, factorId: string, secret: string) {
+  const challenge = await authApi<{ id: string }>(`/factors/${factorId}/challenge`, token, {});
+  const session = await authApi<{ access_token: string }>(`/factors/${factorId}/verify`, token, {
+    challenge_id: challenge.id,
+    code: totp(secret),
+  });
+  return session.access_token;
+}
+
+/** Enrols and verifies a TOTP factor for the user through the API; returns its secret. */
+export async function enrolTotp(user: string, password = PASSWORD): Promise<string> {
+  const token = await passwordToken(user, password);
+  const factor = await authApi<{ id: string; totp: { secret: string } }>('/factors', token, {
+    factor_type: 'totp',
+    friendly_name: 'e2e',
+  });
+  await verifyTotp(token, factor.id, factor.totp.secret);
+  return factor.totp.secret;
+}
+
+/** An aal2 token for a user with a verified factor (the session's user lists its factors). */
+export async function aal2Token(user: string, secret: string, password = PASSWORD) {
+  const token = await passwordToken(user, password);
+  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` },
+  });
+  const { factors } = (await response.json()) as { factors?: { id: string; status: string }[] };
+  const factor = factors?.find((f) => f.status === 'verified');
+  if (!factor) throw new Error(`${user} has no verified factor`);
+  return verifyTotp(token, factor.id, secret);
 }
 
 export const liveDot = (page: Page) =>
@@ -63,18 +166,78 @@ export async function animationsDone(page: Page) {
   );
 }
 
-export async function expectNoSeriousAxe(page: Page) {
+async function seriousAxe(page: Page) {
   // A half-faded element has lower contrast than the final one (seen on the Ready banner).
   await animationsDone(page);
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze();
-  const serious = results.violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  );
+  return results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+}
+
+export async function expectNoSeriousAxe(page: Page) {
+  let serious = await seriousAxe(page);
+  // Something can start animating while axe runs: a live update from a test running in
+  // parallel (a new kitchen ticket fading in, seen in S5) or a toast fading out. Its colour is
+  // between two states for that frame only. A contrast finding is therefore checked once more
+  // after the animations end; a colour that really is too low fails both times.
+  if (serious.length > 0 && serious.every((v) => v.id === 'color-contrast')) {
+    serious = await seriousAxe(page);
+  }
   expect(serious.map((v) => `${v.id}: ${v.help} (${v.nodes[0]?.target.join(' ') ?? ''})`)).toEqual(
     [],
   );
+}
+
+/**
+ * The menu picker's targets: the Add and quantity stepper buttons are at least `min` px each
+ * way (44 on touch, 40 on desk; CLAUDE.md rule 10), and none is partly covered by the search
+ * and chips bar. The list is scrolled so only a quarter of an Add button (10 to 12 px) shows
+ * below the category chips, then axe runs: on CI (other fonts, other row heights) a button left
+ * there by chance failed target-size as "partially obscured" while the list still scrolled
+ * under the bar (S4).
+ */
+export async function expectMenuTargets(page: Page, min: number) {
+  const targets = page.getByRole('button', {
+    name: /^(Add |Remove |Increase quantity$|Decrease quantity$)/,
+  });
+  expect(await page.getByRole('group', { name: /^Quantity of / }).count()).toBeGreaterThan(0);
+  for (const target of await targets.all()) {
+    const box = await target.boundingBox();
+    const name = await target.getAttribute('aria-label');
+    expect(box, `${name ?? ''} has a box`).not.toBeNull();
+    expect(
+      Math.min(box?.width ?? 0, box?.height ?? 0),
+      `${name ?? ''} size`,
+    ).toBeGreaterThanOrEqual(min);
+  }
+
+  const adds = page.getByRole('button', { name: /^Add / });
+  const add = adds.nth(Math.floor((await adds.count()) / 2));
+  await add.scrollIntoViewIfNeeded();
+  const straddles = await add.evaluate((button) => {
+    // The category chips: the targets that covered the button (axe counts targets only).
+    const chips = document.querySelector('nav[aria-label="Menu categories"]');
+    if (!chips) throw new Error('no menu bar');
+    let scroller = button.parentElement;
+    while (
+      scroller &&
+      !(
+        scroller.scrollHeight > scroller.clientHeight &&
+        /auto|scroll/.test(getComputedStyle(scroller).overflowY)
+      )
+    ) {
+      scroller = scroller.parentElement;
+    }
+    const edge = chips.getBoundingClientRect().bottom;
+    const before = button.getBoundingClientRect();
+    const target = edge - (before.height * 3) / 4;
+    (scroller ?? document.documentElement).scrollTop += before.top - target;
+    const after = button.getBoundingClientRect();
+    return after.top < edge && after.bottom > edge;
+  });
+  expect(straddles, 'an Add button sits across the search bar edge').toBe(true);
+  await expectNoSeriousAxe(page);
 }
 
 /** SQL as the database owner, through the CLI's container (local stack only). */
@@ -99,6 +262,68 @@ export function freeTable(number: number) {
     update public.restaurant_tables set status = 'available' where number = ${String(number)} and is_active;`);
 }
 
+/**
+ * A disposable staff account for a test that changes the account (deactivation): never a
+ * shared demo login, so no other test can be affected. A login (as seed.sql makes them) plus
+ * its profile through public.create_staff_profile, the same path as real staff. Returns the
+ * username; archive it afterwards with archiveStaff (archive, never delete).
+ */
+export function createStaff(role: 'admin' | 'cashier' | 'waiter' | 'chef'): string {
+  const id = crypto.randomUUID();
+  const username = `e2e-${id.slice(0, 8)}`;
+  psql(`
+    insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+                            raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+                            confirmation_token, recovery_token, email_change_token_new, email_change)
+    values ('00000000-0000-0000-0000-000000000000', '${id}', 'authenticated', 'authenticated',
+            public.staff_login_email('${username}'),
+            extensions.crypt('${PASSWORD}', extensions.gen_salt('bf')), now(),
+            '{"provider": "email", "providers": ["email"]}', '{"full_name": "E2E ${username}"}',
+            now(), now(), '', '', '', '');
+    insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at,
+                                 created_at, updated_at)
+    values (gen_random_uuid(), '${id}', '${id}',
+            jsonb_build_object('sub', '${id}', 'email', public.staff_login_email('${username}'),
+                               'email_verified', true), 'email', now(), now(), now());
+    select public.create_staff_profile('${id}', '${username}', 'E2E ${username}', '${role}');`);
+  return username;
+}
+
+export function setStaffActive(username: string, active: boolean) {
+  psql(`update public.profiles set is_active = ${String(active)} where username = '${username}'`);
+}
+
+/**
+ * A table of the test's own (number 101 and up, section "E2E"), free and active; archive it
+ * afterwards with archiveTable (archive, never delete). Keeps tests off the seed tables.
+ */
+export function createTable(number: number) {
+  psql(`
+    update public.restaurant_tables set is_active = true, status = 'available'
+     where number = ${String(number)} and section = 'E2E'
+       and not exists (select 1 from public.restaurant_tables
+                        where number = ${String(number)} and is_active);
+    insert into public.restaurant_tables (number, capacity, section)
+    select ${String(number)}, 4, 'E2E'
+     where not exists (select 1 from public.restaurant_tables
+                        where number = ${String(number)} and is_active);`);
+  freeTable(number);
+}
+
+export function archiveTable(number: number) {
+  freeTable(number);
+  psql(`update public.restaurant_tables set is_active = false
+         where number = ${String(number)} and section = 'E2E'`);
+}
+
+/** The order number of the open order on a table, from the server (not from a toast). */
+export function openOrderNumber(number: number): string {
+  return psql(`select o.order_number from public.orders o
+                 join public.restaurant_tables t on t.id = o.table_id
+                where t.number = ${String(number)} and t.is_active
+                  and o.status not in ('completed', 'cancelled')`);
+}
+
 export function tableId(number: number): string {
   return psql(
     `select id from public.restaurant_tables where number = ${String(number)} and is_active`,
@@ -113,14 +338,27 @@ export function menuItemId(name: string): string {
  * A staff member calling RPCs directly, as another device would (the chef's tablet, a second
  * waiter). Signs in with the Auth password grant, then calls PostgREST with that token.
  */
-export async function apiAs(request: APIRequestContext, user: string) {
-  const login = await request.post(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-    headers: { apikey: supabaseKey },
-    data: { email: `${user}@staff.invalid`, password: PASSWORD },
-  });
-  expect(login.ok()).toBe(true);
-  const { access_token: token } = (await login.json()) as { access_token: string };
+export async function apiAs(
+  request: APIRequestContext,
+  user: string,
+  options: { aal: 'aal1' | 'aal2' } = { aal: 'aal2' },
+) {
+  // Admin RPCs need aal2 (S5): an Admin from createAdmin passes the MFA step with its factor.
+  const secret = totpSecrets.get(user);
+  const token =
+    secret && options.aal === 'aal2' ? await aal2Token(user, secret) : await passwordToken(user);
   return {
+    /** The access token, for calls that are not PostgREST (the staff-admin function). */
+    token,
+    /** A PostgREST read as this user (RLS applies), e.g. 'payments?select=id'. */
+    async select<T = unknown>(path: string): Promise<T> {
+      const response = await request.get(`${supabaseUrl}/rest/v1/${path}`, {
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` },
+      });
+      const body: unknown = await response.json();
+      if (!response.ok()) throw new Error(`${path}: ${JSON.stringify(body)}`);
+      return body as T;
+    },
     async rpc<T = unknown>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
       const response = await request.post(`${supabaseUrl}/rest/v1/rpc/${fn}`, {
         headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` },
@@ -131,4 +369,28 @@ export async function apiAs(request: APIRequestContext, user: string) {
       return body as T;
     },
   };
+}
+
+/** A small valid PNG (solid colour): the "phone photo" an Admin picks for a menu item. */
+export function png(width: number, height: number): Buffer {
+  const chunk = (type: string, data: Buffer) => {
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(body));
+    return Buffer.concat([length, body, crc]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header.writeUInt8(8, 8); // bit depth
+  header.writeUInt8(2, 9); // RGB
+  const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(width * 3, 0xc2)]);
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(Buffer.concat(Array.from({ length: height }, () => row)))),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
 }

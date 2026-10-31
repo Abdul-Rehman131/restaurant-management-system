@@ -31,3 +31,7 @@ if (import.meta.env.PROD)
   void import('./shell/pwa').then(({ registerPwa }) => {
     registerPwa();
   });
+
+// Error reporting only when a DSN is set at build time; otherwise this code is not built
+// (src/lib/sentry.ts).
+if (import.meta.env.VITE_SENTRY_DSN) void import('./lib/sentry');

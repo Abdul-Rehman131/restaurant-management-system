@@ -1,8 +1,10 @@
 export { STAFF_LOGIN_EMAIL_DOMAIN, normalizeUsername, staffLoginEmail } from './auth';
 export {
   MoneyFormatError,
+  amountToInput,
   formatMoney,
   minorUnitsToDecimal,
+  parseAmount,
   toMinorUnits,
   type MinorUnits,
   type MoneyFormat,

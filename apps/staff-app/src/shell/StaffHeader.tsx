@@ -13,13 +13,15 @@ import {
   DropdownMenuTrigger,
   type Theme,
 } from '@rms/ui';
-import { CircleUserRound, LogOut } from 'lucide-react';
+import { CircleUserRound, KeyRound, LogOut } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { useAuth } from '../auth/auth-context';
 import { paths } from '../paths';
+import { accountKey } from './account-key';
 import { useConnection } from './connection-context';
 import { useTheme } from './theme-context';
 
@@ -38,6 +40,12 @@ export function AccountMenu({ showTheme = true }: { showTheme?: boolean }) {
   const { theme, setTheme } = useTheme();
   const metadata = auth.session?.user.user_metadata as { full_name?: unknown } | undefined;
   const name = typeof metadata?.full_name === 'string' ? metadata.full_name : null;
+  // From the account answer the shell already has (my_account): a staging demo may switch the
+  // Admin second step off, and the Admin should see that it is off.
+  const account = useQueryClient().getQueryData<{ role: string | null; admin_mfa: boolean }>(
+    accountKey,
+  );
+  const mfaOff = account?.role === 'admin' && !account.admin_mfa;
 
   return (
     <DropdownMenu>
@@ -48,6 +56,11 @@ export function AccountMenu({ showTheme = true }: { showTheme?: boolean }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {name && <DropdownMenuLabel>{t('shell.signedInAs', { name })}</DropdownMenuLabel>}
+        {mfaOff && (
+          <DropdownMenuLabel className="font-normal text-warning">
+            {t('shell.adminMfaOff')}
+          </DropdownMenuLabel>
+        )}
         {showTheme && (
           <>
             <DropdownMenuLabel>{t('shell.theme')}</DropdownMenuLabel>
@@ -67,6 +80,14 @@ export function AccountMenu({ showTheme = true }: { showTheme?: boolean }) {
             <DropdownMenuSeparator />
           </>
         )}
+        <DropdownMenuItem
+          onSelect={() => {
+            void navigate(paths.changePassword);
+          }}
+        >
+          <KeyRound aria-hidden />
+          {t('shell.changePassword')}
+        </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => {
             void auth.signOut().then(() => navigate(paths.login, { replace: true }));

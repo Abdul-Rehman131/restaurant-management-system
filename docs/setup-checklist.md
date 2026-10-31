@@ -1,5 +1,73 @@
 # Manual setup checklist
 
+## Demo deploy today (staff app on Vercel, staging backend)
+
+The shortest path to a client demo on an https address. Staff app only (customer web comes in
+P2). Staging only: never production. Details behind each step are in 4.3 to 4.7 below.
+
+**A. The backend (staging)**
+1. Merge the open PR into `develop`. The **DB deploy (staging)** workflow applies the new
+   migrations; wait until it is green.
+2. Demo data and accounts, on your machine in PowerShell from the repo folder:
+   ```powershell
+   $env:SUPABASE_SECRET_KEY = Read-Host -MaskInput 'Staging secret key'
+   $env:DEMO_PASSWORD_SUFFIX = Read-Host -MaskInput 'Demo password suffix'
+   pnpm seed:staging --demo-data --demo-staff --set-demo-passwords --admin-mfa off --dry-run
+   pnpm seed:staging --demo-data --demo-staff --set-demo-passwords --admin-mfa off
+   Remove-Item Env:SUPABASE_SECRET_KEY, Env:DEMO_PASSWORD_SUFFIX
+   ```
+   Demo accounts: `admin`, `cashier`, `chef`, `waiter1`, `waiter2`, `waiter3`, each with the
+   password *username + your suffix* (at least 10 characters in total), no forced change at
+   sign-in. Only usernames are printed. `--admin-mfa on` turns the Admin second step back on.
+   The old `waiter` account is left alone: deactivate it in **Admin → Staff → waiter →
+   Deactivate** (reason: "replaced by waiter1 to waiter3").
+
+**B. Vercel** (https://vercel.com/new, your Hobby account; Hobby is for non-commercial use,
+fine for a demo, not for the live restaurant: D14)
+3. **Import Git Repository** → `Abdul-Rehman131/restaurant-management-system` → **Import**.
+4. **Project Name** `rms-staff`. **Framework Preset**: **Vite**. **Root Directory** → **Edit**
+   → `apps/staff-app` → **Continue**.
+5. **Build and Output Settings**: leave the defaults (Build Command `vite build`, Output
+   Directory `dist`, Install Command automatic: Vercel installs the pnpm workspace from the
+   repo root).
+6. **Environment Variables** (tick Production and Preview):
+   - `VITE_SUPABASE_URL` = `https://aqxmdmkforcucmktwmjj.supabase.co`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY` = the staging **publishable** key (`sb_publishable_...`,
+     Supabase → Project Settings → API Keys). Never the secret key.
+   - `VITE_APP_NAME` = `Staff App (Demo)`
+   - `ENABLE_EXPERIMENTAL_COREPACK` = `1`
+
+   The build fails on purpose if either `VITE_SUPABASE_*` value is missing.
+7. **Deploy**. Then **Settings → Environments → Production → Branch Tracking** → `develop` →
+   **Save**, and **Deployments → Create Deployment** → `develop`.
+8. **Settings → Build and Deployment → Node.js Version** → **24.x** → **Save** (then redeploy
+   if the first build used another version).
+9. Copy the domain from **Settings → Domains**, for example `https://rms-staff-abc1.vercel.app`.
+
+**C. Connect the two** (needs `pnpm exec supabase login` once on your machine)
+10. Edge Functions on staging, and which origin may call them. `STAFF_APP_ORIGINS` is a comma
+    separated list of exact origins: `https://` + domain, no trailing slash, no path, no `*`.
+    Preview URLs are not covered (password change and staff admin work on the main domain only).
+    ```powershell
+    pnpm exec supabase functions deploy staff-admin --project-ref aqxmdmkforcucmktwmjj
+    pnpm exec supabase functions deploy account --project-ref aqxmdmkforcucmktwmjj
+    pnpm exec supabase secrets set --project-ref aqxmdmkforcucmktwmjj "STAFF_APP_ORIGINS=https://rms-staff-abc1.vercel.app,http://localhost:5173"
+    ```
+11. Supabase → **Authentication → URL Configuration**: **Site URL** = the Vercel domain;
+    **Redirect URLs** → **Add URL** → `https://rms-staff-abc1.vercel.app/**`. Staff sign in with a
+    password, so no email link uses these today; they keep Auth from pointing anywhere else.
+12. Supabase → **Authentication → Hooks**: the access token hook is on (step 21), and Admin
+    two-step sign-in works (sign in as `admin`, scan the code with the demo phone).
+
+**D. Check on the real domain** (10 minutes, the day before)
+13. Phone: open the domain, sign in as `waiter1`, **Start shift** (the button turns into
+    **Shift on**, a toast and a chime). Add to Home Screen; it opens full screen.
+14. Laptop: sign in as `chef` in one window and `cashier` in another; send an order from the
+    phone and watch it reach the kitchen; pay it at the cashier; the receipt prints.
+15. Browser console on each screen: no red errors. A "Content-Security-Policy-Report-Only"
+    warning would mean the policy needs a source added (tell the developer); it blocks nothing.
+16. Rehearse [demo-script.md](demo-script.md) once with the real accounts.
+
 These are steps only the account owner can do. **The repository is public**: never paste a
 password, key, token or connection string into chat, an issue, a PR or a committed file, and
 keep private owner or business data out of the docs. Secrets live in the password manager
@@ -142,6 +210,62 @@ These need the database functions from the migrations, so they come after step 2
     `waiter` and `chef` with confirmed `@staff.invalid` logins and prints each new password
     **once**: put them in the vault, then `Clear-Host`. Running it again skips existing accounts.
 
+    **Lost a staging password and no Admin can reset it in the app** (for example the only
+    Admin): reset ONE named account from your machine. Needs the migration
+    `staging_password_reset` deployed (the CI deploy does it on `develop`).
+    ```powershell
+    $env:SUPABASE_SECRET_KEY = Read-Host -MaskInput 'Staging secret key'
+    pnpm seed:staging -- --reset-password=admin --dry-run   # checks the key and the account; changes nothing
+    pnpm seed:staging -- --reset-password=admin             # new temporary password, shown once
+    Remove-Item Env:SUPABASE_SECRET_KEY
+    ```
+    - It works exactly like an Admin's **Reset password**: the account is signed out
+      everywhere, gets a new random temporary password printed **once** (vault, then
+      `Clear-Host`; it is stored nowhere), and must choose its own password at the next
+      sign-in. The audit log records it as an operator reset.
+    - One account per run; any other or misspelled argument stops the script before it
+      connects. A deactivated account is refused (reactivate it first). Staging only, like the
+      rest of the script.
+    - Two-step sign-in is **not** reset: an Admin still enters the authenticator code. If that
+      phone is lost too, remove the factor in the dashboard (Authentication → Users → the user →
+      MFA factors), as in the README's "Admin two-step sign-in".
+    - Only when no Admin can do it. Otherwise use Admin → Staff → **Reset password**.
+
+    **Demo data for a client demo** (opt-in, staging only, needs the migration `demo_data`
+    deployed): the clearly fake "Ember Kitchen (Demo)" brand with demo rates (16% tax, 5%
+    service, named on every receipt), PKR, Asia/Karachi, 04:00 cut-off, 11 categories and 72
+    desi and fast-food items (drinks, water and anything not cooked skip the kitchen; Mutton
+    Chops and Gajar Halwa start Sold Out) and 14 tables (Hall 1 to 6, Family 7 to 11, Outdoor
+    12 to 14): the same content as the local seed. A project with the first demo set is
+    upgraded (old-only rows archived).
+    ```powershell
+    $env:SUPABASE_SECRET_KEY = Read-Host -MaskInput 'Staging secret key'
+    pnpm seed:staging --demo-data --dry-run   # what it would change; changes nothing
+    pnpm seed:staging --demo-data             # adds what is missing
+    Remove-Item Env:SUPABASE_SECRET_KEY
+    ```
+    It only adds missing rows and never changes or archives one, so running it twice is safe.
+    If the project has any data that is not demo data (another restaurant name, a category,
+    item or table outside the demo set) it refuses and changes nothing. Never on production.
+
+### 4.7 S5: staff administration and Admin MFA (after the S5 migrations are deployed)
+The `menu-images` Storage bucket and its policies come from the migrations; nothing to click.
+
+23. Deploy the `staff-admin` Edge Function from your machine (the CLI reads
+    `[functions.staff-admin] verify_jwt = false` from `supabase/config.toml`; the function checks
+    the caller itself):
+    ```powershell
+    pnpm exec supabase functions deploy staff-admin --project-ref aqxmdmkforcucmktwmjj
+    ```
+24. Tell it which origins may call it (the staging staff app; comma separated if more):
+    ```powershell
+    pnpm exec supabase secrets set --project-ref aqxmdmkforcucmktwmjj STAFF_APP_ORIGINS=https://<staging staff domain>
+    ```
+    The service key is provided to Edge Functions by Supabase itself; never set it by hand.
+25. Sign in as the staging `admin`: the app asks to set up two-step sign-in (an authenticator
+    app). Then create a **second** Admin in Admin → Staff, so a lost phone can be reset by the
+    other Admin (README, "Admin two-step sign-in").
+
 ## 5. Sentry (postponed to T11)
 Nothing to do now. In T11: create an organisation and two React projects (`rms-staff`,
 `rms-web`), invite the developers, and put the DSNs into env vars only.
@@ -169,3 +293,48 @@ Nothing here is built yet. There is no production project, workflow, secret or d
 - [ ] Real staff accounts are created by the Admin in the app (P1), never by `seed:staging`;
       production never gets demo data.
 - [ ] Update the README rollback section with the production steps.
+
+### 6.1 Go-live additions (S6)
+The full owner test day is [uat-script.md](uat-script.md); its result decides go-live.
+
+- [ ] **Owner data collected** (never committed to Git; typed into the app by the Admin):
+      restaurant name, address, phone, tax registration number, receipt footer; currency,
+      tax % and service charge % and the pricing rules (D2, Q1: check 5 real bills with
+      Admin → Bill check); the business-day cut-off (D10); the menu with prices, cost prices
+      and photos (D5); the tables with numbers, seats and sections (D6); the staff list
+      (name, phone, role); the receipt printer model (D3).
+- [ ] **Paid plans**: Supabase **Pro** for `rms-prod` (daily backups, no pause) and the hosting
+      decision **D14** taken (Vercel Pro or Cloudflare Pages), both owned by the client.
+- [ ] **Auth hook enabled** on production (4.6, step 21) and checked: an inactive login is
+      refused at sign-in.
+- [ ] **Edge Functions deployed** to production: `staff-admin` and `account` (4.7 steps 23
+      and 24, with the production project ref and `STAFF_APP_ORIGINS` = the production domain).
+      Keep Auth's "Secure password change" setting **off** (the default): `account` checks
+      the current password itself.
+- [ ] **Sign-in rate limits** checked in Authentication → Rate Limits (sign-ins per 5 minutes
+      per IP; the default 30 is fine). See [security-review.md](security-review.md).
+- [ ] **Password policy** in Authentication → Providers → Email (staging and production):
+      minimum length **10** (as in `supabase/config.toml`), and **Leaked password protection**
+      on (a Pro plan feature).
+- [ ] **Staff accounts**: every person gets their own account from Admin → Staff (temporary
+      password, changed at the first sign-in). **Two Admins**, each with two-step sign-in,
+      so a lost phone can be reset. No shared logins.
+- [ ] **Printer test**: on the counter computer, print 3 receipts (Cash, Card, split) on the
+      80 mm printer from Chrome or Edge; check the width, the tax number and the footer.
+- [ ] **Monitoring**: optional Sentry (create a project, put its DSN in `VITE_SENTRY_DSN` for
+      the production build only) and an uptime check on the staff app and the Supabase
+      health endpoint.
+- [ ] **Content-Security-Policy**: `vercel.json` sends it as *Report-Only*. Open every screen
+      on staging with DevTools open; when the console shows no CSP reports, change the header
+      name to `Content-Security-Policy` (enforced) in a PR.
+- [ ] **Backup restore tested** on a fresh project ([backup-restore.md](backup-restore.md)).
+- [ ] **Parallel run** of 3 to 7 days (spec 12): the system and the paper slips together;
+      every night compare the dashboard's sales with the paper total and write both down.
+- [ ] **Rollback plan agreed** (README "Rollback", spec 12): paper slips are ready at the
+      counter; who decides to switch back; the previous version can be redeployed from Git.
+
+## 7. Weekly (while the restaurant is live)
+- [ ] **Backup** of production (Monday): the 10-minute manual backup in
+      [backup-restore.md](backup-restore.md), stored in the encrypted backup place; write
+      it in the backup log. The Pro plan's daily backups are the second copy.
+- [ ] Look at the Admin Staff list: anyone who left is deactivated; still two active Admins.

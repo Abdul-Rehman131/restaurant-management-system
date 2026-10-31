@@ -1,0 +1,19 @@
+{
+  "searchLabel": "Search the menu",
+  "searchPlaceholder": "Search menu…",
+  "categories": "Menu categories",
+  "menuList": "Menu items",
+  "all": "All",
+  "soldOut": "Sold out",
+  "add": "Add {{name}}",
+  "noResults": "Nothing matches “{{query}}”.",
+  "menuEmpty": "The menu is empty",
+  "reviewDescription": "Change quantities or add notes for the kitchen.",
+  "reviewEmpty": "No items yet. Tap a menu item to add it.",
+  "noteFor": "Note for {{name}}",
+  "notePlaceholder": "For example: no onion",
+  "soldOutInCart": "Sold out: remove it to send.",
+  "loadFailed": "The menu could not be loaded",
+  "loadFailedBody": "Check the connection, then try again.",
+  "retry": "Try again"
+}

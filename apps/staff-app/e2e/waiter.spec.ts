@@ -3,20 +3,22 @@ import type { APIRequestContext, Browser, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import {
   apiAs,
+  expectMenuTargets,
   expectNoSeriousAxe,
   freeTable,
   liveDot,
   menuItemId,
+  openOrderNumber,
   psql,
   shots,
   signInAs,
   tableId,
 } from './support';
 
-// S2 waiter app on a phone viewport against the local Supabase stack. Each test owns one
+// S2 waiter app on a phone viewport (the phone project only, playwright.config.ts) against the
+// local Supabase stack. Each test owns one
 // table (freed before it starts), so tests can run in parallel. Screenshots go to $SHOTS
 // (light, and dark with SHOTS_THEME=dark).
-test.skip(({ isMobile }) => !isMobile, 'the waiter app is phone first: the phone project');
 
 const theme = process.env['SHOTS_THEME'] === 'dark' ? 'dark' : 'light';
 
@@ -103,18 +105,20 @@ test('order entry: search, categories, sold out, review with notes, a double tap
   await expect(page.getByRole('button', { name: 'Send to Kitchen' })).toBeDisabled();
 
   // Instant search over the cached menu; a Sold Out item has no button at all (BR-13).
+  await page.getByRole('searchbox', { name: 'Search the menu' }).fill('mutton');
+  await expect(menuRow(page, 'Mutton Karahi (Half)')).toBeVisible();
+  await expect(menuRow(page, 'Mutton Chops (4 pcs)')).toContainText('Sold out');
+  await expect(menuRow(page, 'Mutton Chops (4 pcs)').getByRole('button')).toHaveCount(0);
   await page.getByRole('searchbox', { name: 'Search the menu' }).fill('tikka');
   await expect(menuRow(page, 'Chicken Tikka (Leg)')).toBeVisible();
-  await expect(menuRow(page, 'Fish Tikka')).toContainText('Sold out');
-  await expect(menuRow(page, 'Fish Tikka').getByRole('button')).toHaveCount(0);
-  await expect(menuRow(page, 'Seekh Kebab')).toHaveCount(0);
+  await expect(menuRow(page, 'Seekh Kabab')).toHaveCount(0);
 
   // Tap the row = +1, twice; then the stepper shows 2.
   await menuRow(page, 'Chicken Tikka (Leg)').getByRole('button').first().click();
   await menuRow(page, 'Chicken Tikka (Leg)').getByRole('button').first().click();
   await expect(menuRow(page, 'Chicken Tikka (Leg)').locator('output')).toHaveText('2');
 
-  await page.getByRole('button', { name: 'Breads' }).click();
+  await page.getByRole('button', { name: 'Naan and Roti' }).click();
   await expect(page.getByRole('searchbox', { name: 'Search the menu' })).toHaveValue('');
   await expect(menuRow(page, 'Chicken Tikka (Leg)')).toHaveCount(0);
   await page.getByRole('button', { name: 'Add Plain Naan' }).click();
@@ -122,6 +126,9 @@ test('order entry: search, categories, sold out, review with notes, a double tap
   await expect(page.getByText('The total is worked out when you send.')).toBeVisible();
   await shot(page, 'order');
   await expectNoSeriousAxe(page);
+  // Touch density: 44 px targets or more, never half under the search bar, on the full menu.
+  await page.getByRole('button', { name: 'All' }).click();
+  await expectMenuTargets(page, 44);
 
   await page.getByRole('button', { name: 'Review' }).click();
   const sheet = page.getByRole('dialog', { name: 'Review order · Table 2' });
@@ -248,12 +255,13 @@ async function sendOrder(page: Page, number: number, items: string[], signedIn =
   await tile(page, number).click();
   for (const item of items) await page.getByRole('button', { name: `Add ${item}` }).click();
   await page.getByRole('button', { name: 'Send to Kitchen' }).click();
-  const toastText = await page.getByText(/^Sent to the kitchen: ORD-/).textContent();
-  return (toastText ?? '').replace('Sent to the kitchen: ', '');
+  await expect(page.getByText(/^Sent to the kitchen: ORD-/).last()).toBeVisible();
+  // From the server: an earlier toast may still be on screen.
+  return openOrderNumber(number);
 }
 
 test('orders tab: my open orders with status, opens the table', async ({ page }) => {
-  const orderNumber = await sendOrder(page, 7, ['Chicken Corn Soup']);
+  const orderNumber = await sendOrder(page, 7, ['Chicken Soup']);
   await page.getByRole('link', { name: 'Back to tables' }).click();
   await page
     .getByRole('navigation', { name: 'Waiter' })
@@ -281,10 +289,10 @@ test.describe('kitchen to waiter', () => {
     // Two signed-in devices and several server round trips: triple the time budget.
     test.slow();
     freeTable(6);
-    const orderNumber = await sendOrder(page, 5, ['Seekh Kebab (4 pcs)', 'Soft Drink (Can)']);
+    const orderNumber = await sendOrder(page, 5, ['Seekh Kabab (4 pcs)', 'Pepsi (Can)']);
     const firstSend = page.getByRole('region', { name: 'First send' });
     await expect(firstSend).toContainText('Sent');
-    await expect(firstSend).toContainText('Soft Drink (Can)');
+    await expect(firstSend).toContainText('Pepsi (Can)');
     await expect(firstSend).toContainText('No kitchen');
     await expect(page.getByText('To cancel an item, ask the cashier.')).toBeVisible();
     await expect(page.getByText('Total', { exact: true })).toBeVisible();
@@ -361,6 +369,8 @@ test.describe('kitchen to waiter', () => {
     await openWaiter(page);
     await page.getByRole('button', { name: 'Start shift' }).click();
     await expect(page.getByRole('button', { name: 'Mute alerts' })).toBeVisible();
+    // Start shift confirms with a short chime (two notes), then the Ready tone adds two each.
+    await expect.poll(counts).toEqual({ tones: 2, vibrations: 0 });
     const orderNumber = await sendOrder(page, 8, ['Chicken Malai Boti'], true);
     await page.getByRole('link', { name: 'Back to tables' }).click();
 
@@ -372,7 +382,7 @@ test.describe('kitchen to waiter', () => {
       const banner = page.getByText('Table 8 is ready');
       await expect(banner).toBeVisible({ timeout: 2_000 });
       await expect(page.getByText('First send is ready to serve')).toBeVisible();
-      expect(await counts()).toEqual({ tones: 2, vibrations: 1 });
+      expect(await counts()).toEqual({ tones: 4, vibrations: 1 });
       await expect(page.getByRole('link', { name: /Alerts/ })).toContainText('1 new alert');
       await shot(page, 'alert-banner');
       await expectNoSeriousAxe(page);
@@ -402,7 +412,7 @@ test.describe('kitchen to waiter', () => {
       await kitchen.setBatch(orderNumber, 2, 'preparing');
       await kitchen.setBatch(orderNumber, 2, 'ready');
       await expect(page.getByText('Add-on 2 is ready to serve')).toBeVisible({ timeout: 2_000 });
-      expect(await counts()).toEqual({ tones: 2, vibrations: 2 });
+      expect(await counts()).toEqual({ tones: 4, vibrations: 2 });
 
       // The bottom nav is hidden on a table's screens (a full-screen task).
       await page.getByRole('link', { name: 'Back to tables' }).click();
@@ -411,7 +421,7 @@ test.describe('kitchen to waiter', () => {
         .getByRole('navigation', { name: 'Waiter' })
         .getByRole('link', { name: /Alerts/ })
         .click();
-      await expect(page.getByRole('heading', { name: 'Shift started' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Shift on' })).toBeVisible();
       await expect(page.getByRole('link', { name: /Table 8 is ready/ })).toHaveCount(2);
       await shot(page, 'alerts');
       await expectNoSeriousAxe(page);

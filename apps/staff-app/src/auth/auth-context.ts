@@ -42,29 +42,3 @@ export const roleHome: Record<AppRole, string> = {
   chef: paths.kitchen,
   rider: paths.notAvailable,
 };
-
-const MFA_SKIP_KEY = 'mfa-setup-skipped';
-
-/** Admin chose "Skip for now" on the MFA set-up screen (this tab only; enforcement is P1). */
-export function mfaSetupSkipped(): boolean {
-  try {
-    return sessionStorage.getItem(MFA_SKIP_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
-export function skipMfaSetup(): void {
-  try {
-    sessionStorage.setItem(MFA_SKIP_KEY, '1');
-  } catch {
-    // Storage blocked: the prompt simply shows again next time.
-  }
-}
-
-/** Admin must finish the MFA step (or set-up prompt) before any screen. */
-export function needsMfaStep(auth: AuthState): boolean {
-  if (auth.role !== 'admin') return false;
-  if (auth.hasVerifiedFactor) return auth.aal !== 'aal2';
-  return !mfaSetupSkipped();
-}

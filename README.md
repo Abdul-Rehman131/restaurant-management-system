@@ -25,8 +25,8 @@ inbox (Mailpit) `http://127.0.0.1:54324`. `pnpm db:status` prints the local URLs
 local-only demo keys. Those keys are the same on every machine and are not secrets.
 
 **Local demo data** (`supabase/seed.sql`, loaded by `pnpm db:reset`, never on cloud projects):
-the fake "Ember Kitchen (Demo)" restaurant with demo rates (16% tax, 5% service charge), 30
-menu items, 12 tables, and six demo staff logins (username / `demo-password-123`): `admin`,
+the fake "Ember Kitchen (Demo)" restaurant with demo rates (16% tax, 5% service charge), 72
+desi and fast-food menu items, 14 tables, and six demo staff logins (username / `demo-password-123`): `admin`,
 `cashier`, `waiter1`, `waiter2`, `chef` and `rider`, plus `former`, a deactivated account that
 must be refused. Local only.
 
@@ -39,6 +39,68 @@ Staff log in with a **username**. The app maps it to the internal login email
 `<username>@staff.invalid` (`public.staff_login_email()` in SQL, `staffLoginEmail()` in
 `packages/shared`). That domain is reserved and can never receive mail. Staff accounts are
 created only by an Admin; public sign-up is disabled.
+
+## Demo logins (local only)
+
+`pnpm db:reset` loads `supabase/seed.sql`, which creates these demo staff accounts on your
+**local** stack only. Sign in with the **username** (not an email) and the password
+`demo-password-123`:
+
+| Username  | Role                                            | Lands on                  |
+| --------- | ----------------------------------------------- | ------------------------- |
+| `admin`   | Admin (two-step sign-in is required, see below) | `/admin`                  |
+| `cashier` | Cashier                                         | `/cashier`                |
+| `waiter1` | Waiter                                          | `/waiter`                 |
+| `waiter2` | Waiter                                          | `/waiter`                 |
+| `chef`    | Chef                                            | `/kitchen`                |
+| `rider`   | Rider (no screens until P3)                     | a "no screens yet" notice |
+
+The seed also has `former`, a deactivated waiter whose sign-in is refused. These accounts
+exist only after `pnpm db:reset` on a local stack. They are never created on staging or
+production, where staff accounts are made by an Admin.
+
+## Admin two-step sign-in (MFA)
+
+Every Admin must use two-step sign-in (TOTP, any authenticator app) since S5. At the first
+sign-in the app shows a QR code and a key; after that it asks for the 6-digit code each time.
+Until the code is entered, every Admin function answers `MFA_REQUIRED` (the database checks
+the session's `aal2`), so a stolen password alone opens nothing.
+
+- **Local demo `admin`:** set it up with your phone at the first sign-in. To start again, remove
+  its factor: `docker exec supabase_db_rms psql -U postgres -c "delete from auth.mfa_factors
+where user_id = (select id from auth.users where email = 'admin@staff.invalid')"`. The e2e
+  suite never touches it: each test makes its own disposable Admin and enrols it through the
+  Auth API.
+- **Lost phone (staging, production):** another Admin opens **Admin → Staff**, and uses **Reset
+  two-step sign-in** on that person (audited, signs them out); they set up a new authenticator
+  at the next sign-in. Keep at least two active Admins for this reason.
+- **No other Admin can sign in (emergency only):** the project owner removes the factor in the
+  Supabase dashboard: **Authentication → Users →** the Admin **→ MFA factors → delete**. This is
+  an account recovery step, not a schema or data change; record it in the team's log.
+
+## Staff accounts (`staff-admin` Edge Function)
+
+Admins create and manage staff in **Admin → Staff**: create (a temporary password is shown
+once), edit, reset password, reset two-step sign-in, deactivate (sessions end, the login is
+banned) and reactivate. All of it goes through
+[`supabase/functions/staff-admin`](supabase/functions/staff-admin/index.ts), the only code that
+holds the service key: it checks the caller with Auth, `my_role()` and `aal2`, then calls the
+`service_role`-only database functions (migration `s5_staff_admin`). The browser never gets the key.
+
+- **Local:** `pnpm db:start` serves the function. On Windows, file changes may not reach the
+  container: after editing it, run `docker restart supabase_edge_runtime_rms`.
+- **Allowed origins:** the function answers browsers only from `STAFF_APP_ORIGINS` (comma
+  separated; default `http://localhost:5173,http://127.0.0.1:5173`). Set it as a function
+  secret per environment ([docs/setup-checklist.md](docs/setup-checklist.md)).
+
+## Own password
+
+Every staff member changes their password from the **Account** menu (**Change password**). A
+new or reset account must choose its own password at the first sign-in: the profile flag
+`must_change_password` blocks every database function until then (Admins included, after the
+MFA step). The change goes through [`supabase/functions/account`](supabase/functions/account/index.ts),
+which checks the current password and the rules (10 to 72 characters, not the current one, not
+the username) and signs the person out on their other devices. Deploy it like `staff-admin`.
 
 ## Commands
 
@@ -53,8 +115,11 @@ created only by an Admin; public sign-up is disabled.
 | `pnpm db:lint`                                       | Lint the database schema and functions                                                                                                                                                                                                            |
 | `pnpm db:types`                                      | Regenerate `packages/shared/src/database.types.ts` from the local DB                                                                                                                                                                              |
 | `pnpm seed:staging`                                  | Create the staging staff accounts by hand (see Deployment); `-- --local` tries it locally                                                                                                                                                         |
+| `pnpm sim:day`                                       | A simulated restaurant day (50+ orders through the real RPCs) with a reconciliation and a PASS/FAIL report; local stack only                                                                                                                      |
+| `pnpm load:smoke`                                    | Smoke load: 50 Realtime kitchen screens and 200 orders in a compressed hour (`COMPRESS`, default 3), p50/p95 per RPC and the kitchen event; local only (about 20 minutes)                                                                         |
+| `pnpm db:restore-check`                              | Backup check: dump the local DB, restore it into a fresh database, compare row counts ([docs/backup-restore.md](docs/backup-restore.md))                                                                                                          |
 | `pnpm brand:icons`                                   | Regenerate favicon and PWA icons from `packages/ui/brand/logo-mark.svg`                                                                                                                                                                           |
-| `pnpm build && pnpm size`                            | Build, then check the initial-JS bundle budgets (plan 4.10)                                                                                                                                                                                       |
+| `pnpm build && pnpm size`                            | Build, then check the initial-JS bundle budgets (plan 4.10) and that the staff app's CSP allows its inline script by hash                                                                                                                         |
 | `pnpm --filter @rms/ui test`                         | Contrast check for both themes (text 4.5:1, UI 3:1); also runs in `pnpm test`                                                                                                                                                                     |
 | `pnpm test`                                          | Unit tests (Vitest, money helpers) and the contrast check                                                                                                                                                                                         |
 | `pnpm e2e`                                           | Playwright on the dev server: sign-in and role routing against local Supabase (`pnpm db:start` first), plus the /dev/ui gallery with axe in light, dark, LTR and RTL (first run: `pnpm --filter @rms/staff-app exec playwright install chromium`) |
@@ -89,9 +154,9 @@ proposes weekly updates for actions and npm packages.
 | Job              | What it checks                                                                                                                               | Same check locally                                                                                                             |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `quality`        | ESLint, TypeScript, Prettier, Vitest, contrast of both themes                                                                                | `pnpm lint && pnpm typecheck && pnpm format:check && pnpm test`                                                                |
-| `database`       | Supabase (database container only), every migration from zero plus seed, pgTAP, schema lint, and that `database.types.ts` matches the schema | `pnpm db:reset && pnpm db:test && pnpm db:lint && pnpm db:types && git diff --exit-code packages/shared/src/database.types.ts` |
+| `database`       | Supabase (database & Storage only), every migration from zero plus seed, pgTAP, schema lint, and that `database.types.ts` matches the schema | `pnpm db:reset && pnpm db:test && pnpm db:lint && pnpm db:types && git diff --exit-code packages/shared/src/database.types.ts` |
 | `build-and-size` | Production build of both apps, then the bundle budgets (plan 4.10); a budget exceeded fails the job                                          | `pnpm build && pnpm size`                                                                                                      |
-| `e2e`            | Supabase (auth, REST, Realtime), Chromium, the Playwright suite on phone and desktop, then the PWA update test on a production preview       | `pnpm db:start`, then `pnpm e2e`, then `pnpm --filter @rms/staff-app build && pnpm --filter @rms/staff-app e2e:pwa`            |
+| `e2e`            | Supabase (auth, REST, Realtime, Storage, functions), Chromium, Playwright on phone and desktop, then the PWA update test on a prod build     | `pnpm db:start`, then `pnpm e2e`, then `pnpm --filter @rms/staff-app build && pnpm --filter @rms/staff-app e2e:pwa`            |
 | `secrets`        | gitleaks over the **full** git history                                                                                                       | [gitleaks](https://github.com/gitleaks/gitleaks) installed: `gitleaks git --redact -v .`                                       |
 | `ci`             | Passes only when every job above passed (or was skipped). **This is the one required status check.**                                         |                                                                                                                                |
 
@@ -135,7 +200,12 @@ proposes weekly updates for actions and npm packages.
   secret key in your shell for that one command (steps in
   [docs/setup-checklist.md](docs/setup-checklist.md), 4.6). It creates `admin`, `cashier`,
   `waiter` and `chef` and prints each new password once. `pnpm seed:staging -- --local` tries
-  it on the local stack.
+  it on the local stack. A lost staging password that no Admin can reset in the app:
+  `pnpm seed:staging -- --reset-password=<username>` (one account, `--dry-run` first; checklist
+  4.6, step 22). Demo menu, tables and settings for a client demo:
+  `pnpm seed:staging --demo-data` (`--dry-run` first; refuses if real data exists). Demo
+  accounts with fixed passwords and the Admin MFA switch: `--demo-staff --set-demo-passwords`
+  and `--admin-mfa on|off` (checklist, "Demo deploy today").
 
 ## Rollback (staging)
 

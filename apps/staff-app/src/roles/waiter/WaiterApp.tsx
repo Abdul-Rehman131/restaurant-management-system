@@ -11,10 +11,11 @@ import { NavLink, Route, Routes, useMatch } from 'react-router';
 
 import { useAuth } from '../../auth/auth-context';
 import { paths } from '../../paths';
+import { RoleNotFound } from '../../screens/RoleNotFound';
 import { useConnection } from '../../shell/connection-context';
 import { StaffHeader } from '../../shell/StaffHeader';
 import { useScreenAppearance } from '../../shell/theme-context';
-import { ReadyBanner, ShiftControl } from './AlertParts';
+import { ReadyBanner, WaiterShift } from './AlertParts';
 import { useAlertStore, useReadyAlerts } from './alerts';
 import { AlertsScreen } from './AlertsScreen';
 import { useWaiterLive } from './live';
@@ -43,21 +44,28 @@ export function WaiterApp() {
   useWaiterLive(session?.user.id);
   useReadyAlerts();
   const unread = useAlertStore((s) => s.alerts.filter((a) => !a.read).length);
-  // Order entry and order detail are full-screen tasks with their own bottom bar.
+  // Order entry and order detail are full-screen tasks with their own bottom bar. They fill
+  // the viewport and scroll inside, so order entry's menu list scrolls below its search bar.
   const onTable = useMatch(`${paths.waiter}/table/*`) !== null;
 
   return (
-    <div className="flex min-h-dvh flex-col bg-bg text-fg">
-      <StaffHeader actions={<ShiftControl />} />
+    <div className={cn('flex flex-col bg-bg text-fg', onTable ? 'h-dvh' : 'min-h-dvh')}>
+      <StaffHeader actions={<WaiterShift />} />
       <OfflineBanner online={state !== 'offline'} />
       <ReadyBanner />
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4">
+      <main
+        className={cn(
+          'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4',
+          onTable && 'min-h-0 overflow-y-auto',
+        )}
+      >
         <Routes>
           <Route index element={<TablesScreen />} />
           <Route path={waiterRoutes.table} element={<TableRoute adding={false} />} />
           <Route path={waiterRoutes.addItems} element={<TableRoute adding />} />
           <Route path={waiterRoutes.orders} element={<OrdersScreen />} />
           <Route path={waiterRoutes.alerts} element={<AlertsScreen />} />
+          <Route path="*" element={<RoleNotFound home={paths.waiter} />} />
         </Routes>
       </main>
       {!onTable && (
