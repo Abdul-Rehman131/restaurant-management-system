@@ -116,5 +116,6 @@
   "NOT_SIGNED_IN": "You are signed out. Sign in again, then try once more.",
   "BAD_REQUEST": "The app sent an incomplete request. Reload the page and try again.",
   "AUTH_ADMIN_FAILED": "The account change could not be finished. Try again; nothing is done twice.",
-  "PASSWORD_CHANGE_REQUIRED": "Choose your own password first: open Change password from the account menu."
+  "PASSWORD_CHANGE_REQUIRED": "Choose your own password first: open Change password from the account menu.",
+  "OWNER_DATA_PRESENT": "This project already has real data, so demo data was not added. Nothing was changed."
 }

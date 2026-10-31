@@ -19,6 +19,14 @@
 // Same effect as an Admin's reset: the account must change it at the next sign-in, every session
 // ends, and the audit log records an operator reset (public.ops_password_reset). Two-step sign-in
 // is not touched: an Admin still needs the authenticator code after signing in.
+//
+// Demo data for a client demo (opt-in, staging only): the clearly fake "Ember Kitchen (Demo)"
+// brand with demo rates, 6 categories and 30 items (bottled drinks skip the kitchen, one item is
+// Sold Out) and 12 tables in 2 sections, the same content as the local seed:
+//   pnpm seed:staging -- --demo-data --dry-run   reports what it would add; changes nothing
+//   pnpm seed:staging -- --demo-data             adds what is missing (safe to run twice)
+// It only adds; it never changes or archives a row, and it refuses to run at all if the project
+// has any data that is not demo data (public.ops_demo_data, OWNER_DATA_PRESENT).
 import { randomBytes } from 'node:crypto';
 
 import { staffLoginEmail } from '../packages/shared/src/auth.ts';
@@ -32,9 +40,13 @@ const url = local ? 'http://127.0.0.1:54321' : `https://${STAGING_REF}.supabase.
 // Every argument must be known: a typo must never fall through to "create the accounts".
 const resetArgs = process.argv.slice(2).filter((a) => a.startsWith('--reset-password'));
 const dryRun = process.argv.includes('--dry-run');
+const demoData = process.argv.includes('--demo-data');
 const unknown = process.argv
   .slice(2)
-  .filter((a) => a !== '--local' && a !== '--dry-run' && !a.startsWith('--reset-password'));
+  .filter(
+    (a) =>
+      !['--local', '--dry-run', '--demo-data'].includes(a) && !a.startsWith('--reset-password'),
+  );
 
 const staff = [
   { username: 'admin', fullName: 'Staging Admin', role: 'admin' },
@@ -43,31 +55,48 @@ const staff = [
   { username: 'chef', fullName: 'Staging Chef', role: 'chef' },
 ] as const;
 
-function fail(message: string): never {
-  console.error(`seed-staging: ${message}`);
-  process.exit(1);
+/**
+ * Every failure is thrown and reported by the handler at the end, which sets the exit code.
+ * Never process.exit(): on Windows it can crash Node (a libuv assertion) while stderr or
+ * fetch's connections are still closing, which hides the real message behind a crash.
+ */
+class Stop extends Error {}
+function stop(message: string): never {
+  throw new Stop(message);
 }
 
-if (unknown.length > 0) fail(`unknown argument ${unknown.join(' ')}`);
-if (resetArgs.length > 1) fail('--reset-password takes ONE account per run.');
-const resetUser = resetArgs[0]
-  ?.match(/^--reset-password=(.+)$/)?.[1]
-  ?.trim()
-  .toLowerCase();
-if (resetArgs.length === 1 && !resetUser) fail('use --reset-password=<username>.');
-if (resetUser && !staffLoginEmail(resetUser)) fail(`invalid username ${resetUser}`);
-if (dryRun && !resetUser) fail('--dry-run only applies to --reset-password=<username>.');
-console.log(
-  `seed-staging: ${url}${resetUser ? ` (reset password: ${resetUser}${dryRun ? ', dry run' : ''})` : ''}`,
-);
+/** The arguments, checked before anything connects. */
+function parseArguments(): { resetUser: string | undefined } {
+  if (unknown.length > 0) stop(`unknown argument ${unknown.join(' ')}`);
+  if (resetArgs.length > 1) stop('--reset-password takes ONE account per run.');
+  const resetUser = resetArgs[0]
+    ?.match(/^--reset-password=(.+)$/)?.[1]
+    ?.trim()
+    .toLowerCase();
+  if (resetArgs.length === 1 && !resetUser) stop('use --reset-password=<username>.');
+  if (resetUser && !staffLoginEmail(resetUser)) stop(`invalid username ${resetUser}`);
+  if (demoData && resetArgs.length > 0) {
+    stop('use --demo-data and --reset-password in separate runs.');
+  }
+  if (dryRun && !resetUser && !demoData) {
+    stop('--dry-run only applies to --reset-password=<username> or --demo-data.');
+  }
+  const mode = resetUser ? `reset password: ${resetUser}` : demoData ? 'demo data' : '';
+  console.log(`seed-staging: ${url}${mode ? ` (${mode}${dryRun ? ', dry run' : ''})` : ''}`);
+  return { resetUser };
+}
 
-const key = process.env['SUPABASE_SECRET_KEY']?.trim();
-if (!key) fail('set SUPABASE_SECRET_KEY in this shell first (see the top of this file).');
-if (key.startsWith('sb_publishable_')) fail('that is the publishable key; use the secret key.');
+const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
-// New keys (sb_secret_...) go in `apikey` only; a legacy service_role JWT also needs Bearer.
-const headers: Record<string, string> = { apikey: key, 'Content-Type': 'application/json' };
-if (key.startsWith('eyJ')) headers['Authorization'] = `Bearer ${key}`;
+/** The secret key, from this shell only; never printed. */
+function useSecretKey(): void {
+  const key = process.env['SUPABASE_SECRET_KEY']?.trim();
+  if (!key) stop('set SUPABASE_SECRET_KEY in this shell first (see the top of this file).');
+  if (key.startsWith('sb_publishable_')) stop('that is the publishable key; use the secret key.');
+  // New keys (sb_secret_...) go in `apikey` only; a legacy service_role JWT also needs Bearer.
+  headers['apikey'] = key;
+  if (key.startsWith('eyJ')) headers['Authorization'] = `Bearer ${key}`;
+}
 
 async function call(path: string, init: RequestInit = {}) {
   const res = await fetch(`${url}${path}`, { ...init, headers: { ...headers, ...init.headers } });
@@ -77,12 +106,45 @@ async function call(path: string, init: RequestInit = {}) {
 }
 
 /**
- * A failure after a network call: thrown, and reported by the handler at the end. Calling
- * process.exit() while fetch's connections close crashes Node on Windows (a libuv assertion).
+ * --demo-data: one call to public.ops_demo_data (service_role only), which adds the missing
+ * demo rows in one transaction, or refuses as a whole when there is real data.
  */
-class Stop extends Error {}
-function stop(message: string): never {
-  throw new Stop(message);
+async function loadDemoData() {
+  const result = await call('/rest/v1/rpc/ops_demo_data', {
+    method: 'POST',
+    body: JSON.stringify({ p_dry_run: dryRun }),
+  });
+  if (!result.ok) {
+    const error = (result.body ?? {}) as { message?: string; details?: string };
+    if (error.message === 'OWNER_DATA_PRESENT') {
+      stop(
+        `this project already has data that is not demo data (${error.details ?? ''}). ` +
+          'Nothing was changed. Demo data is only for an empty staging project.',
+      );
+    }
+    stop(
+      `loading demo data failed (HTTP ${result.status} ${error.message ?? ''}). ` +
+        'Are the migrations deployed (demo_data)?',
+    );
+  }
+  const r = result.body as {
+    settings: string;
+    categories_added: number;
+    menu_items_added: number;
+    tables_added: number;
+  };
+  const verb = dryRun ? 'would add' : 'added';
+  console.log(
+    `  settings     ${dryRun && r.settings === 'set to demo' ? 'would be set to demo' : r.settings}`,
+  );
+  console.log(`  categories   ${verb} ${String(r.categories_added)} (of 6)`);
+  console.log(`  menu items   ${verb} ${String(r.menu_items_added)} (of 30)`);
+  console.log(`  tables       ${verb} ${String(r.tables_added)} (of 12)`);
+  console.log(
+    dryRun
+      ? '\nDry run: nothing changed. Run it again without --dry-run to add these.'
+      : '\nDone. Running it again adds nothing. Staff accounts: pnpm seed:staging (no flag).',
+  );
 }
 
 // 20 random bytes, URL-safe: about 27 characters, typeable on a phone.
@@ -203,7 +265,10 @@ async function createAccounts() {
 }
 
 try {
+  const { resetUser } = parseArguments();
+  useSecretKey();
   if (resetUser) await resetPassword(resetUser);
+  else if (demoData) await loadDemoData();
   else await createAccounts();
 } catch (error) {
   if (!(error instanceof Stop)) throw error;

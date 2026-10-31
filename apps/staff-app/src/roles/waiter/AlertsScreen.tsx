@@ -3,19 +3,21 @@ import { BellRing, Moon, Play, Sun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
-import { startShift } from '../../lib/shift';
+import { beginShift, useWakeText } from '../../shift/lifecycle';
+import { useShiftStore } from '../../shift/store';
 import { useAlertStore } from './alerts';
 import { batchLabel, useTableNumber } from './format';
 import { waiterPaths } from './paths';
 
 /** Alerts tab: Start shift, sound and wake-lock state, and the Ready alerts of this shift. */
 export function AlertsScreen() {
-  const { t, i18n } = useTranslation(['waiter', 'rpc']);
+  const { t, i18n } = useTranslation(['waiter', 'shift', 'rpc']);
   const tableNumber = useTableNumber();
   const alerts = useAlertStore((state) => state.alerts);
-  const shiftStarted = useAlertStore((state) => state.shiftStarted);
-  const wakeLock = useAlertStore((state) => state.wakeLock);
-  const setShiftStarted = useAlertStore((state) => state.setShiftStarted);
+  const shiftStarted = useShiftStore((state) => state.on.waiter);
+  const wake = useShiftStore((state) => state.wake);
+  const wakeText = useWakeText();
+  const muted = useAlertStore((state) => state.muted);
   const markRead = useAlertStore((state) => state.markRead);
   const markAllRead = useAlertStore((state) => state.markAllRead);
   const time = new Intl.DateTimeFormat(i18n.language, { hour: '2-digit', minute: '2-digit' });
@@ -27,31 +29,34 @@ export function AlertsScreen() {
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
         {shiftStarted ? (
           <>
-            <h2 className="font-semibold">{t('waiter:shiftStarted')}</h2>
+            <h2 className="font-semibold">{t('shift:on')}</h2>
             <p className="mt-1 flex items-start gap-2 text-sm text-fg-muted">
-              {wakeLock ? (
+              {wake === 'on' ? (
                 <Sun aria-hidden className="size-4 shrink-0" />
               ) : (
                 <Moon aria-hidden className="size-4 shrink-0" />
               )}
-              {wakeLock ? t('waiter:wakeLockOn') : t('waiter:wakeLockOff')}
+              {wakeText}
             </p>
           </>
         ) : (
           <>
-            <h2 className="font-semibold">{t('waiter:startShift')}</h2>
+            <h2 className="font-semibold">{t('shift:start')}</h2>
             <p className="mt-1 text-sm text-fg-muted">{t('waiter:startShiftBody')}</p>
             <Button
               size="lg"
               className="mt-3 w-full"
               onClick={() => {
-                void startShift().then((result) => {
-                  setShiftStarted(true, result.wakeLock);
-                });
+                beginShift(
+                  'waiter',
+                  muted,
+                  t('shift:started'),
+                  muted ? t('shift:startedMuted') : t('shift:startedSound'),
+                );
               }}
             >
               <Play aria-hidden />
-              {t('waiter:startShift')}
+              {t('shift:start')}
             </Button>
           </>
         )}

@@ -367,6 +367,8 @@ test.describe('kitchen to waiter', () => {
     await openWaiter(page);
     await page.getByRole('button', { name: 'Start shift' }).click();
     await expect(page.getByRole('button', { name: 'Mute alerts' })).toBeVisible();
+    // Start shift confirms with a short chime (two notes), then the Ready tone adds two each.
+    await expect.poll(counts).toEqual({ tones: 2, vibrations: 0 });
     const orderNumber = await sendOrder(page, 8, ['Chicken Malai Boti'], true);
     await page.getByRole('link', { name: 'Back to tables' }).click();
 
@@ -378,7 +380,7 @@ test.describe('kitchen to waiter', () => {
       const banner = page.getByText('Table 8 is ready');
       await expect(banner).toBeVisible({ timeout: 2_000 });
       await expect(page.getByText('First send is ready to serve')).toBeVisible();
-      expect(await counts()).toEqual({ tones: 2, vibrations: 1 });
+      expect(await counts()).toEqual({ tones: 4, vibrations: 1 });
       await expect(page.getByRole('link', { name: /Alerts/ })).toContainText('1 new alert');
       await shot(page, 'alert-banner');
       await expectNoSeriousAxe(page);
@@ -408,7 +410,7 @@ test.describe('kitchen to waiter', () => {
       await kitchen.setBatch(orderNumber, 2, 'preparing');
       await kitchen.setBatch(orderNumber, 2, 'ready');
       await expect(page.getByText('Add-on 2 is ready to serve')).toBeVisible({ timeout: 2_000 });
-      expect(await counts()).toEqual({ tones: 2, vibrations: 2 });
+      expect(await counts()).toEqual({ tones: 4, vibrations: 2 });
 
       // The bottom nav is hidden on a table's screens (a full-screen task).
       await page.getByRole('link', { name: 'Back to tables' }).click();
@@ -417,7 +419,7 @@ test.describe('kitchen to waiter', () => {
         .getByRole('navigation', { name: 'Waiter' })
         .getByRole('link', { name: /Alerts/ })
         .click();
-      await expect(page.getByRole('heading', { name: 'Shift started' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Shift on' })).toBeVisible();
       await expect(page.getByRole('link', { name: /Table 8 is ready/ })).toHaveCount(2);
       await shot(page, 'alerts');
       await expectNoSeriousAxe(page);

@@ -13,18 +13,19 @@ import {
   ErrorState,
   OfflineBanner,
   SkeletonCard,
-  cn,
 } from '@rms/ui';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCheck, ChefHat, ListX, Play, Volume2, VolumeX } from 'lucide-react';
+import { CheckCheck, ChefHat, ListX } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { playTones, reacquireWakeLockOnReturn, releaseWakeLock, startShift } from '../../lib/shift';
+import { playTones } from '../../lib/shift';
 import { Clock } from '../../shell/Clock';
 import { useConnection } from '../../shell/connection-context';
 import { AccountMenu } from '../../shell/StaffHeader';
 import { useScreenAppearance } from '../../shell/theme-context';
+import { useShiftLifecycle } from '../../shift/lifecycle';
+import { ShiftControl } from '../../shift/ShiftControl';
 import { queueQuery } from './data';
 import { useNow, useTicketName } from './format';
 import { useKitchenLive } from './live';
@@ -45,43 +46,19 @@ function playChime() {
 /** How long a new ticket keeps its highlight ring. */
 const HIGHLIGHT_MS = 1_500;
 
-function ShiftControl() {
-  const { t } = useTranslation(['kitchen', 'rpc']);
-  const shiftStarted = useKitchenStore((s) => s.shiftStarted);
+/** Start shift / Shift on and the chime's mute toggle (the shared shift control). */
+function KitchenShift() {
+  const { t } = useTranslation('kitchen');
   const muted = useKitchenStore((s) => s.muted);
   const setMuted = useKitchenStore((s) => s.setMuted);
-  const setShiftStarted = useKitchenStore((s) => s.setShiftStarted);
-
-  if (!shiftStarted) {
-    return (
-      <Button
-        variant="outline"
-        onClick={() => {
-          void startShift().then(({ wakeLock }) => {
-            setShiftStarted(wakeLock);
-          });
-        }}
-      >
-        <Play aria-hidden />
-        {t('kitchen:startShift')}
-      </Button>
-    );
-  }
   return (
-    <Button
-      variant="ghost"
-      className={cn(muted && 'text-danger')}
-      aria-pressed={muted}
-      aria-label={muted ? t('kitchen:unmute') : t('kitchen:mute')}
-      onClick={() => {
-        setMuted(!muted);
-      }}
-    >
-      {muted ? <VolumeX aria-hidden /> : <Volume2 aria-hidden />}
-      <span aria-hidden className="max-md:hidden">
-        {muted ? t('kitchen:muted') : t('kitchen:soundOn')}
-      </span>
-    </Button>
+    <ShiftControl
+      shift="kitchen"
+      muted={muted}
+      onMutedChange={setMuted}
+      muteLabel={t('mute')}
+      unmuteLabel={t('unmute')}
+    />
   );
 }
 
@@ -104,7 +81,6 @@ export function KitchenApp() {
   const [soldOutOpen, setSoldOutOpen] = useState(false);
   const recentlyReady = useKitchenStore((s) => s.recentlyReady);
   const markedReady = useKitchenStore((s) => s.markedReady);
-  const shiftStarted = useKitchenStore((s) => s.shiftStarted);
 
   // Ready on this screen: kept on the board a few seconds so a mistaken tap is seen.
   const [lingering, setLingering] = useState<
@@ -165,15 +141,8 @@ export function KitchenApp() {
     };
   }, [highlighted]);
 
-  // Keep the screen awake for the whole shift (R10).
-  useEffect(() => {
-    if (!shiftStarted) return;
-    const stop = reacquireWakeLockOnReturn();
-    return () => {
-      stop();
-      releaseWakeLock();
-    };
-  }, [shiftStarted]);
+  // Keep the screen awake for the whole shift (R10), also after a reload.
+  useShiftLifecycle('kitchen');
 
   const board = useMemo(() => {
     const live = queue.data?.tickets ?? [];
@@ -258,7 +227,7 @@ export function KitchenApp() {
           <Badge variant="neutral" className="h-9 px-3 text-base" aria-live="polite">
             {t('kitchen:openTickets', { count: openCount })}
           </Badge>
-          <ShiftControl />
+          <KitchenShift />
           <Button
             variant="outline"
             disabled={!canSend}

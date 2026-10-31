@@ -1,5 +1,71 @@
 # Manual setup checklist
 
+## Demo deploy today (staff app on Vercel, staging backend)
+
+The shortest path to a client demo on an https address. Staff app only (customer web comes in
+P2). Staging only: never production. Details behind each step are in 4.3 to 4.7 below.
+
+**A. The backend (staging)**
+1. Merge the open PR into `develop`. The **DB deploy (staging)** workflow applies the new
+   migrations (`demo_data`, `staging_password_reset`); wait until it is green.
+2. Demo data and accounts, on your machine in PowerShell from the repo folder:
+   ```powershell
+   $env:SUPABASE_SECRET_KEY = Read-Host -MaskInput 'Staging secret key'
+   pnpm seed:staging -- --demo-data --dry-run
+   pnpm seed:staging -- --demo-data
+   pnpm seed:staging
+   Remove-Item Env:SUPABASE_SECRET_KEY
+   ```
+   The last command creates `admin`, `cashier`, `waiter` and `chef` if they do not exist and
+   prints their passwords **once** (vault, then `Clear-Host`). A lost one:
+   `pnpm seed:staging -- --reset-password=<username>` (step 22).
+
+**B. Vercel** (https://vercel.com/new, your Hobby account; Hobby is for non-commercial use,
+fine for a demo, not for the live restaurant: D14)
+3. **Import Git Repository** → `Abdul-Rehman131/restaurant-management-system` → **Import**.
+4. **Project Name** `rms-staff`. **Framework Preset**: **Vite**. **Root Directory** → **Edit**
+   → `apps/staff-app` → **Continue**.
+5. **Build and Output Settings**: leave the defaults (Build Command `vite build`, Output
+   Directory `dist`, Install Command automatic: Vercel installs the pnpm workspace from the
+   repo root).
+6. **Environment Variables** (tick Production and Preview):
+   - `VITE_SUPABASE_URL` = `https://aqxmdmkforcucmktwmjj.supabase.co`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY` = the staging **publishable** key (`sb_publishable_...`,
+     Supabase → Project Settings → API Keys). Never the secret key.
+   - `VITE_APP_NAME` = `Staff App (Demo)`
+   - `ENABLE_EXPERIMENTAL_COREPACK` = `1`
+
+   The build fails on purpose if either `VITE_SUPABASE_*` value is missing.
+7. **Deploy**. Then **Settings → Environments → Production → Branch Tracking** → `develop` →
+   **Save**, and **Deployments → Create Deployment** → `develop`.
+8. **Settings → Build and Deployment → Node.js Version** → **24.x** → **Save** (then redeploy
+   if the first build used another version).
+9. Copy the domain from **Settings → Domains**, for example `https://rms-staff-abc1.vercel.app`.
+
+**C. Connect the two** (needs `pnpm exec supabase login` once on your machine)
+10. Edge Functions on staging, and which origin may call them. `STAFF_APP_ORIGINS` is a comma
+    separated list of exact origins: `https://` + domain, no trailing slash, no path, no `*`.
+    Preview URLs are not covered (password change and staff admin work on the main domain only).
+    ```powershell
+    pnpm exec supabase functions deploy staff-admin --project-ref aqxmdmkforcucmktwmjj
+    pnpm exec supabase functions deploy account --project-ref aqxmdmkforcucmktwmjj
+    pnpm exec supabase secrets set --project-ref aqxmdmkforcucmktwmjj "STAFF_APP_ORIGINS=https://rms-staff-abc1.vercel.app,http://localhost:5173"
+    ```
+11. Supabase → **Authentication → URL Configuration**: **Site URL** = the Vercel domain;
+    **Redirect URLs** → **Add URL** → `https://rms-staff-abc1.vercel.app/**`. Staff sign in with a
+    password, so no email link uses these today; they keep Auth from pointing anywhere else.
+12. Supabase → **Authentication → Hooks**: the access token hook is on (step 21), and Admin
+    two-step sign-in works (sign in as `admin`, scan the code with the demo phone).
+
+**D. Check on the real domain** (10 minutes, the day before)
+13. Phone: open the domain, sign in as `waiter`, **Start shift** (the button turns into
+    **Shift on**, a toast and a chime). Add to Home Screen; it opens full screen.
+14. Laptop: sign in as `chef` in one window and `cashier` in another; send an order from the
+    phone and watch it reach the kitchen; pay it at the cashier; the receipt prints.
+15. Browser console on each screen: no red errors. A "Content-Security-Policy-Report-Only"
+    warning would mean the policy needs a source added (tell the developer); it blocks nothing.
+16. Rehearse [demo-script.md](demo-script.md) once with the real accounts.
+
 These are steps only the account owner can do. **The repository is public**: never paste a
 password, key, token or connection string into chat, an issue, a PR or a committed file, and
 keep private owner or business data out of the docs. Secrets live in the password manager
@@ -162,6 +228,21 @@ These need the database functions from the migrations, so they come after step 2
       phone is lost too, remove the factor in the dashboard (Authentication → Users → the user →
       MFA factors), as in the README's "Admin two-step sign-in".
     - Only when no Admin can do it. Otherwise use Admin → Staff → **Reset password**.
+
+    **Demo data for a client demo** (opt-in, staging only, needs the migration `demo_data`
+    deployed): the clearly fake "Ember Kitchen (Demo)" brand with demo rates (16% tax, 5%
+    service, named on every receipt), 6 categories, 30 items (4 bottled drinks skip the
+    kitchen, Fish Tikka starts Sold Out) and 12 tables (Hall and Family): the same content as
+    the local seed.
+    ```powershell
+    $env:SUPABASE_SECRET_KEY = Read-Host -MaskInput 'Staging secret key'
+    pnpm seed:staging -- --demo-data --dry-run   # what it would add; changes nothing
+    pnpm seed:staging -- --demo-data             # adds what is missing
+    Remove-Item Env:SUPABASE_SECRET_KEY
+    ```
+    It only adds missing rows and never changes or archives one, so running it twice is safe.
+    If the project has any data that is not demo data (another restaurant name, a category,
+    item or table outside the demo set) it refuses and changes nothing. Never on production.
 
 ### 4.7 S5: staff administration and Admin MFA (after the S5 migrations are deployed)
 The `menu-images` Storage bucket and its policies come from the migrations; nothing to click.

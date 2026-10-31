@@ -15,7 +15,7 @@ import { RoleNotFound } from '../../screens/RoleNotFound';
 import { useConnection } from '../../shell/connection-context';
 import { StaffHeader } from '../../shell/StaffHeader';
 import { useScreenAppearance } from '../../shell/theme-context';
-import { ReadyBanner, ShiftControl } from './AlertParts';
+import { ReadyBanner, WaiterShift } from './AlertParts';
 import { useAlertStore, useReadyAlerts } from './alerts';
 import { AlertsScreen } from './AlertsScreen';
 import { useWaiterLive } from './live';
@@ -50,7 +50,7 @@ export function WaiterApp() {
 
   return (
     <div className={cn('flex flex-col bg-bg text-fg', onTable ? 'h-dvh' : 'min-h-dvh')}>
-      <StaffHeader actions={<ShiftControl />} />
+      <StaffHeader actions={<WaiterShift />} />
       <OfflineBanner online={state !== 'offline'} />
       <ReadyBanner />
       <main

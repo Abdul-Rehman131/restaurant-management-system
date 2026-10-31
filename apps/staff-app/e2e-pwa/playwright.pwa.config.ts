@@ -4,6 +4,8 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: '.',
   timeout: 180_000,
+  // One at a time: update.spec rebuilds dist/ while it runs, which would break the other tests.
+  workers: 1,
   outputDir: '../test-results/pwa',
   reporter: process.env['CI']
     ? [['github'], ['html', { open: 'never', outputFolder: '../playwright-report-pwa' }]]

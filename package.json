@@ -25,7 +25,7 @@
     "db:types": "node scripts/db-types.mjs",
     "db:restore-check": "node scripts/restore-check.mjs",
     "seed:staging": "node scripts/seed-staging.ts",
-    "size": "node scripts/check-size.mjs",
+    "size": "node scripts/check-size.mjs && node scripts/check-csp.mjs",
     "sim:day": "node scripts/sim-day.mjs",
     "load:smoke": "node scripts/load-smoke.mjs",
     "e2e": "pnpm --filter @rms/staff-app e2e"
