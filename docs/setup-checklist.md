@@ -163,6 +163,21 @@ These need the database functions from the migrations, so they come after step 2
       MFA factors), as in the README's "Admin two-step sign-in".
     - Only when no Admin can do it. Otherwise use Admin → Staff → **Reset password**.
 
+    **Demo data for a client demo** (opt-in, staging only, needs the migration `demo_data`
+    deployed): the clearly fake "Ember Kitchen (Demo)" brand with demo rates (16% tax, 5%
+    service, named on every receipt), 6 categories, 30 items (4 bottled drinks skip the
+    kitchen, Fish Tikka starts Sold Out) and 12 tables (Hall and Family): the same content as
+    the local seed.
+    ```powershell
+    $env:SUPABASE_SECRET_KEY = Read-Host -MaskInput 'Staging secret key'
+    pnpm seed:staging -- --demo-data --dry-run   # what it would add; changes nothing
+    pnpm seed:staging -- --demo-data             # adds what is missing
+    Remove-Item Env:SUPABASE_SECRET_KEY
+    ```
+    It only adds missing rows and never changes or archives one, so running it twice is safe.
+    If the project has any data that is not demo data (another restaurant name, a category,
+    item or table outside the demo set) it refuses and changes nothing. Never on production.
+
 ### 4.7 S5: staff administration and Admin MFA (after the S5 migrations are deployed)
 The `menu-images` Storage bucket and its policies come from the migrations; nothing to click.
 

@@ -202,7 +202,8 @@ proposes weekly updates for actions and npm packages.
   `waiter` and `chef` and prints each new password once. `pnpm seed:staging -- --local` tries
   it on the local stack. A lost staging password that no Admin can reset in the app:
   `pnpm seed:staging -- --reset-password=<username>` (one account, `--dry-run` first; checklist
-  4.6, step 22).
+  4.6, step 22). Demo menu, tables and settings for a client demo:
+  `pnpm seed:staging -- --demo-data` (`--dry-run` first; refuses if real data exists).
 
 ## Rollback (staging)
 
