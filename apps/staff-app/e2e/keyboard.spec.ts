@@ -67,7 +67,7 @@ async function takeAway(request: APIRequestContext, name: string) {
     p_table_id: null,
     p_customer_name: name,
     p_customer_phone: '',
-    p_items: [{ menu_item_id: menuItemId('Soft Drink (Can)'), quantity: 1 }],
+    p_items: [{ menu_item_id: menuItemId('Pepsi (Can)'), quantity: 1 }],
   });
 }
 

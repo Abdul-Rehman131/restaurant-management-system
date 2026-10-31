@@ -25,8 +25,8 @@ inbox (Mailpit) `http://127.0.0.1:54324`. `pnpm db:status` prints the local URLs
 local-only demo keys. Those keys are the same on every machine and are not secrets.
 
 **Local demo data** (`supabase/seed.sql`, loaded by `pnpm db:reset`, never on cloud projects):
-the fake "Ember Kitchen (Demo)" restaurant with demo rates (16% tax, 5% service charge), 30
-menu items, 12 tables, and six demo staff logins (username / `demo-password-123`): `admin`,
+the fake "Ember Kitchen (Demo)" restaurant with demo rates (16% tax, 5% service charge), 72
+desi and fast-food menu items, 14 tables, and six demo staff logins (username / `demo-password-123`): `admin`,
 `cashier`, `waiter1`, `waiter2`, `chef` and `rider`, plus `former`, a deactivated account that
 must be refused. Local only.
 
@@ -203,7 +203,9 @@ proposes weekly updates for actions and npm packages.
   it on the local stack. A lost staging password that no Admin can reset in the app:
   `pnpm seed:staging -- --reset-password=<username>` (one account, `--dry-run` first; checklist
   4.6, step 22). Demo menu, tables and settings for a client demo:
-  `pnpm seed:staging -- --demo-data` (`--dry-run` first; refuses if real data exists).
+  `pnpm seed:staging --demo-data` (`--dry-run` first; refuses if real data exists). Demo
+  accounts with fixed passwords and the Admin MFA switch: `--demo-staff --set-demo-passwords`
+  and `--admin-mfa on|off` (checklist, "Demo deploy today").
 
 ## Rollback (staging)
 

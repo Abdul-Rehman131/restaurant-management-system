@@ -165,12 +165,12 @@ test('the order loop: waiter sends, kitchen within 2 s, Start, Ready, alert, ADD
     // Add more items: the kitchen sees only the new batch, marked ADD-ON (BR-06).
     await waiter.page.getByRole('button', { name: 'Open' }).click();
     await waiter.page.getByRole('link', { name: 'Add more items' }).click();
-    await waiter.page.getByRole('button', { name: 'Add Mixed BBQ Platter' }).click();
+    await waiter.page.getByRole('button', { name: 'Add Beef Bihari Boti' }).click();
     await waiter.page.getByRole('button', { name: 'Send add-on' }).click();
     const addOn = ticket(page, 'Table 9');
     await expect(addOn).toBeVisible({ timeout: 2_000 });
     await expect(addOn).toContainText(`ADD-ON for ${orderNumber}`);
-    await expect(addOn).toContainText('Mixed BBQ Platter');
+    await expect(addOn).toContainText('Beef Bihari Boti');
     await expect(addOn).not.toContainText('Chicken Wings');
     await expectNoSeriousAxe(page);
 
@@ -188,7 +188,7 @@ test('a drinks-only order never reaches the kitchen (BR-07)', async ({ page, bro
   const waiter = await waiterPhone(browser);
   try {
     await waiter.page.getByRole('link', { name: /^Table 10 / }).click();
-    await waiter.page.getByRole('button', { name: 'Add Soft Drink (1.5 L)' }).click();
+    await waiter.page.getByRole('button', { name: 'Add 7Up (Can)' }).click();
     await waiter.page.getByRole('button', { name: 'Send to Kitchen' }).click();
     await expect(waiter.page.getByText(/^Sent to the kitchen: ORD-/)).toBeVisible();
     // A fresh queue after the order exists: reload and wait for its answer.
@@ -224,7 +224,7 @@ test('age colours from the settings: green, amber and red, each with minutes and
   const waiter = await apiAs(request, 'waiter2');
   const fresh = await takeAway(cashier, 'E2E Age Green', 'Chicken Biryani');
   const amber = await takeAway(cashier, 'E2E Age Amber', 'Chicken Malai Boti');
-  const red = await takeAway(cashier, 'E2E Age Red', 'Daal Makhani');
+  const red = await takeAway(cashier, 'E2E Age Red', 'Daal Mash');
   // An ADD-ON for the screenshot: table 1 (no other test uses it) with a second batch.
   const dineIn = await waiter.rpc<{ order_id: string }>('create_order', {
     p_request_id: crypto.randomUUID(),
@@ -232,7 +232,7 @@ test('age colours from the settings: green, amber and red, each with minutes and
     p_table_id: tableId(1),
     p_customer_name: '',
     p_customer_phone: '',
-    p_items: [{ menu_item_id: menuItemId('Seekh Kebab (4 pcs)'), quantity: 2 }],
+    p_items: [{ menu_item_id: menuItemId('Seekh Kabab (4 pcs)'), quantity: 2 }],
   });
   await waiter.rpc('add_items_to_order', {
     p_request_id: crypto.randomUUID(),
@@ -271,7 +271,7 @@ test('the kitchen cannot skip Preparing; a stale ticket explains itself', async 
   cancelTakeAway('E2E Stale');
   const cashier = await apiAs(request, 'cashier');
   const chef = await apiAs(request, 'chef');
-  await takeAway(cashier, 'E2E Stale', 'Vegetable Pulao');
+  await takeAway(cashier, 'E2E Stale', 'Chicken Pulao');
   try {
     await openKitchen(page);
     const card = ticket(page, 'E2E Stale');
@@ -425,11 +425,11 @@ test('tablet: ticket text readable from a distance; buttons at least 56 px, 44 i
       p_table_id: tableId(171),
       p_customer_name: '',
       p_customer_phone: '',
-      p_items: [{ menu_item_id: menuItemId('Chicken Corn Soup'), quantity: 2, notes: 'no pepper' }],
+      p_items: [{ menu_item_id: menuItemId('Chicken Soup'), quantity: 2, notes: 'no pepper' }],
     });
     await openKitchen(page);
     const card = ticket(page, /Table 171\b/);
-    await expect(card).toContainText('Chicken Corn Soup');
+    await expect(card).toContainText('Chicken Soup');
 
     // Item lines 24 px and up, the note 20 px and up (display density, readable at about 3 m).
     expect(await fontPx(card.getByRole('listitem').first())).toBeGreaterThanOrEqual(24);

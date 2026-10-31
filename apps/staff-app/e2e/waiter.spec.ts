@@ -105,18 +105,20 @@ test('order entry: search, categories, sold out, review with notes, a double tap
   await expect(page.getByRole('button', { name: 'Send to Kitchen' })).toBeDisabled();
 
   // Instant search over the cached menu; a Sold Out item has no button at all (BR-13).
+  await page.getByRole('searchbox', { name: 'Search the menu' }).fill('mutton');
+  await expect(menuRow(page, 'Mutton Karahi (Half)')).toBeVisible();
+  await expect(menuRow(page, 'Mutton Chops (4 pcs)')).toContainText('Sold out');
+  await expect(menuRow(page, 'Mutton Chops (4 pcs)').getByRole('button')).toHaveCount(0);
   await page.getByRole('searchbox', { name: 'Search the menu' }).fill('tikka');
   await expect(menuRow(page, 'Chicken Tikka (Leg)')).toBeVisible();
-  await expect(menuRow(page, 'Fish Tikka')).toContainText('Sold out');
-  await expect(menuRow(page, 'Fish Tikka').getByRole('button')).toHaveCount(0);
-  await expect(menuRow(page, 'Seekh Kebab')).toHaveCount(0);
+  await expect(menuRow(page, 'Seekh Kabab')).toHaveCount(0);
 
   // Tap the row = +1, twice; then the stepper shows 2.
   await menuRow(page, 'Chicken Tikka (Leg)').getByRole('button').first().click();
   await menuRow(page, 'Chicken Tikka (Leg)').getByRole('button').first().click();
   await expect(menuRow(page, 'Chicken Tikka (Leg)').locator('output')).toHaveText('2');
 
-  await page.getByRole('button', { name: 'Breads' }).click();
+  await page.getByRole('button', { name: 'Naan and Roti' }).click();
   await expect(page.getByRole('searchbox', { name: 'Search the menu' })).toHaveValue('');
   await expect(menuRow(page, 'Chicken Tikka (Leg)')).toHaveCount(0);
   await page.getByRole('button', { name: 'Add Plain Naan' }).click();
@@ -259,7 +261,7 @@ async function sendOrder(page: Page, number: number, items: string[], signedIn =
 }
 
 test('orders tab: my open orders with status, opens the table', async ({ page }) => {
-  const orderNumber = await sendOrder(page, 7, ['Chicken Corn Soup']);
+  const orderNumber = await sendOrder(page, 7, ['Chicken Soup']);
   await page.getByRole('link', { name: 'Back to tables' }).click();
   await page
     .getByRole('navigation', { name: 'Waiter' })
@@ -287,10 +289,10 @@ test.describe('kitchen to waiter', () => {
     // Two signed-in devices and several server round trips: triple the time budget.
     test.slow();
     freeTable(6);
-    const orderNumber = await sendOrder(page, 5, ['Seekh Kebab (4 pcs)', 'Soft Drink (Can)']);
+    const orderNumber = await sendOrder(page, 5, ['Seekh Kabab (4 pcs)', 'Pepsi (Can)']);
     const firstSend = page.getByRole('region', { name: 'First send' });
     await expect(firstSend).toContainText('Sent');
-    await expect(firstSend).toContainText('Soft Drink (Can)');
+    await expect(firstSend).toContainText('Pepsi (Can)');
     await expect(firstSend).toContainText('No kitchen');
     await expect(page.getByText('To cancel an item, ask the cashier.')).toBeVisible();
     await expect(page.getByText('Total', { exact: true })).toBeVisible();

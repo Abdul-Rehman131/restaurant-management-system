@@ -3,11 +3,17 @@ import { useEffect } from 'react';
 
 import { useAuth } from '../auth/auth-context';
 import { db } from '../lib/db';
+import { accountKey } from './account-key';
 
-export const accountKey = ['my-account'] as const;
+export { accountKey };
 
 export interface Account {
   active: boolean;
+  role: string | null;
+  /** An Admin must pass the second sign-in step first (only while admin_mfa is on). */
+  mfa_step: boolean;
+  /** Whether Admins need the second step (settings.require_admin_mfa; off only for a demo). */
+  admin_mfa: boolean;
   /** A temporary password must be changed first (S6): every API call is refused until then. */
   password_change: boolean;
 }

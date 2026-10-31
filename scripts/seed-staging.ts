@@ -21,12 +21,28 @@
 // is not touched: an Admin still needs the authenticator code after signing in.
 //
 // Demo data for a client demo (opt-in, staging only): the clearly fake "Ember Kitchen (Demo)"
-// brand with demo rates, 6 categories and 30 items (bottled drinks skip the kitchen, one item is
-// Sold Out) and 12 tables in 2 sections, the same content as the local seed:
-//   pnpm seed:staging -- --demo-data --dry-run   reports what it would add; changes nothing
-//   pnpm seed:staging -- --demo-data             adds what is missing (safe to run twice)
-// It only adds; it never changes or archives a row, and it refuses to run at all if the project
+// brand (PKR, Asia/Karachi, 04:00 cut-off, demo rates), 11 categories and 72 desi and fast-food
+// items (drinks, water and anything not cooked skip the kitchen, two items Sold Out) and 14
+// tables in 3 sections, the same content as the local seed (migration demo_data_v2):
+//   pnpm seed:staging --demo-data --dry-run   reports what it would change; changes nothing
+//   pnpm seed:staging --demo-data             adds what is missing (safe to run twice)
+// It adds what is missing and upgrades the first demo set (old-only rows archived, never
+// deleted); it refuses to run at all if the project
 // has any data that is not demo data (public.ops_demo_data, OWNER_DATA_PRESENT).
+//
+// Demo staff with fixed passwords (staging demo): admin, cashier, chef, waiter1, waiter2 and
+// waiter3, each with the password <username><suffix>. The suffix is read at run time from the
+// environment variable DEMO_PASSWORD_SUFFIX, never written anywhere, never printed (nor are the
+// passwords: only usernames). The accounts are marked keep_password (no forced change at sign-in,
+// public.ops_demo_account). Safe to run again: it sets the same passwords.
+//   $env:DEMO_PASSWORD_SUFFIX = Read-Host -MaskInput 'Demo password suffix'
+//   pnpm seed:staging --demo-staff --set-demo-passwords --dry-run
+//   pnpm seed:staging --demo-staff --set-demo-passwords
+//   Remove-Item Env:DEMO_PASSWORD_SUFFIX
+//
+// Admin two-step sign-in on or off (staging demo; on by default, ops_set_require_admin_mfa):
+//   pnpm seed:staging --admin-mfa off        (and --admin-mfa on to restore it)
+// --demo-data, --demo-staff and --admin-mfa can be combined in one run. A lone "--" is ignored.
 import { randomBytes } from 'node:crypto';
 
 import { staffLoginEmail } from '../packages/shared/src/auth.ts';
@@ -37,16 +53,37 @@ const STAGING_REF = 'aqxmdmkforcucmktwmjj';
 const local = process.argv.includes('--local');
 const url = local ? 'http://127.0.0.1:54321' : `https://${STAGING_REF}.supabase.co`;
 
-// Every argument must be known: a typo must never fall through to "create the accounts".
-const resetArgs = process.argv.slice(2).filter((a) => a.startsWith('--reset-password'));
-const dryRun = process.argv.includes('--dry-run');
-const demoData = process.argv.includes('--demo-data');
-const unknown = process.argv
-  .slice(2)
-  .filter(
-    (a) =>
-      !['--local', '--dry-run', '--demo-data'].includes(a) && !a.startsWith('--reset-password'),
-  );
+// Every argument must be known: a typo must never fall through to "create the accounts". A lone
+// "--" (what `pnpm seed:staging -- --flag` passes through) is ignored.
+const args = process.argv.slice(2).filter((a) => a !== '--');
+const resetArgs = args.filter((a) => a.startsWith('--reset-password'));
+const dryRun = args.includes('--dry-run');
+const demoData = args.includes('--demo-data');
+const demoStaff = args.includes('--demo-staff');
+const setDemoPasswords = args.includes('--set-demo-passwords');
+// --admin-mfa on|off, or --admin-mfa=on|off.
+const mfaIndex = args.findIndex((a) => a === '--admin-mfa' || a.startsWith('--admin-mfa='));
+const mfaArg = args[mfaIndex];
+const adminMfaValue =
+  mfaIndex < 0 ? undefined : mfaArg?.includes('=') ? mfaArg.split('=')[1] : args[mfaIndex + 1];
+const known = ['--local', '--dry-run', '--demo-data', '--demo-staff', '--set-demo-passwords'];
+const unknown = args.filter(
+  (a, i) =>
+    !known.includes(a) &&
+    !a.startsWith('--reset-password') &&
+    !a.startsWith('--admin-mfa') &&
+    !(mfaIndex >= 0 && !mfaArg?.includes('=') && i === mfaIndex + 1),
+);
+
+/** The staging demo accounts (--demo-staff). The old "waiter" account is left alone. */
+const demoAccounts = [
+  { username: 'admin', fullName: 'Demo Admin', role: 'admin' },
+  { username: 'cashier', fullName: 'Demo Cashier', role: 'cashier' },
+  { username: 'chef', fullName: 'Demo Chef', role: 'chef' },
+  { username: 'waiter1', fullName: 'Demo Waiter One', role: 'waiter' },
+  { username: 'waiter2', fullName: 'Demo Waiter Two', role: 'waiter' },
+  { username: 'waiter3', fullName: 'Demo Waiter Three', role: 'waiter' },
+] as const;
 
 const staff = [
   { username: 'admin', fullName: 'Staging Admin', role: 'admin' },
@@ -75,13 +112,29 @@ function parseArguments(): { resetUser: string | undefined } {
     .toLowerCase();
   if (resetArgs.length === 1 && !resetUser) stop('use --reset-password=<username>.');
   if (resetUser && !staffLoginEmail(resetUser)) stop(`invalid username ${resetUser}`);
-  if (demoData && resetArgs.length > 0) {
-    stop('use --demo-data and --reset-password in separate runs.');
+  const demoModes = demoData || demoStaff || mfaIndex >= 0;
+  if (demoModes && resetArgs.length > 0) {
+    stop('use --reset-password in a run of its own.');
   }
-  if (dryRun && !resetUser && !demoData) {
-    stop('--dry-run only applies to --reset-password=<username> or --demo-data.');
+  if (demoStaff !== setDemoPasswords) {
+    stop('use --demo-staff together with --set-demo-passwords.');
   }
-  const mode = resetUser ? `reset password: ${resetUser}` : demoData ? 'demo data' : '';
+  if (mfaIndex >= 0 && adminMfaValue !== 'on' && adminMfaValue !== 'off') {
+    stop('use --admin-mfa on or --admin-mfa off.');
+  }
+  if (dryRun && !resetUser && !demoModes) {
+    stop('--dry-run only applies to --reset-password, --demo-data, --demo-staff or --admin-mfa.');
+  }
+  if (demoStaff) demoSuffix();
+  const mode = resetUser
+    ? `reset password: ${resetUser}`
+    : [
+        demoData && 'demo data',
+        demoStaff && 'demo staff',
+        mfaIndex >= 0 && `admin MFA ${adminMfaValue ?? ''}`,
+      ]
+        .filter(Boolean)
+        .join(', ');
   console.log(`seed-staging: ${url}${mode ? ` (${mode}${dryRun ? ', dry run' : ''})` : ''}`);
   return { resetUser };
 }
@@ -131,20 +184,146 @@ async function loadDemoData() {
     settings: string;
     categories_added: number;
     menu_items_added: number;
+    menu_items_updated: number;
+    archived: number;
     tables_added: number;
+    tables_updated: number;
   };
   const verb = dryRun ? 'would add' : 'added';
+  const changed = dryRun ? 'would update' : 'updated';
   console.log(
     `  settings     ${dryRun && r.settings === 'set to demo' ? 'would be set to demo' : r.settings}`,
   );
-  console.log(`  categories   ${verb} ${String(r.categories_added)} (of 6)`);
-  console.log(`  menu items   ${verb} ${String(r.menu_items_added)} (of 30)`);
-  console.log(`  tables       ${verb} ${String(r.tables_added)} (of 12)`);
+  console.log(`  categories   ${verb} ${String(r.categories_added)} (of 11)`);
+  console.log(
+    `  menu items   ${verb} ${String(r.menu_items_added)} (of 72), ${changed} ${String(r.menu_items_updated)}`,
+  );
+  console.log(`  old demo     ${dryRun ? 'would archive' : 'archived'} ${String(r.archived)}`);
+  console.log(
+    `  tables       ${verb} ${String(r.tables_added)} (of 14), ${changed} ${String(r.tables_updated)}`,
+  );
   console.log(
     dryRun
-      ? '\nDry run: nothing changed. Run it again without --dry-run to add these.'
-      : '\nDone. Running it again adds nothing. Staff accounts: pnpm seed:staging (no flag).',
+      ? '\nDry run: nothing changed. Run it again without --dry-run to apply this.'
+      : '\nDone. Running it again changes nothing.',
   );
+}
+
+/**
+ * The demo password suffix, from this shell only. Never logged or written anywhere; each
+ * password is <username><suffix>, and the shortest one must still be 10 characters long.
+ */
+function demoSuffix(): string {
+  const suffix = process.env['DEMO_PASSWORD_SUFFIX'] ?? '';
+  if (!suffix) stop('set DEMO_PASSWORD_SUFFIX in this shell first (see the top of this file).');
+  const shortest = Math.min(...demoAccounts.map((a) => a.username.length));
+  if (shortest + suffix.length < 10) {
+    stop(`DEMO_PASSWORD_SUFFIX is too short: use at least ${String(10 - shortest)} characters.`);
+  }
+  return suffix;
+}
+
+/**
+ * --demo-staff --set-demo-passwords: each demo account exists (created if missing), has the
+ * password <username><suffix>, the demo full name and keep_password (ops_demo_account). An
+ * existing account with another role, or a deactivated one, is reported and left alone.
+ * Usernames only are printed.
+ */
+async function loadDemoStaff() {
+  const suffix = demoSuffix();
+  for (const account of demoAccounts) {
+    const email = staffLoginEmail(account.username);
+    if (!email) stop(`invalid username ${account.username}`);
+    const found = await call(
+      `/rest/v1/profiles?select=id,role,is_active&username=eq.${account.username}`,
+    );
+    if (!found.ok) stop(`reading profiles failed (HTTP ${found.status}). Check the key.`);
+    const profile = (found.body as { id: string; role: string; is_active: boolean }[])[0];
+    if (profile && profile.role !== account.role) {
+      console.log(`  skipped  ${account.username} (it exists as ${profile.role}; not changed)`);
+      continue;
+    }
+    if (profile && !profile.is_active) {
+      console.log(`  skipped  ${account.username} (deactivated; reactivate it in Admin, Staff)`);
+      continue;
+    }
+    if (dryRun) {
+      console.log(`  ${profile ? 'update' : 'create'}   ${account.username} (${account.role})`);
+      continue;
+    }
+    const password = `${account.username}${suffix}`;
+    let userId = profile?.id;
+    if (userId) {
+      const updated = await call(`/auth/v1/admin/users/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ password }),
+      });
+      if (!updated.ok) {
+        stop(`setting the password of ${account.username} failed (HTTP ${updated.status}).`);
+      }
+    } else {
+      const created = await call('/auth/v1/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name: account.fullName },
+        }),
+      });
+      if (!created.ok) {
+        stop(`creating the login for ${account.username} failed (HTTP ${created.status}).`);
+      }
+      userId = (created.body as { id: string }).id;
+      const profileMade = await call('/rest/v1/rpc/create_staff_profile', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_user_id: userId,
+          p_username: account.username,
+          p_full_name: account.fullName,
+          p_role: account.role,
+        }),
+      });
+      if (!profileMade.ok) {
+        await call(`/auth/v1/admin/users/${userId}`, { method: 'DELETE' });
+        stop(
+          `creating the profile for ${account.username} failed (HTTP ${profileMade.status}); login removed.`,
+        );
+      }
+    }
+    const marked = await call('/rest/v1/rpc/ops_demo_account', {
+      method: 'POST',
+      body: JSON.stringify({ p_user_id: userId, p_full_name: account.fullName }),
+    });
+    if (!marked.ok) {
+      stop(
+        `marking ${account.username} as a demo account failed (HTTP ${marked.status}). Are the migrations deployed?`,
+      );
+    }
+    console.log(`  ${profile ? 'updated' : 'created'}  ${account.username} (${account.role})`);
+  }
+  console.log(
+    dryRun
+      ? '\nDry run: nothing changed.'
+      : '\nDemo passwords set (username + your suffix). Not printed; not stored.',
+  );
+}
+
+/** --admin-mfa on|off: the Admin second sign-in step (ops_set_require_admin_mfa). */
+async function setAdminMfa(on: boolean) {
+  if (dryRun) {
+    console.log(`  admin MFA would be turned ${on ? 'on' : 'off'}`);
+    return;
+  }
+  const result = await call('/rest/v1/rpc/ops_set_require_admin_mfa', {
+    method: 'POST',
+    body: JSON.stringify({ enabled: on }),
+  });
+  if (!result.ok) {
+    stop(`switching admin MFA failed (HTTP ${result.status}). Are the migrations deployed?`);
+  }
+  const { changed } = result.body as { changed: boolean };
+  console.log(`  admin MFA ${on ? 'on' : 'off'}${changed ? '' : ' (it already was)'}`);
 }
 
 // 20 random bytes, URL-safe: about 27 characters, typeable on a phone.
@@ -268,8 +447,11 @@ try {
   const { resetUser } = parseArguments();
   useSecretKey();
   if (resetUser) await resetPassword(resetUser);
-  else if (demoData) await loadDemoData();
-  else await createAccounts();
+  else if (demoData || demoStaff || mfaIndex >= 0) {
+    if (demoData) await loadDemoData();
+    if (demoStaff) await loadDemoStaff();
+    if (mfaIndex >= 0) await setAdminMfa(adminMfaValue === 'on');
+  } else await createAccounts();
 } catch (error) {
   if (!(error instanceof Stop)) throw error;
   console.error(`seed-staging: ${error.message}`);

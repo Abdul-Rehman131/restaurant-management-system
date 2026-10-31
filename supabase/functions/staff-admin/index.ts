@@ -5,7 +5,7 @@
 //
 //   1. The caller: Auth verifies the access token (GET /auth/v1/user), public.my_account()
 //      called WITH THE CALLER'S TOKEN must say an active 'admin' (profiles, so a deactivated
-//      Admin is refused at once), the session must be aal2 (MFA), and no temporary password
+//      Admin is refused at once), the session must be aal2 (MFA) while settings.require_admin_mfa is on, and no temporary password
 //      may be pending (PASSWORD_CHANGE_REQUIRED, S6).
 //      CORS: only STAFF_APP_ORIGINS get the CORS headers, and a request from any other Origin
 //      is refused here (the local gateway answers preflights itself; this check still holds).
@@ -86,21 +86,10 @@ function temporaryPassword(): string {
   return [chars.slice(0, 4), chars.slice(4, 8), chars.slice(8)].map((g) => g.join('')).join('-');
 }
 
-/** The payload of a JWT that Auth has already verified (only the aal claim is read). */
-function claims(token: string): Record<string, unknown> {
-  const part = token.split('.')[1] ?? '';
-  const base64 = part.replace(/-/g, '+').replace(/_/g, '/');
-  try {
-    return JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='))) as Record<
-      string,
-      unknown
-    >;
-  } catch {
-    return {};
-  }
-}
-
-/** Step 1: the caller is a signed-in, active Admin with aal2. Returns the Admin's user id. */
+/**
+ * Step 1: the caller is a signed-in, active Admin who passed the second step when it is required
+ * (settings.require_admin_mfa, my_account().mfa_step). Returns the Admin's user id.
+ */
 async function verifyAdmin(request: Request): Promise<string> {
   const token = /^Bearer (.+)$/.exec(request.headers.get('Authorization') ?? '')?.[1];
   if (!token) throw new HttpError(401, 'NOT_SIGNED_IN');
@@ -126,10 +115,11 @@ async function verifyAdmin(request: Request): Promise<string> {
   const state = (account.ok ? await account.json() : null) as {
     active?: boolean;
     role?: string | null;
+    mfa_step?: boolean;
     password_change?: boolean;
   } | null;
   if (!state?.active || state.role !== 'admin') throw new HttpError(403, 'NOT_AUTHORIZED');
-  if (claims(token)['aal'] !== 'aal2') throw new HttpError(403, 'MFA_REQUIRED');
+  if (state.mfa_step) throw new HttpError(403, 'MFA_REQUIRED');
   if (state.password_change) throw new HttpError(403, 'PASSWORD_CHANGE_REQUIRED');
   return id;
 }

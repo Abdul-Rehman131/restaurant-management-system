@@ -86,7 +86,7 @@ select is(public.my_role(), null, 'my_role() is NULL while a password change is 
 select is((select count(*)::int from public.restaurant_tables), 0, 'RLS reads return nothing');
 select is((select count(*)::int from public.categories), 0, 'not even the menu');
 select is(public.my_account(),
-  '{"active": true, "role": "waiter", "mfa_step": false, "password_change": true}'::jsonb,
+  '{"active": true, "role": "waiter", "mfa_step": false, "password_change": true, "admin_mfa": true}'::jsonb,
   'my_account() tells the screens to ask for the new password');
 select tests.logout();
 select is(tests.outcome_as(:'waiter', 'select public.get_settings()'), 'PASSWORD_CHANGE_REQUIRED',

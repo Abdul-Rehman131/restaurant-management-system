@@ -4,7 +4,8 @@
 // password is pending (that is what it is for). The service key exists only here.
 //
 //   1. Auth verifies the access token (GET /auth/v1/user); public.my_account() called with the
-//      caller's token says the account is active. An Admin must be at aal2 (MFA) first.
+//      caller's token says the account is active. An Admin must be at aal2 (MFA) first while
+//      settings.require_admin_mfa is on (my_account().mfa_step).
 //   2. A retried request id returns the stored result (account_password_replay): the old
 //      password is not checked again after it has already been changed.
 //   3. The new password follows the rules below; the current password is checked with Auth

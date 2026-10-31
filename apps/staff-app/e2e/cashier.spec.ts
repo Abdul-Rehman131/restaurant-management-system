@@ -62,7 +62,7 @@ test('a bill requested by the waiter is first in the list within 2 s, with a bad
   createTable(101);
   createTable(102);
   try {
-    const older = await dineInOrder(request, 101, ['Chicken Corn Soup']);
+    const older = await dineInOrder(request, 101, ['Chicken Soup']);
     const newer = await dineInOrder(request, 102, ['Raita']);
     await openCashier(page);
     const rows = page.locator('[data-bill-row]');
@@ -174,7 +174,7 @@ test('exact cash completes a served Dine-In order and frees the table for the wa
   createTable(103);
   const waiterContext = await browser.newContext({ ...devices['Pixel 7'] });
   try {
-    const order = await dineInOrder(request, 103, ['Chicken Tikka (Leg)', 'Soft Drink (Can)']);
+    const order = await dineInOrder(request, 103, ['Chicken Tikka (Leg)', 'Pepsi (Can)']);
     await serve(request, order);
     const waiterPage = await waiterContext.newPage();
     await signInAs(waiterPage, 'waiter2');
@@ -203,8 +203,8 @@ test('exact cash completes a served Dine-In order and frees the table for the wa
 test('cash with change, card with a reference, and a split', async ({ page, request }) => {
   cancelTakeAway('E2E Pay');
   const cash = await takeAway(request, 'E2E Pay Cash', ['Chicken Biryani']);
-  const card = await takeAway(request, 'E2E Pay Card', ['Vegetable Pulao']);
-  const split = await takeAway(request, 'E2E Pay Split', ['Palak Paneer', 'Plain Naan']);
+  const card = await takeAway(request, 'E2E Pay Card', ['Chicken Pulao']);
+  const split = await takeAway(request, 'E2E Pay Split', ['Chicken Handi', 'Plain Naan']);
   try {
     await openCashier(page);
 
@@ -338,7 +338,7 @@ test('a cashier cannot discount or void; an admin can, and a void reopens the or
 }) => {
   test.slow();
   cancelTakeAway('E2E Admin');
-  const order = await takeAway(request, 'E2E Admin', ['Mixed BBQ Platter']);
+  const order = await takeAway(request, 'E2E Admin', ['Beef Bihari Boti']);
   const cashier = await apiAs(request, 'cashier');
   try {
     // The cashier sees a hint instead, and the server refuses both anyway (BR-10, G8).
@@ -410,8 +410,8 @@ test('the receipt has the right lines and totals, no cost price, and prints (Ctr
 }) => {
   test.slow();
   cancelTakeAway('E2E Receipt');
-  // Seekh Kebab: price Rs 700, cost Rs 300 in the seed. The cost must never appear.
-  const order = await takeAway(request, 'E2E Receipt Main', ['Seekh Kebab (4 pcs)', 'Raita']);
+  // Seekh Kabab: price Rs 700, cost Rs 250 in the seed. The cost must never appear.
+  const order = await takeAway(request, 'E2E Receipt Main', ['Seekh Kabab (4 pcs)', 'Raita']);
   const second = await takeAway(request, 'E2E Receipt Auto', ['Plain Rice']);
   const costKeys: string[] = [];
   page.on('response', (response) => {
@@ -452,7 +452,7 @@ test('the receipt has the right lines and totals, no cost price, and prints (Ctr
     await expect(receipt).toContainText('Ember Kitchen');
     await expect(receipt).toContainText(`Order ${order.order_number}`);
     await expect(receipt).toContainText('Take Away · E2E Receipt Main');
-    await expect(receipt).toContainText('Seekh Kebab (4 pcs)');
+    await expect(receipt).toContainText('Seekh Kabab (4 pcs)');
     await expect(receipt).not.toContainText('Raita');
     const total = psql(`select total from public.orders where id = '${order.order_id}'`);
     await expect(receipt).toContainText('Total');
@@ -462,7 +462,7 @@ test('the receipt has the right lines and totals, no cost price, and prints (Ctr
     await expect(receipt).toContainText('Received');
     await expect(receipt).toContainText('Rs 1,000.00');
     await expect(receipt).toContainText('Change');
-    await expect(receipt).not.toContainText('300.00');
+    await expect(receipt).not.toContainText('250.00');
     await shot(page, 'receipt-preview');
     await expectNoSeriousAxe(page);
 
@@ -551,7 +551,7 @@ test('counter Take Away: kitchen Start and Ready, then payment completes it; or 
     expect(orderState(first)).toBe('completed paid');
 
     // Pay first: it waits for the kitchen, then the cashier hands it over.
-    const second = await counterTakeAway(page, 'E2E Counter Sara', ['Vegetable Pulao']);
+    const second = await counterTakeAway(page, 'E2E Counter Sara', ['Chicken Pulao']);
     await page.getByRole('button', { name: 'Exact' }).click();
     await page.getByRole('button', { name: /^Pay/ }).click();
     await expect(
@@ -586,7 +586,7 @@ test('a counter Dine-In order with the waiter picker; the menu has no cost price
     await page.getByRole('radio', { name: 'Dine-In' }).click();
     await page.getByLabel('Table', { exact: true }).selectOption({ label: 'Table 104' });
     await page.getByLabel('Waiter (optional)').selectOption({ label: 'Demo Waiter Two' });
-    await page.getByRole('button', { name: 'Add Daal Makhani' }).click();
+    await page.getByRole('button', { name: 'Add Daal Mash' }).click();
     await shot(page, 'counter-order');
     await expectNoSeriousAxe(page);
     // Desk density: 40 px targets, never half under the search bar (failed on CI in S4).
@@ -647,7 +647,7 @@ test('offline: the banner shows and every cashier action is disabled', async ({
   request,
 }) => {
   cancelTakeAway('E2E CashOff');
-  await takeAway(request, 'E2E CashOff', ['Chicken Corn Soup']);
+  await takeAway(request, 'E2E CashOff', ['Chicken Soup']);
   try {
     await openCashier(page);
     await openBill(page, 'E2E CashOff');

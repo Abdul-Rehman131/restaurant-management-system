@@ -676,6 +676,7 @@ export type Database = {
           full_name: string;
           id: string;
           is_active: boolean;
+          keep_password: boolean;
           must_change_password: boolean;
           phone: string | null;
           role: Database['public']['Enums']['app_role'];
@@ -689,6 +690,7 @@ export type Database = {
           full_name: string;
           id: string;
           is_active?: boolean;
+          keep_password?: boolean;
           must_change_password?: boolean;
           phone?: string | null;
           role: Database['public']['Enums']['app_role'];
@@ -701,6 +703,7 @@ export type Database = {
           full_name?: string;
           id?: string;
           is_active?: boolean;
+          keep_password?: boolean;
           must_change_password?: boolean;
           phone?: string | null;
           role?: Database['public']['Enums']['app_role'];
@@ -776,6 +779,7 @@ export type Database = {
           phone: string | null;
           prices_include_tax: boolean;
           receipt_footer: string | null;
+          require_admin_mfa: boolean;
           restaurant_name: string;
           rounding_mode: Database['public']['Enums']['rounding_mode'];
           rounding_unit_minor: number;
@@ -803,6 +807,7 @@ export type Database = {
           phone?: string | null;
           prices_include_tax?: boolean;
           receipt_footer?: string | null;
+          require_admin_mfa?: boolean;
           restaurant_name: string;
           rounding_mode?: Database['public']['Enums']['rounding_mode'];
           rounding_unit_minor?: number;
@@ -829,6 +834,7 @@ export type Database = {
           phone?: string | null;
           prices_include_tax?: boolean;
           receipt_footer?: string | null;
+          require_admin_mfa?: boolean;
           restaurant_name?: string;
           rounding_mode?: Database['public']['Enums']['rounding_mode'];
           rounding_unit_minor?: number;
@@ -941,8 +947,10 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: Database['public']['Enums']['app_role'];
       };
+      ops_demo_account: { Args: { p_full_name: string; p_user_id: string }; Returns: Json };
       ops_demo_data: { Args: { p_dry_run?: boolean }; Returns: Json };
       ops_password_reset: { Args: { p_request_id: string; p_user_id: string }; Returns: Json };
+      ops_set_require_admin_mfa: { Args: { enabled: boolean }; Returns: Json };
       preview_bill_totals: {
         Args: {
           p_discount?: number;
