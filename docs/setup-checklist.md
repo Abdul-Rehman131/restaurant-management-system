@@ -7,18 +7,20 @@ P2). Staging only: never production. Details behind each step are in 4.3 to 4.7 
 
 **A. The backend (staging)**
 1. Merge the open PR into `develop`. The **DB deploy (staging)** workflow applies the new
-   migrations (`demo_data`, `staging_password_reset`); wait until it is green.
+   migrations; wait until it is green.
 2. Demo data and accounts, on your machine in PowerShell from the repo folder:
    ```powershell
    $env:SUPABASE_SECRET_KEY = Read-Host -MaskInput 'Staging secret key'
-   pnpm seed:staging -- --demo-data --dry-run
-   pnpm seed:staging -- --demo-data
-   pnpm seed:staging
-   Remove-Item Env:SUPABASE_SECRET_KEY
+   $env:DEMO_PASSWORD_SUFFIX = Read-Host -MaskInput 'Demo password suffix'
+   pnpm seed:staging --demo-data --demo-staff --set-demo-passwords --admin-mfa off --dry-run
+   pnpm seed:staging --demo-data --demo-staff --set-demo-passwords --admin-mfa off
+   Remove-Item Env:SUPABASE_SECRET_KEY, Env:DEMO_PASSWORD_SUFFIX
    ```
-   The last command creates `admin`, `cashier`, `waiter` and `chef` if they do not exist and
-   prints their passwords **once** (vault, then `Clear-Host`). A lost one:
-   `pnpm seed:staging -- --reset-password=<username>` (step 22).
+   Demo accounts: `admin`, `cashier`, `chef`, `waiter1`, `waiter2`, `waiter3`, each with the
+   password *username + your suffix* (at least 10 characters in total), no forced change at
+   sign-in. Only usernames are printed. `--admin-mfa on` turns the Admin second step back on.
+   The old `waiter` account is left alone: deactivate it in **Admin → Staff → waiter →
+   Deactivate** (reason: "replaced by waiter1 to waiter3").
 
 **B. Vercel** (https://vercel.com/new, your Hobby account; Hobby is for non-commercial use,
 fine for a demo, not for the live restaurant: D14)
@@ -58,7 +60,7 @@ fine for a demo, not for the live restaurant: D14)
     two-step sign-in works (sign in as `admin`, scan the code with the demo phone).
 
 **D. Check on the real domain** (10 minutes, the day before)
-13. Phone: open the domain, sign in as `waiter`, **Start shift** (the button turns into
+13. Phone: open the domain, sign in as `waiter1`, **Start shift** (the button turns into
     **Shift on**, a toast and a chime). Add to Home Screen; it opens full screen.
 14. Laptop: sign in as `chef` in one window and `cashier` in another; send an order from the
     phone and watch it reach the kitchen; pay it at the cashier; the receipt prints.
@@ -231,13 +233,15 @@ These need the database functions from the migrations, so they come after step 2
 
     **Demo data for a client demo** (opt-in, staging only, needs the migration `demo_data`
     deployed): the clearly fake "Ember Kitchen (Demo)" brand with demo rates (16% tax, 5%
-    service, named on every receipt), 6 categories, 30 items (4 bottled drinks skip the
-    kitchen, Fish Tikka starts Sold Out) and 12 tables (Hall and Family): the same content as
-    the local seed.
+    service, named on every receipt), PKR, Asia/Karachi, 04:00 cut-off, 11 categories and 72
+    desi and fast-food items (drinks, water and anything not cooked skip the kitchen; Mutton
+    Chops and Gajar Halwa start Sold Out) and 14 tables (Hall 1 to 6, Family 7 to 11, Outdoor
+    12 to 14): the same content as the local seed. A project with the first demo set is
+    upgraded (old-only rows archived).
     ```powershell
     $env:SUPABASE_SECRET_KEY = Read-Host -MaskInput 'Staging secret key'
-    pnpm seed:staging -- --demo-data --dry-run   # what it would add; changes nothing
-    pnpm seed:staging -- --demo-data             # adds what is missing
+    pnpm seed:staging --demo-data --dry-run   # what it would change; changes nothing
+    pnpm seed:staging --demo-data             # adds what is missing
     Remove-Item Env:SUPABASE_SECRET_KEY
     ```
     It only adds missing rows and never changes or archives one, so running it twice is safe.

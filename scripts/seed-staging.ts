@@ -21,11 +21,13 @@
 // is not touched: an Admin still needs the authenticator code after signing in.
 //
 // Demo data for a client demo (opt-in, staging only): the clearly fake "Ember Kitchen (Demo)"
-// brand with demo rates, 6 categories and 30 items (bottled drinks skip the kitchen, one item is
-// Sold Out) and 12 tables in 2 sections, the same content as the local seed:
-//   pnpm seed:staging -- --demo-data --dry-run   reports what it would add; changes nothing
-//   pnpm seed:staging -- --demo-data             adds what is missing (safe to run twice)
-// It only adds; it never changes or archives a row, and it refuses to run at all if the project
+// brand (PKR, Asia/Karachi, 04:00 cut-off, demo rates), 11 categories and 72 desi and fast-food
+// items (drinks, water and anything not cooked skip the kitchen, two items Sold Out) and 14
+// tables in 3 sections, the same content as the local seed (migration demo_data_v2):
+//   pnpm seed:staging --demo-data --dry-run   reports what it would change; changes nothing
+//   pnpm seed:staging --demo-data             adds what is missing (safe to run twice)
+// It adds what is missing and upgrades the first demo set (old-only rows archived, never
+// deleted); it refuses to run at all if the project
 // has any data that is not demo data (public.ops_demo_data, OWNER_DATA_PRESENT).
 //
 // Demo staff with fixed passwords (staging demo): admin, cashier, chef, waiter1, waiter2 and
@@ -182,19 +184,28 @@ async function loadDemoData() {
     settings: string;
     categories_added: number;
     menu_items_added: number;
+    menu_items_updated: number;
+    archived: number;
     tables_added: number;
+    tables_updated: number;
   };
   const verb = dryRun ? 'would add' : 'added';
+  const changed = dryRun ? 'would update' : 'updated';
   console.log(
     `  settings     ${dryRun && r.settings === 'set to demo' ? 'would be set to demo' : r.settings}`,
   );
-  console.log(`  categories   ${verb} ${String(r.categories_added)} (of 6)`);
-  console.log(`  menu items   ${verb} ${String(r.menu_items_added)} (of 30)`);
-  console.log(`  tables       ${verb} ${String(r.tables_added)} (of 12)`);
+  console.log(`  categories   ${verb} ${String(r.categories_added)} (of 11)`);
+  console.log(
+    `  menu items   ${verb} ${String(r.menu_items_added)} (of 72), ${changed} ${String(r.menu_items_updated)}`,
+  );
+  console.log(`  old demo     ${dryRun ? 'would archive' : 'archived'} ${String(r.archived)}`);
+  console.log(
+    `  tables       ${verb} ${String(r.tables_added)} (of 14), ${changed} ${String(r.tables_updated)}`,
+  );
   console.log(
     dryRun
-      ? '\nDry run: nothing changed. Run it again without --dry-run to add these.'
-      : '\nDone. Running it again adds nothing. Staff accounts: pnpm seed:staging (no flag).',
+      ? '\nDry run: nothing changed. Run it again without --dry-run to apply this.'
+      : '\nDone. Running it again changes nothing.',
   );
 }
 

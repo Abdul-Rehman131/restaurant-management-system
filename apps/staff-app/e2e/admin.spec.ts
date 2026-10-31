@@ -542,7 +542,7 @@ test('dashboard: numbers, charts with their tables, axe (desktop)', async ({ pag
   // Some completed sales today, so the dashboard has numbers. Drinks only (no kitchen): Ready
   // at once, so the payment completes them (no open bills left for other tests).
   const cashier = await apiAs(request, 'cashier');
-  for (const items of [['Mineral Water (500 ml)', 'Soft Drink (1.5 L)'], ['Soft Drink (Can)']]) {
+  for (const items of [['Mineral Water (500 ml)', '7Up (Can)'], ['Pepsi (Can)']]) {
     const order = await cashier.rpc<{ order_id: string; total: number }>('create_order', {
       p_request_id: crypto.randomUUID(),
       p_type: 'take_away',

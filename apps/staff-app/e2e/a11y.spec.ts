@@ -45,8 +45,8 @@ async function openOrder(request: APIRequestContext, table: number) {
     p_customer_name: '',
     p_customer_phone: '',
     p_items: [
-      { menu_item_id: menuItemId('Chicken Corn Soup'), quantity: 1, notes: 'no pepper' },
-      { menu_item_id: menuItemId('Soft Drink (Can)'), quantity: 2 },
+      { menu_item_id: menuItemId('Chicken Soup'), quantity: 1, notes: 'no pepper' },
+      { menu_item_id: menuItemId('Pepsi (Can)'), quantity: 2 },
     ],
   });
 }
@@ -101,7 +101,7 @@ for (const theme of themes) {
 
         await page.goto(`/waiter/table/${tableId(table)}`);
         await expect(page.getByRole('region', { name: 'First send' })).toContainText(
-          'Chicken Corn Soup',
+          'Chicken Soup',
         );
         await check(page);
 

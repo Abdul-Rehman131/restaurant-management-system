@@ -11,8 +11,8 @@ owner's view. Everything runs on **staging** with the clearly fake "Ember Kitche
   - a laptop with two browser windows side by side, the kitchen on the left and the cashier
     on the right;
   - the receipt printer (or "Save as PDF").
-- **Accounts:** the four staging accounts from the vault (`waiter`, `chef`, `cashier`, `admin`),
-  and the Admin's authenticator on your own phone. Sign in to all of them now, not in front of
+- **Accounts:** `waiter1`, `chef`, `cashier` and `admin` (password: username + the demo
+  suffix), and the Admin's authenticator on your own phone if two-step sign-in is on. Sign in to all of them now, not in front of
   the client.
 - **Shifts:** tap **Start shift** on the waiter phone, the kitchen and the cashier (each shows
   **Shift on**). Turn the volume up.
@@ -23,10 +23,10 @@ owner's view. Everything runs on **staging** with the clearly fake "Ember Kitche
 | Time | Screen | Do | Say |
 |---|---|---|---|
 | 0:00 | All | Show the three screens. | "One order, one pipeline: waiter, kitchen, cashier, owner. Each person sees only their screen." |
-| 1:00 | Waiter phone | **Tables** → Table 2 → add Chicken Tikka, Garlic Naan ×2, Daal Makhani, Mineral Water (500 ml); note on the Tikka "extra spicy" → **Review** → **Send to Kitchen**. | "Under a minute, no paper. The total is worked out by the server, never typed." |
+| 1:00 | Waiter phone | **Tables** → Table 2 → add Chicken Tikka (Leg), Garlic Naan ×2, Daal Mash, Mineral Water (500 ml); note on the Tikka "extra spicy" → **Review** → **Send to Kitchen**. | "Under a minute, no paper. The total is worked out by the server, never typed." |
 | 2:30 | Kitchen | The ticket appears with a chime, within about 2 seconds. | "No prices in the kitchen. The bottled water never shows here: nothing to cook." |
 | 3:00 | Kitchen | **Start**, then **Ready**. | Point at the phone: the waiter hears it and sees "Table 2 is ready". |
-| 3:30 | Waiter phone | **Mark served**, then **Add more items** → Sweet Lassi → **Send add-on**. | "Extras go as a new batch; the kitchen sees only the new item, marked ADD-ON." |
+| 3:30 | Waiter phone | **Mark served**, then **Add more items** → Kheer → **Send add-on**. | "Extras go as a new batch; the kitchen sees only the new item, marked ADD-ON." |
 | 4:30 | Kitchen | **Sold out list** → switch **Chicken Biryani** off. | On the phone it greys out at once, on every screen. Switch it back on. |
 | 5:30 | Waiter phone | **Request bill**. | The cashier hears a tone; Table 2 jumps to the top of **Open bills**. |
 | 6:00 | Cashier | Open the bill → **Pay** → **Split** (part cash, part card) → **Pay and print**. | "Tax and service charge come from Settings. Split payments must add up exactly." The receipt prints, and on the phone Table 2 is free again. |
@@ -52,4 +52,4 @@ owner's view. Everything runs on **staging** with the clearly fake "Ember Kitche
 - **"You are offline" bar:** move closer to the Wi-Fi. Nothing is half-sent, and the screen
   catches up by itself.
 - **Signed out:** sign in again (passwords in the vault). An Admin enters the code again.
-- **Fish Tikka shows Sold out:** that is part of the demo menu, on purpose.
+- **Mutton Chops and Gajar Halwa show Sold out:** that is part of the demo menu, on purpose.
