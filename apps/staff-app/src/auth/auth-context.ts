@@ -42,12 +42,3 @@ export const roleHome: Record<AppRole, string> = {
   chef: paths.kitchen,
   rider: paths.notAvailable,
 };
-
-/**
- * Admin must reach aal2 before any screen (S5: not skippable). Without a verified TOTP factor
- * the MFA screen enrols one first. The database refuses every Admin RPC below aal2 too
- * (MFA_REQUIRED), so this only decides where the screen goes.
- */
-export function needsMfaStep(auth: AuthState): boolean {
-  return auth.role === 'admin' && auth.aal !== 'aal2';
-}

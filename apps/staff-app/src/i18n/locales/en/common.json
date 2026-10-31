@@ -58,6 +58,7 @@
     "updateReady": "A new version of the app is ready.",
     "updateNow": "Update",
     "offlineReady": "The app is ready to work with a weak connection.",
-    "changePassword": "Change password"
+    "changePassword": "Change password",
+    "adminMfaOff": "Two-step sign-in is off (demo)"
   }
 }
