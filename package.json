@@ -33,10 +33,10 @@
   "devDependencies": {
     "@rms/config": "workspace:*",
     "eslint": "9.39.5",
-    "prettier": "3.9.10",
+    "prettier": "3.10.1",
     "prettier-plugin-tailwindcss": "0.8.1",
     "supabase": "2.122.0",
-    "turbo": "2.11.10",
+    "turbo": "2.11.11",
     "typescript": "6.0.3"
   }
 }
